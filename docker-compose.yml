@@ -1,0 +1,25 @@
+services:
+  frontend-dev:
+    profiles: ["dev"]
+    build:
+      context: .
+      target: dev
+    container_name: appointments-frontend-dev
+    ports:
+      - "${FRONTEND_DEV_PORT:-5173}:5173"
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+  frontend-prod:
+    profiles: ["prod"]
+    build:
+      context: .
+      target: production
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+    container_name: appointments-frontend-prod
+    ports:
+      - "${FRONTEND_PROD_PORT:-8080}:80"
