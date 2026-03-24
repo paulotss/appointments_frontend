@@ -18,6 +18,7 @@ import { useNavigate } from 'react-router-dom'
 import { RegistrosTable } from '../components/RegistrosTable'
 import { getIsAdmin, getLoggedUser } from '../services/authStorage'
 import { listarRegistros } from '../services/registros.service'
+import { listarUsuarios } from '../services/users.service'
 import type { RegistroAtendimento } from '../types/registro'
 
 function getHojeLocalISO(): string {
@@ -35,6 +36,7 @@ export function RegistrosPage() {
   const filtroDataPadrao = getHojeLocalISO()
   const filtroAtendentePadrao = loggedUser?.name ?? ''
   const [registros, setRegistros] = useState<RegistroAtendimento[]>([])
+  const [usuarios, setUsuarios] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filtroData, setFiltroData] = useState(filtroDataPadrao)
@@ -47,8 +49,13 @@ export function RegistrosPage() {
       setLoading(true)
       setError(null)
       try {
-        const data = await listarRegistros()
-        setRegistros(data)
+        const [registrosData, usuariosData] = await Promise.all([listarRegistros(), listarUsuarios()])
+        setRegistros(registrosData)
+        const nomesUsuarios = usuariosData
+          .map((usuario) => usuario.name.trim())
+          .filter((nome) => nome.length > 0)
+          .sort((a, b) => a.localeCompare(b))
+        setUsuarios(Array.from(new Set(nomesUsuarios)))
       } catch {
         setError('Nao foi possivel carregar os registros.')
       } finally {
@@ -60,9 +67,12 @@ export function RegistrosPage() {
   }, [])
 
   const atendentes = useMemo(() => {
+    if (usuarios.length > 0) {
+      return usuarios
+    }
     const unicos = Array.from(new Set(registros.map((registro) => registro.atendente)))
     return unicos.sort((a, b) => a.localeCompare(b))
-  }, [registros])
+  }, [registros, usuarios])
 
   const registrosFiltrados = useMemo(() => {
     return registros.filter((registro) => {
