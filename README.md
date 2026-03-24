@@ -13,10 +13,14 @@ Frontend da aplicacao de agendamentos, construido com React, TypeScript e Vite.
 Crie ou ajuste o arquivo `.env` na raiz do projeto:
 
 ```env
-VITE_API_URL=http://localhost:3000
+VITE_API_URL=/api
+VITE_API_PROXY_TARGET=http://localhost:3000
 FRONTEND_DEV_PORT=5174
 FRONTEND_PROD_PORT=8080
 ```
+
+Com backend usando prefixo global `/api`, o frontend deve usar `VITE_API_URL=/api` em producao.
+No desenvolvimento com Vite, `VITE_API_PROXY_TARGET` define para onde o proxy de `/api` deve apontar.
 
 ## Execucao local (sem Docker)
 

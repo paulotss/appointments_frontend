@@ -9,6 +9,8 @@ services:
       - "${FRONTEND_DEV_PORT:-5173}:5173"
     env_file:
       - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - .:/app
       - /app/node_modules
@@ -19,7 +21,9 @@ services:
       context: .
       target: production
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+        VITE_API_URL: ${VITE_API_URL:-/api}
     container_name: appointments-frontend-prod
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${FRONTEND_PROD_PORT:-8080}:80"

@@ -11,9 +11,9 @@ import {
   ListItemIcon,
   ListItemText,
   Toolbar,
-  Typography,
 } from '@mui/material'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import logoSeraphisBranca from '../assets/logo-seraphis-branca.png'
 import { clearToken, getIsAdmin } from '../services/authStorage'
 
 const DRAWER_WIDTH = 260
@@ -46,15 +46,20 @@ export function AppLayout() {
           '& .MuiDrawer-paper': {
             width: DRAWER_WIDTH,
             boxSizing: 'border-box',
+            bgcolor: 'primary.main',
+            color: 'primary.contrastText',
           },
         }}
       >
-        <Toolbar>
-          <Typography variant="h6" fontWeight={700}>
-            Atendimentos
-          </Typography>
+        <Toolbar sx={{ minHeight: 80, display: 'flex', justifyContent: 'center', py: 2 }}>
+          <Box
+            component="img"
+            src={logoSeraphisBranca}
+            alt="Seraphis"
+            sx={{ width: 170, maxWidth: '100%' }}
+          />
         </Toolbar>
-        <Divider />
+        <Divider sx={{ borderColor: 'rgba(255,255,255,0.22)' }} />
         <List sx={{ flex: 1 }}>
           {menuItems.map((item) => (
             <ListItemButton
@@ -62,8 +67,16 @@ export function AppLayout() {
               component={NavLink}
               to={item.to}
               sx={{
+                color: 'inherit',
+                '& .MuiListItemIcon-root': {
+                  color: 'inherit',
+                  minWidth: 40,
+                },
                 '&.active': {
-                  bgcolor: 'primary.light',
+                  bgcolor: 'rgba(255,255,255,0.18)',
+                },
+                '&:hover': {
+                  bgcolor: 'rgba(255,255,255,0.12)',
                 },
               }}
             >
@@ -72,9 +85,20 @@ export function AppLayout() {
             </ListItemButton>
           ))}
         </List>
-        <Divider />
+        <Divider sx={{ borderColor: 'rgba(255,255,255,0.22)' }} />
         <List>
-          <ListItemButton onClick={handleLogout}>
+          <ListItemButton
+            onClick={handleLogout}
+            sx={{
+              color: 'inherit',
+              '& .MuiListItemIcon-root': {
+                color: 'inherit',
+              },
+              '&:hover': {
+                bgcolor: 'rgba(255,255,255,0.12)',
+              },
+            }}
+          >
             <ListItemIcon>
               <LogoutIcon />
             </ListItemIcon>

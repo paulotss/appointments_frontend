@@ -3,6 +3,7 @@ import { Alert, Box, Button, Paper, TextField, Typography } from '@mui/material'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import logoSeraphisVerde from '../assets/logo-seraphis-verde.png'
 import { loginSchema, type LoginFormValues } from '../schemas/login.schema'
 import { login } from '../services/auth.service'
 import { isAuthenticated } from '../services/authStorage'
@@ -60,6 +61,12 @@ export function LoginPage() {
       }}
     >
       <Paper sx={{ width: '100%', maxWidth: 420, p: 3 }}>
+        <Box
+          component="img"
+          src={logoSeraphisVerde}
+          alt="Seraphis"
+          sx={{ display: 'block', width: 220, maxWidth: '100%', mx: 'auto', mb: 2 }}
+        />
         <Typography variant="h5" fontWeight={700} gutterBottom>
           Login
         </Typography>

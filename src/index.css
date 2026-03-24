@@ -1,7 +1,7 @@
 :root {
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  color: #17202a;
-  background-color: #f5f7fb;
+  color: #17342a;
+  background-color: #eef7f3;
   line-height: 1.4;
   font-weight: 400;
   font-synthesis: none;
@@ -48,7 +48,7 @@ h1 {
 
 .card {
   background: #fff;
-  border: 1px solid #dde3ea;
+  border: 1px solid #d7e7e0;
   border-radius: 10px;
   padding: 16px;
 }
@@ -59,7 +59,7 @@ h1 {
 }
 
 .muted {
-  color: #596579;
+  color: #4f6b60;
   margin: 8px 0 0;
 }
 
@@ -93,9 +93,9 @@ textarea {
 
 button,
 .button-link {
-  border: 1px solid #3b82f6;
+  border: 1px solid #1f8f66;
   border-radius: 8px;
-  background: #3b82f6;
+  background: #1f8f66;
   color: #fff;
   padding: 10px 14px;
   cursor: pointer;
@@ -106,9 +106,9 @@ button,
 }
 
 .secondary-button {
-  border-color: #cbd5e1;
+  border-color: #b9d5c8;
   background: #fff;
-  color: #17202a;
+  color: #17342a;
 }
 
 button:disabled {
