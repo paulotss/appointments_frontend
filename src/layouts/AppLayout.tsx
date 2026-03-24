@@ -10,17 +10,20 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Typography,
   Toolbar,
 } from '@mui/material'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import logoSeraphisBranca from '../assets/logo-seraphis-branca.png'
-import { clearToken, getIsAdmin } from '../services/authStorage'
+import { clearToken, getIsAdmin, getLoggedUser } from '../services/authStorage'
 
 const DRAWER_WIDTH = 260
 
 export function AppLayout() {
   const navigate = useNavigate()
   const isAdmin = getIsAdmin()
+  const loggedUser = getLoggedUser()
+  const displayName = loggedUser?.name?.trim() || loggedUser?.usernameLogin || 'Usuário'
   const menuItems = [
     { label: 'Registros', to: '/registros', icon: <EventNoteIcon /> },
     ...(isAdmin
@@ -108,6 +111,22 @@ export function AppLayout() {
       </Drawer>
 
       <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+          <Typography
+            component="p"
+            sx={{
+              bgcolor: 'primary.light',
+              color: 'primary.dark',
+              px: 2,
+              py: 1,
+              borderRadius: 2,
+              fontWeight: 700,
+              boxShadow: 1,
+            }}
+          >
+            Bem vindo(a), {displayName}
+          </Typography>
+        </Box>
         <Outlet />
       </Box>
     </Box>
