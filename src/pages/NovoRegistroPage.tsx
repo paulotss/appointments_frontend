@@ -4,11 +4,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { RegistroForm } from '../components/RegistroForm'
 import type { RegistroFormValues } from '../schemas/registro.schema'
-import {
-  listarEspecialidades,
-  listarEspecialidadesPorIds,
-} from '../services/especialidades.service'
-import { criarRegistro, listarRegistros } from '../services/registros.service'
+import { listarEspecialidades } from '../services/especialidades.service'
+import { criarRegistro } from '../services/registros.service'
 import type { Especialidade } from '../types/registro'
 
 export function NovoRegistroPage() {
@@ -23,15 +20,7 @@ export function NovoRegistroPage() {
       setLoadingEspecialidades(true)
       setError(null)
       try {
-        const registros = await listarRegistros()
-        const specialtyIds = registros
-          .map((registro) => registro.especialidade_id)
-          .filter((id): id is number => id > 0)
-
-        const data =
-          specialtyIds.length > 0
-            ? await listarEspecialidadesPorIds(specialtyIds)
-            : await listarEspecialidades()
+        const data = await listarEspecialidades()
         setEspecialidades(data)
       } catch {
         setError('Nao foi possivel carregar as especialidades.')
