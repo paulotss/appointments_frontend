@@ -1,9 +1,16 @@
 import EventNoteIcon from '@mui/icons-material/EventNote'
+import AssessmentIcon from '@mui/icons-material/Assessment'
+import AccessTimeIcon from '@mui/icons-material/AccessTime'
+import PersonIcon from '@mui/icons-material/Person'
+import PercentIcon from '@mui/icons-material/Percent'
+import ExpandLessIcon from '@mui/icons-material/ExpandLess'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import LogoutIcon from '@mui/icons-material/Logout'
 import MedicalServicesIcon from '@mui/icons-material/MedicalServices'
 import PeopleIcon from '@mui/icons-material/People'
 import {
   Box,
+  Collapse,
   Divider,
   Drawer,
   List,
@@ -13,6 +20,7 @@ import {
   Typography,
   Toolbar,
 } from '@mui/material'
+import { useMemo, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import logoSeraphisBranca from '../assets/logo-seraphis-branca.png'
 import { clearToken, getIsAdmin, getLoggedUser } from '../services/authStorage'
@@ -24,15 +32,29 @@ export function AppLayout() {
   const isAdmin = getIsAdmin()
   const loggedUser = getLoggedUser()
   const displayName = loggedUser?.name?.trim() || loggedUser?.usernameLogin || 'Usuário'
-  const menuItems = [
-    { label: 'Registros', to: '/registros', icon: <EventNoteIcon /> },
-    ...(isAdmin
-      ? [
-          { label: 'Especialidades', to: '/especialidades', icon: <MedicalServicesIcon /> },
-          { label: 'Usuarios', to: '/usuarios', icon: <PeopleIcon /> },
-        ]
-      : []),
-  ]
+  const [relatoriosAberto, setRelatoriosAberto] = useState(true)
+
+  const menuItems = useMemo(() => {
+    return [
+      { label: 'Registros', to: '/registros', icon: <EventNoteIcon /> },
+      ...(isAdmin
+        ? [
+            { label: 'Especialidades', to: '/especialidades', icon: <MedicalServicesIcon /> },
+            { label: 'Usuarios', to: '/usuarios', icon: <PeopleIcon /> },
+            {
+              type: 'submenu' as const,
+              label: 'Relatórios',
+              icon: <AssessmentIcon />,
+              items: [
+                { label: 'Horários', to: '/relatorios/horarios', icon: <AccessTimeIcon /> },
+                { label: 'Atendimentos', to: '/relatorios/atendimentos', icon: <PersonIcon /> },
+                { label: 'Taxa de conversão', to: '/relatorios/taxa-conversao', icon: <PercentIcon /> },
+              ],
+            },
+          ]
+        : []),
+    ]
+  }, [isAdmin])
 
   function handleLogout() {
     clearToken()
@@ -64,29 +86,83 @@ export function AppLayout() {
         </Toolbar>
         <Divider sx={{ borderColor: 'rgba(255,255,255,0.22)' }} />
         <List sx={{ flex: 1 }}>
-          {menuItems.map((item) => (
-            <ListItemButton
-              key={item.to}
-              component={NavLink}
-              to={item.to}
-              sx={{
-                color: 'inherit',
-                '& .MuiListItemIcon-root': {
+          {menuItems.map((item) => {
+            if ('type' in item && item.type === 'submenu') {
+              return (
+                <Box key={item.label}>
+                  <ListItemButton
+                    onClick={() => setRelatoriosAberto((prev) => !prev)}
+                    sx={{
+                      color: 'inherit',
+                      '& .MuiListItemIcon-root': {
+                        color: 'inherit',
+                        minWidth: 40,
+                      },
+                      '&:hover': {
+                        bgcolor: 'rgba(255,255,255,0.12)',
+                      },
+                    }}
+                  >
+                    <ListItemIcon>{item.icon}</ListItemIcon>
+                    <ListItemText primary={item.label} />
+                    {relatoriosAberto ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                  </ListItemButton>
+                  <Collapse in={relatoriosAberto} timeout="auto" unmountOnExit>
+                    <List component="div" disablePadding>
+                      {item.items.map((subitem) => (
+                        <ListItemButton
+                          key={subitem.to}
+                          component={NavLink}
+                          to={subitem.to}
+                          sx={{
+                            pl: 4,
+                            color: 'inherit',
+                            '& .MuiListItemIcon-root': {
+                              color: 'inherit',
+                              minWidth: 40,
+                            },
+                            '&.active': {
+                              bgcolor: 'rgba(255,255,255,0.18)',
+                            },
+                            '&:hover': {
+                              bgcolor: 'rgba(255,255,255,0.12)',
+                            },
+                          }}
+                        >
+                          <ListItemIcon>{subitem.icon}</ListItemIcon>
+                          <ListItemText primary={subitem.label} />
+                        </ListItemButton>
+                      ))}
+                    </List>
+                  </Collapse>
+                </Box>
+              )
+            }
+
+            return (
+              <ListItemButton
+                key={item.to}
+                component={NavLink}
+                to={item.to}
+                sx={{
                   color: 'inherit',
-                  minWidth: 40,
-                },
-                '&.active': {
-                  bgcolor: 'rgba(255,255,255,0.18)',
-                },
-                '&:hover': {
-                  bgcolor: 'rgba(255,255,255,0.12)',
-                },
-              }}
-            >
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.label} />
-            </ListItemButton>
-          ))}
+                  '& .MuiListItemIcon-root': {
+                    color: 'inherit',
+                    minWidth: 40,
+                  },
+                  '&.active': {
+                    bgcolor: 'rgba(255,255,255,0.18)',
+                  },
+                  '&:hover': {
+                    bgcolor: 'rgba(255,255,255,0.12)',
+                  },
+                }}
+              >
+                <ListItemIcon>{item.icon}</ListItemIcon>
+                <ListItemText primary={item.label} />
+              </ListItemButton>
+            )
+          })}
         </List>
         <Divider sx={{ borderColor: 'rgba(255,255,255,0.22)' }} />
         <List>

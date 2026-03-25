@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Button, Grid, MenuItem, Paper, TextField } from '@mui/material'
 import { useEffect } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
-import { registroSchema, type RegistroFormValues } from '../schemas/registro.schema'
+import { registroSchema, type RegistroFormInput, type RegistroFormValues } from '../schemas/registro.schema'
 import type { Especialidade } from '../types/registro'
 
 interface RegistroFormProps {
@@ -11,14 +11,11 @@ interface RegistroFormProps {
   loading: boolean
 }
 
-const defaultValues: RegistroFormValues = {
+const defaultValues: Partial<RegistroFormInput> = {
   nome: '',
   telefone: '',
-  atendimento: 'whatsapp',
-  primeira_vez: 'sim',
-  agendamento: 'sim',
   motivo: null,
-  especialidade_id: null,
+  especialidade_id: undefined,
   observacoes: '',
 }
 
@@ -33,7 +30,7 @@ export function RegistroForm({
     handleSubmit,
     resetField,
     formState: { errors },
-  } = useForm<RegistroFormValues>({
+  } = useForm<RegistroFormInput, unknown, RegistroFormValues>({
     resolver: zodResolver(registroSchema),
     defaultValues,
   })
@@ -58,6 +55,7 @@ export function RegistroForm({
           <TextField
             label="Nome"
             fullWidth
+            required
             error={Boolean(errors.nome)}
             helperText={errors.nome?.message}
             {...register('nome')}
@@ -68,6 +66,7 @@ export function RegistroForm({
           <TextField
             label="Telefone"
             fullWidth
+            required
             error={Boolean(errors.telefone)}
             helperText={errors.telefone?.message}
             {...register('telefone')}
@@ -75,7 +74,17 @@ export function RegistroForm({
         </Grid>
 
         <Grid size={{ xs: 12, md: 6 }}>
-          <TextField select label="Atendimento" fullWidth defaultValue="whatsapp" {...register('atendimento')}>
+          <TextField
+            select
+            label="Atendimento"
+            fullWidth
+            required
+            defaultValue=""
+            error={Boolean(errors.atendimento)}
+            helperText={errors.atendimento?.message}
+            {...register('atendimento')}
+          >
+            <MenuItem value="">Selecione...</MenuItem>
             <MenuItem value="whatsapp">WhatsApp</MenuItem>
             <MenuItem value="telefone">Telefone</MenuItem>
             <MenuItem value="outro">Outro</MenuItem>
@@ -83,14 +92,34 @@ export function RegistroForm({
         </Grid>
 
         <Grid size={{ xs: 12, md: 6 }}>
-          <TextField select label="Primeira vez" fullWidth defaultValue="sim" {...register('primeira_vez')}>
+          <TextField
+            select
+            label="Primeira vez"
+            fullWidth
+            required
+            defaultValue=""
+            error={Boolean(errors.primeira_vez)}
+            helperText={errors.primeira_vez?.message}
+            {...register('primeira_vez')}
+          >
+            <MenuItem value="">Selecione...</MenuItem>
             <MenuItem value="sim">Sim</MenuItem>
             <MenuItem value="nao">Nao</MenuItem>
           </TextField>
         </Grid>
 
         <Grid size={{ xs: 12, md: 6 }}>
-          <TextField select label="Agendamento" fullWidth defaultValue="sim" {...register('agendamento')}>
+          <TextField
+            select
+            label="Agendamento"
+            fullWidth
+            required
+            defaultValue=""
+            error={Boolean(errors.agendamento)}
+            helperText={errors.agendamento?.message}
+            {...register('agendamento')}
+          >
+            <MenuItem value="">Selecione...</MenuItem>
             <MenuItem value="sim">Sim</MenuItem>
             <MenuItem value="nao">Nao</MenuItem>
           </TextField>
@@ -101,6 +130,7 @@ export function RegistroForm({
             <TextField
               label="Motivo"
               fullWidth
+              required
               error={Boolean(errors.motivo)}
               helperText={errors.motivo?.message}
               {...register('motivo')}
@@ -113,11 +143,12 @@ export function RegistroForm({
             select
             label="Especialidade"
             fullWidth
+            required
             defaultValue=""
             error={Boolean(errors.especialidade_id)}
             helperText={errors.especialidade_id?.message}
             {...register('especialidade_id', {
-              setValueAs: (value: string) => (value ? Number(value) : null),
+              setValueAs: (value: string) => (value ? Number(value) : undefined),
             })}
           >
             <MenuItem value="">Selecione...</MenuItem>

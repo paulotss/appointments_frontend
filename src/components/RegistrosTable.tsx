@@ -38,7 +38,13 @@ function RegistroRow({ registro }: RegistroRowProps) {
     return 'WhatsApp'
   }
 
-  const dataFormatada = new Date(registro.data).toLocaleDateString('pt-BR')
+  const data = new Date(registro.data)
+  const dataFormatada = data.toLocaleDateString('pt-BR')
+  const horaFormatada = data.toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
 
   return (
     <Fragment>
@@ -48,7 +54,7 @@ function RegistroRow({ registro }: RegistroRowProps) {
             {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
           </IconButton>
         </TableCell>
-        <TableCell>{dataFormatada}</TableCell>
+        <TableCell>{`${dataFormatada} ${horaFormatada}`}</TableCell>
         <TableCell>{registro.nome}</TableCell>
         <TableCell>{registro.telefone}</TableCell>
         <TableCell>{formatarAtendimento(registro.atendimento)}</TableCell>

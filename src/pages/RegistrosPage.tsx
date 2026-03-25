@@ -29,6 +29,14 @@ function getHojeLocalISO(): string {
   return `${ano}-${mes}-${dia}`
 }
 
+function toDataLocalISO(value: string | Date): string {
+  const date = value instanceof Date ? value : new Date(value)
+  const ano = date.getFullYear()
+  const mes = String(date.getMonth() + 1).padStart(2, '0')
+  const dia = String(date.getDate()).padStart(2, '0')
+  return `${ano}-${mes}-${dia}`
+}
+
 export function RegistrosPage() {
   const navigate = useNavigate()
   const loggedUser = getLoggedUser()
@@ -76,7 +84,7 @@ export function RegistrosPage() {
 
   const registrosFiltrados = useMemo(() => {
     return registros.filter((registro) => {
-      const dataRegistro = new Date(registro.data).toISOString().slice(0, 10)
+      const dataRegistro = toDataLocalISO(registro.data)
       const dataOk = !filtroData || dataRegistro === filtroData
       const atendenteOk = !filtroAtendente || registro.atendente === filtroAtendente
       return dataOk && atendenteOk
@@ -177,7 +185,14 @@ export function RegistrosPage() {
               select
               label="Período do gráfico"
               value={agrupamentoPeriodo}
-              onChange={(event) => setAgrupamentoPeriodo(event.target.value as 'dia' | 'mes')}
+              onChange={(event) => {
+                const proximoPeriodo = event.target.value as 'dia' | 'mes'
+                setAgrupamentoPeriodo(proximoPeriodo)
+                if (proximoPeriodo === 'mes') {
+                  setFiltroData('')
+                  setFiltroAtendente('')
+                }
+              }}
               sx={{ minWidth: 180 }}
             >
               <MenuItem value="dia">Dia</MenuItem>
