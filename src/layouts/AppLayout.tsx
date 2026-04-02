@@ -3,6 +3,7 @@ import AssessmentIcon from '@mui/icons-material/Assessment'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import PersonIcon from '@mui/icons-material/Person'
 import PercentIcon from '@mui/icons-material/Percent'
+import PieChartIcon from '@mui/icons-material/PieChart'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import LogoutIcon from '@mui/icons-material/Logout'
@@ -49,6 +50,11 @@ export function AppLayout() {
                 { label: 'Horários', to: '/relatorios/horarios', icon: <AccessTimeIcon /> },
                 { label: 'Atendimentos', to: '/relatorios/atendimentos', icon: <PersonIcon /> },
                 { label: 'Taxa de conversão', to: '/relatorios/taxa-conversao', icon: <PercentIcon /> },
+                {
+                  label: 'Especialidades atendidas',
+                  to: '/relatorios/especialidades-atendidas',
+                  icon: <PieChartIcon />,
+                },
               ],
             },
           ]

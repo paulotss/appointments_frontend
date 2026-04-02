@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './layouts/AppLayout'
 import { EspecialidadesPage } from './pages/EspecialidadesPage'
+import { EspecialidadesAtendidasPage } from './pages/EspecialidadesAtendidasPage'
 import { LoginPage } from './pages/LoginPage'
 import { AtendimentosPage } from './pages/AtendimentosPage'
 import { HorariosPage } from './pages/HorariosPage'
@@ -30,6 +31,7 @@ function App() {
         <Route path="/relatorios/horarios" element={<HorariosPage />} />
         <Route path="/relatorios/atendimentos" element={<AtendimentosPage />} />
         <Route path="/relatorios/taxa-conversao" element={<TaxaConversaoPage />} />
+        <Route path="/relatorios/especialidades-atendidas" element={<EspecialidadesAtendidasPage />} />
         <Route
           path="/especialidades"
           element={
