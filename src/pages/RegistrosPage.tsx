@@ -1,5 +1,6 @@
 import AddIcon from '@mui/icons-material/Add'
 import BarChartIcon from '@mui/icons-material/BarChart'
+import DownloadIcon from '@mui/icons-material/Download'
 import TableRowsIcon from '@mui/icons-material/TableRows'
 import { BarChart } from '@mui/x-charts/BarChart'
 import {
@@ -35,6 +36,23 @@ function toDataLocalISO(value: string | Date): string {
   const mes = String(date.getMonth() + 1).padStart(2, '0')
   const dia = String(date.getDate()).padStart(2, '0')
   return `${ano}-${mes}-${dia}`
+}
+
+function toDataHoraLocal(value: string): string {
+  const data = new Date(value)
+  if (Number.isNaN(data.getTime())) {
+    return value
+  }
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(data)
+}
+
+function escaparCampoCSV(valor: string | number | null | undefined): string {
+  const texto = String(valor ?? '').replace(/"/g, '""')
+  return `"${texto}"`
 }
 
 export function RegistrosPage() {
@@ -113,6 +131,51 @@ export function RegistrosPage() {
       outro: periodos.map((periodo) => agrupado.get(periodo)?.outro ?? 0),
     }
   }, [registrosFiltrados])
+
+  const exportarCSV = () => {
+    const cabecalho = [
+      'ID',
+      'Data',
+      'Nome',
+      'Telefone',
+      'Atendimento',
+      'Primeira vez',
+      'Agendamento',
+      'Motivo',
+      'Especialidade',
+      'Observacoes',
+      'Atendente',
+    ]
+
+    const linhas = registrosFiltrados.map((registro) =>
+      [
+        registro.id,
+        toDataHoraLocal(registro.data),
+        registro.nome,
+        registro.telefone,
+        registro.atendimento,
+        registro.primeira_vez,
+        registro.agendamento,
+        registro.motivo,
+        registro.especialidade_nome ?? '',
+        registro.observacoes,
+        registro.atendente,
+      ]
+        .map((campo) => escaparCampoCSV(campo))
+        .join(';'),
+    )
+
+    const csv = [cabecalho.map((campo) => escaparCampoCSV(campo)).join(';'), ...linhas].join('\r\n')
+    const csvComBOM = `\uFEFF${csv}`
+    const blob = new Blob([csvComBOM], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const dataAtual = getHojeLocalISO()
+    link.href = url
+    link.setAttribute('download', `registros-${dataAtual}.csv`)
+    link.click()
+    URL.revokeObjectURL(url)
+  }
 
   return (
     <Stack spacing={2}>
@@ -196,6 +259,14 @@ export function RegistrosPage() {
               }
             >
               {modoVisualizacao === 'grafico' ? 'Ver tabela' : 'Ver gráfico'}
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              onClick={exportarCSV}
+              disabled={registrosFiltrados.length === 0}
+            >
+              Exportar CSV
             </Button>
           </Stack>
         </Paper>
