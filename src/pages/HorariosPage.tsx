@@ -4,7 +4,6 @@ import {
   Alert,
   Box,
   CircularProgress,
-  MenuItem,
   Paper,
   Stack,
   TextField,
@@ -14,28 +13,26 @@ import { useEffect, useMemo, useState } from 'react'
 import { listarRegistros } from '../services/registros.service'
 import type { RegistroAtendimento } from '../types/registro'
 
-function getMesAtualISO(): string {
+function getDataHojeISO(): string {
   const agora = new Date()
   const ano = agora.getFullYear()
   const mes = String(agora.getMonth() + 1).padStart(2, '0')
-  return `${ano}-${mes}`
+  const dia = String(agora.getDate()).padStart(2, '0')
+  return `${ano}-${mes}-${dia}`
 }
 
-function toMesLocalISO(value: string | Date): string {
-  const date = value instanceof Date ? value : new Date(value)
-  const ano = date.getFullYear()
-  const mes = String(date.getMonth() + 1).padStart(2, '0')
-  return `${ano}-${mes}`
+function getInicioMesAtualISO(): string {
+  const agora = new Date()
+  const ano = agora.getFullYear()
+  const mes = String(agora.getMonth() + 1).padStart(2, '0')
+  return `${ano}-${mes}-01`
 }
 
-function labelMes(value: string): string {
-  const [anoStr, mesStr] = value.split('-')
-  const ano = Number(anoStr)
-  const mesIndex = Number(mesStr) - 1
-  const date = new Date(ano, mesIndex, 1)
-  const formatter = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' })
-  const label = formatter.format(date)
-  return label.charAt(0).toUpperCase() + label.slice(1)
+function formatarData(value: string): string {
+  if (!value) return '-'
+  const [ano, mes, dia] = value.split('-')
+  if (!ano || !mes || !dia) return value
+  return `${dia}/${mes}/${ano}`
 }
 
 function toHoraLocal(value: string | Date): number {
@@ -47,7 +44,8 @@ export function HorariosPage() {
   const [registros, setRegistros] = useState<RegistroAtendimento[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [mesSelecionado, setMesSelecionado] = useState(getMesAtualISO())
+  const [dataInicio, setDataInicio] = useState(getInicioMesAtualISO())
+  const [dataFim, setDataFim] = useState(getDataHojeISO())
 
   useEffect(() => {
     async function carregarRegistros() {
@@ -66,26 +64,25 @@ export function HorariosPage() {
     void carregarRegistros()
   }, [])
 
-  const mesesDisponiveis = useMemo(() => {
-    const unicos = Array.from(new Set(registros.map((r) => toMesLocalISO(r.data))))
-    unicos.sort((a, b) => b.localeCompare(a))
-    return unicos
-  }, [registros])
+  const registrosDoPeriodo = useMemo(() => {
+    if (!dataInicio || !dataFim) return registros
 
-  useEffect(() => {
-    if (loading) return
-    if (mesesDisponiveis.length === 0) return
-    if (mesesDisponiveis.includes(mesSelecionado)) return
-    setMesSelecionado(mesesDisponiveis[0])
-  }, [loading, mesesDisponiveis, mesSelecionado])
+    const inicio = new Date(`${dataInicio}T00:00:00`)
+    const fim = new Date(`${dataFim}T23:59:59.999`)
 
-  const registrosDoMes = useMemo(() => {
-    return registros.filter((r) => toMesLocalISO(r.data) === mesSelecionado)
-  }, [mesSelecionado, registros])
+    if (Number.isNaN(inicio.getTime()) || Number.isNaN(fim.getTime()) || inicio > fim) {
+      return []
+    }
+
+    return registros.filter((r) => {
+      const dataRegistro = new Date(r.data)
+      return dataRegistro >= inicio && dataRegistro <= fim
+    })
+  }, [dataFim, dataInicio, registros])
 
   const dadosGrafico = useMemo(() => {
     const contagemPorHora = new Array<number>(24).fill(0)
-    registrosDoMes.forEach((r) => {
+    registrosDoPeriodo.forEach((r) => {
       const hora = toHoraLocal(r.data)
       if (hora >= 0 && hora <= 23) {
         contagemPorHora[hora] += 1
@@ -94,7 +91,7 @@ export function HorariosPage() {
     const horas = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
 
     return { horas, contagens: contagemPorHora }
-  }, [registrosDoMes])
+  }, [registrosDoPeriodo])
 
   return (
     <Stack spacing={2}>
@@ -106,23 +103,24 @@ export function HorariosPage() {
           </Typography>
         </Stack>
 
-        <TextField
-          select
-          label="Mês"
-          value={mesSelecionado}
-          onChange={(event) => setMesSelecionado(event.target.value)}
-          sx={{ minWidth: 240 }}
-        >
-          {mesesDisponiveis.length === 0 ? (
-            <MenuItem value={mesSelecionado}>{labelMes(mesSelecionado)}</MenuItem>
-          ) : (
-            mesesDisponiveis.map((mes) => (
-              <MenuItem key={mes} value={mes}>
-                {labelMes(mes)}
-              </MenuItem>
-            ))
-          )}
-        </TextField>
+        <Stack direction="row" spacing={1.5} flexWrap="wrap">
+          <TextField
+            label="Início"
+            type="date"
+            value={dataInicio}
+            onChange={(event) => setDataInicio(event.target.value)}
+            InputLabelProps={{ shrink: true }}
+            sx={{ minWidth: 180 }}
+          />
+          <TextField
+            label="Fim"
+            type="date"
+            value={dataFim}
+            onChange={(event) => setDataFim(event.target.value)}
+            InputLabelProps={{ shrink: true }}
+            sx={{ minWidth: 180 }}
+          />
+        </Stack>
       </Box>
 
       {loading ? (
@@ -143,7 +141,7 @@ export function HorariosPage() {
       {!loading && !error && registros.length > 0 ? (
         <Paper sx={{ p: 2 }}>
           <Typography variant="h6" sx={{ mb: 2 }}>
-            Quantidade de atendimentos por hora ({labelMes(mesSelecionado)})
+            Quantidade de atendimentos por hora ({formatarData(dataInicio)} a {formatarData(dataFim)})
           </Typography>
           <Box sx={{ width: '100%', height: 380 }}>
             <BarChart

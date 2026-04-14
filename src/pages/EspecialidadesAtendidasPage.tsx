@@ -1,39 +1,46 @@
 import PieChartIcon from '@mui/icons-material/PieChart'
-import { PieChart } from '@mui/x-charts/PieChart'
-import { Alert, Box, CircularProgress, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material'
+import { BarChart } from '@mui/x-charts/BarChart'
+import { Alert, Box, CircularProgress, Paper, Stack, TextField, Typography } from '@mui/material'
 import { useEffect, useMemo, useState } from 'react'
 import { listarRegistros } from '../services/registros.service'
 import type { RegistroAtendimento } from '../types/registro'
 
-function getMesAtualISO(): string {
+function getInicioMesAtualISO(): string {
   const agora = new Date()
   const ano = agora.getFullYear()
   const mes = String(agora.getMonth() + 1).padStart(2, '0')
-  return `${ano}-${mes}`
+  return `${ano}-${mes}-01`
 }
 
-function toMesLocalISO(value: string | Date): string {
+function getFimMesAtualISO(): string {
+  const agora = new Date()
+  const fimMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 0)
+  const ano = fimMes.getFullYear()
+  const mes = String(fimMes.getMonth() + 1).padStart(2, '0')
+  const dia = String(fimMes.getDate()).padStart(2, '0')
+  return `${ano}-${mes}-${dia}`
+}
+
+function toDataLocalISO(value: string | Date): string {
   const date = value instanceof Date ? value : new Date(value)
   const ano = date.getFullYear()
   const mes = String(date.getMonth() + 1).padStart(2, '0')
-  return `${ano}-${mes}`
+  const dia = String(date.getDate()).padStart(2, '0')
+  return `${ano}-${mes}-${dia}`
 }
 
-function labelMes(value: string): string {
-  const [anoStr, mesStr] = value.split('-')
-  const ano = Number(anoStr)
-  const mesIndex = Number(mesStr) - 1
-  const date = new Date(ano, mesIndex, 1)
-  const formatter = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' })
-  const label = formatter.format(date)
-  return label.charAt(0).toUpperCase() + label.slice(1)
+function labelData(value: string): string {
+  const [anoStr, mesStr, diaStr] = value.split('-')
+  const date = new Date(Number(anoStr), Number(mesStr) - 1, Number(diaStr))
+  return new Intl.DateTimeFormat('pt-BR').format(date)
 }
 
 export function EspecialidadesAtendidasPage() {
   const [registros, setRegistros] = useState<RegistroAtendimento[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [mesSelecionado, setMesSelecionado] = useState(getMesAtualISO())
+  const [dataInicio, setDataInicio] = useState(getInicioMesAtualISO())
+  const [dataFim, setDataFim] = useState(getFimMesAtualISO())
 
   useEffect(() => {
     async function carregarRegistros() {
@@ -52,33 +59,34 @@ export function EspecialidadesAtendidasPage() {
     void carregarRegistros()
   }, [])
 
-  const mesesDisponiveis = useMemo(() => {
-    const unicos = Array.from(new Set(registros.map((r) => toMesLocalISO(r.data))))
-    unicos.sort((a, b) => b.localeCompare(a))
-    return unicos
-  }, [registros])
-
-  useEffect(() => {
-    if (loading) return
-    if (mesesDisponiveis.length === 0) return
-    if (mesesDisponiveis.includes(mesSelecionado)) return
-    setMesSelecionado(mesesDisponiveis[0])
-  }, [loading, mesesDisponiveis, mesSelecionado])
-
-  const dadosPizza = useMemo(() => {
+  const dadosBarras = useMemo(() => {
     const contagem = new Map<string, number>()
+    const dataInicial = dataInicio <= dataFim ? dataInicio : dataFim
+    const dataFinal = dataFim >= dataInicio ? dataFim : dataInicio
 
     registros
-      .filter((r) => toMesLocalISO(r.data) === mesSelecionado)
+      .filter((r) => {
+        const dataRegistro = toDataLocalISO(r.data)
+        return dataRegistro >= dataInicial && dataRegistro <= dataFinal
+      })
       .forEach((r) => {
         const especialidade = r.especialidade_nome?.trim() || 'Sem especialidade'
         contagem.set(especialidade, (contagem.get(especialidade) ?? 0) + 1)
       })
 
-    return Array.from(contagem.entries())
+    const totaisOrdenados = Array.from(contagem.entries())
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-      .map(([label, value], idx) => ({ id: `${label}-${idx}`, label, value }))
-  }, [mesSelecionado, registros])
+    const totalAtendimentos = totaisOrdenados.reduce((acc, [, value]) => acc + value, 0)
+
+    return totaisOrdenados.map(([especialidade, total]) => ({
+      especialidade,
+      percentual: totalAtendimentos > 0 ? Number(((total / totalAtendimentos) * 100).toFixed(2)) : 0,
+    }))
+  }, [dataFim, dataInicio, registros])
+
+  const especialidades = dadosBarras.map((item) => item.especialidade)
+  const percentuais = dadosBarras.map((item) => item.percentual)
+  const alturaGrafico = Math.min(380, Math.max(240, dadosBarras.length * 38))
 
   return (
     <Stack spacing={2}>
@@ -90,23 +98,26 @@ export function EspecialidadesAtendidasPage() {
           </Typography>
         </Stack>
 
-        <TextField
-          select
-          label="Mês"
-          value={mesSelecionado}
-          onChange={(event) => setMesSelecionado(event.target.value)}
-          sx={{ minWidth: 240 }}
-        >
-          {mesesDisponiveis.length === 0 ? (
-            <MenuItem value={mesSelecionado}>{labelMes(mesSelecionado)}</MenuItem>
-          ) : (
-            mesesDisponiveis.map((mes) => (
-              <MenuItem key={mes} value={mes}>
-                {labelMes(mes)}
-              </MenuItem>
-            ))
-          )}
-        </TextField>
+        <Stack direction="row" spacing={1} sx={{ minWidth: 340 }}>
+          <TextField
+            label="Início"
+            type="date"
+            value={dataInicio}
+            onChange={(event) => setDataInicio(event.target.value)}
+            InputLabelProps={{ shrink: true }}
+            size="small"
+            sx={{ minWidth: 165 }}
+          />
+          <TextField
+            label="Fim"
+            type="date"
+            value={dataFim}
+            onChange={(event) => setDataFim(event.target.value)}
+            InputLabelProps={{ shrink: true }}
+            size="small"
+            sx={{ minWidth: 165 }}
+          />
+        </Stack>
       </Box>
 
       {loading ? (
@@ -125,24 +136,42 @@ export function EspecialidadesAtendidasPage() {
       ) : null}
 
       {!loading && !error && registros.length > 0 ? (
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Quantidade de especialidades atendidas ({labelMes(mesSelecionado)})
+        <Paper sx={{ p: 1.5 }}>
+          <Typography variant="h6" sx={{ mb: 1.5 }}>
+            Especialidades atendidas ({labelData(dataInicio)} a {labelData(dataFim)})
           </Typography>
-          {dadosPizza.length === 0 ? (
-            <Typography color="text.secondary">Nao existem registros para o mês selecionado.</Typography>
+          {dadosBarras.length === 0 ? (
+            <Typography color="text.secondary">Nao existem registros para o período selecionado.</Typography>
           ) : (
-            <Box sx={{ width: '100%', height: 420 }}>
-              <PieChart
-                series={[
+            <Box sx={{ width: '100%', height: alturaGrafico }}>
+              <BarChart
+                layout="horizontal"
+                margin={{ top: 8, right: 20, bottom: 24, left: 110 }}
+                yAxis={[
                   {
-                    data: dadosPizza,
-                    highlightScope: { highlight: 'item', fade: 'global' },
-                    innerRadius: 55,
-                    paddingAngle: 2,
-                    cornerRadius: 4,
+                    scaleType: 'band',
+                    data: especialidades,
                   },
                 ]}
+                xAxis={[
+                  {
+                    min: 0,
+                    max: 100,
+                    tickMinStep: 10,
+                    tickMaxStep: 10,
+                    valueFormatter: (value: number) => `${value}%`,
+                  },
+                ]}
+                series={[
+                  {
+                    data: percentuais,
+                    label: 'Percentual',
+                    valueFormatter: (value: number | null) =>
+                      `${(value ?? 0).toFixed(2)}%`,
+                    color: '#1976d2',
+                  },
+                ]}
+                barLabel={(item) => `${Number(item.value ?? 0).toFixed(1)}%`}
               />
             </Box>
           )}

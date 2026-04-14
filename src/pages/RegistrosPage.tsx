@@ -47,10 +47,10 @@ export function RegistrosPage() {
   const [usuarios, setUsuarios] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [filtroData, setFiltroData] = useState(filtroDataPadrao)
+  const [filtroDataInicio, setFiltroDataInicio] = useState(filtroDataPadrao)
+  const [filtroDataFim, setFiltroDataFim] = useState(filtroDataPadrao)
   const [filtroAtendente, setFiltroAtendente] = useState(filtroAtendentePadrao)
   const [modoVisualizacao, setModoVisualizacao] = useState<'tabela' | 'grafico'>('tabela')
-  const [agrupamentoPeriodo, setAgrupamentoPeriodo] = useState<'dia' | 'mes'>('dia')
 
   useEffect(() => {
     async function carregarRegistros() {
@@ -85,21 +85,19 @@ export function RegistrosPage() {
   const registrosFiltrados = useMemo(() => {
     return registros.filter((registro) => {
       const dataRegistro = toDataLocalISO(registro.data)
-      const dataOk = !filtroData || dataRegistro === filtroData
+      const dataOkInicio = !filtroDataInicio || dataRegistro >= filtroDataInicio
+      const dataOkFim = !filtroDataFim || dataRegistro <= filtroDataFim
       const atendenteOk = !filtroAtendente || registro.atendente === filtroAtendente
-      return dataOk && atendenteOk
+      return dataOkInicio && dataOkFim && atendenteOk
     })
-  }, [filtroAtendente, filtroData, registros])
+  }, [filtroAtendente, filtroDataFim, filtroDataInicio, registros])
 
   const dadosGrafico = useMemo(() => {
     const agrupado = new Map<string, { whatsapp: number; telefone: number; outro: number }>()
 
     registrosFiltrados.forEach((registro) => {
       const dataRegistro = new Date(registro.data)
-      const periodo =
-        agrupamentoPeriodo === 'mes'
-          ? `${dataRegistro.getFullYear()}-${String(dataRegistro.getMonth() + 1).padStart(2, '0')}`
-          : `${dataRegistro.getFullYear()}-${String(dataRegistro.getMonth() + 1).padStart(2, '0')}-${String(dataRegistro.getDate()).padStart(2, '0')}`
+      const periodo = `${dataRegistro.getFullYear()}-${String(dataRegistro.getMonth() + 1).padStart(2, '0')}-${String(dataRegistro.getDate()).padStart(2, '0')}`
 
       const atual = agrupado.get(periodo) ?? { whatsapp: 0, telefone: 0, outro: 0 }
       atual[registro.atendimento] += 1
@@ -114,7 +112,7 @@ export function RegistrosPage() {
       telefone: periodos.map((periodo) => agrupado.get(periodo)?.telefone ?? 0),
       outro: periodos.map((periodo) => agrupado.get(periodo)?.outro ?? 0),
     }
-  }, [agrupamentoPeriodo, registrosFiltrados])
+  }, [registrosFiltrados])
 
   return (
     <Stack spacing={2}>
@@ -151,10 +149,18 @@ export function RegistrosPage() {
         <Paper sx={{ p: 2 }}>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} flexWrap="wrap">
             <TextField
-              label="Filtrar por data"
+              label="Início"
               type="date"
-              value={filtroData}
-              onChange={(event) => setFiltroData(event.target.value)}
+              value={filtroDataInicio}
+              onChange={(event) => setFiltroDataInicio(event.target.value)}
+              InputLabelProps={{ shrink: true }}
+              sx={{ minWidth: 220 }}
+            />
+            <TextField
+              label="Fim"
+              type="date"
+              value={filtroDataFim}
+              onChange={(event) => setFiltroDataFim(event.target.value)}
               InputLabelProps={{ shrink: true }}
               sx={{ minWidth: 220 }}
             />
@@ -175,29 +181,13 @@ export function RegistrosPage() {
             <Button
               variant="outlined"
               onClick={() => {
-                setFiltroData('')
+                setFiltroDataInicio('')
+                setFiltroDataFim('')
                 setFiltroAtendente('')
               }}
             >
               Limpar filtros
             </Button>
-            <TextField
-              select
-              label="Período do gráfico"
-              value={agrupamentoPeriodo}
-              onChange={(event) => {
-                const proximoPeriodo = event.target.value as 'dia' | 'mes'
-                setAgrupamentoPeriodo(proximoPeriodo)
-                if (proximoPeriodo === 'mes') {
-                  setFiltroData('')
-                  setFiltroAtendente('')
-                }
-              }}
-              sx={{ minWidth: 180 }}
-            >
-              <MenuItem value="dia">Dia</MenuItem>
-              <MenuItem value="mes">Mês</MenuItem>
-            </TextField>
             <Button
               variant={modoVisualizacao === 'grafico' ? 'contained' : 'outlined'}
               startIcon={modoVisualizacao === 'grafico' ? <TableRowsIcon /> : <BarChartIcon />}
@@ -232,7 +222,7 @@ export function RegistrosPage() {
       {!loading && !error && registrosFiltrados.length > 0 && modoVisualizacao === 'grafico' ? (
         <Paper sx={{ p: 2 }}>
           <Typography variant="h6" sx={{ mb: 2 }}>
-            Quantidade de atendimentos por {agrupamentoPeriodo === 'dia' ? 'dia' : 'mês'}
+            Quantidade de atendimentos por dia
           </Typography>
           <Box sx={{ width: '100%', height: 380 }}>
             <BarChart
@@ -240,7 +230,7 @@ export function RegistrosPage() {
                 {
                   data: dadosGrafico.periodos,
                   scaleType: 'band',
-                  label: agrupamentoPeriodo === 'dia' ? 'Dia' : 'Mês',
+                  label: 'Dia',
                 },
               ]}
               yAxis={[{ label: 'Quantidade de atendimentos' }]}

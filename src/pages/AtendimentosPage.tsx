@@ -30,26 +30,57 @@ function toMesLocalISO(value: string | Date): string {
   return `${ano}-${mes}`
 }
 
-function labelMes(value: string): string {
-  const [anoStr, mesStr] = value.split('-')
-  const ano = Number(anoStr)
-  const mesIndex = Number(mesStr) - 1
-  const date = new Date(ano, mesIndex, 1)
-  const formatter = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' })
-  const label = formatter.format(date)
-  return label.charAt(0).toUpperCase() + label.slice(1)
+function toDataInputISO(value: string | Date): string {
+  const date = value instanceof Date ? value : new Date(value)
+  const ano = date.getFullYear()
+  const mes = String(date.getMonth() + 1).padStart(2, '0')
+  const dia = String(date.getDate()).padStart(2, '0')
+  return `${ano}-${mes}-${dia}`
 }
 
-function diasNoMes(mesIso: string): number {
+function inicioMesISO(mesIso: string): string {
+  return `${mesIso}-01`
+}
+
+function fimMesISO(mesIso: string): string {
   const [anoStr, mesStr] = mesIso.split('-')
   const ano = Number(anoStr)
   const mesIndex = Number(mesStr) - 1
-  return new Date(ano, mesIndex + 1, 0).getDate()
+  const ultimoDia = new Date(ano, mesIndex + 1, 0).getDate()
+  return `${mesIso}-${String(ultimoDia).padStart(2, '0')}`
 }
 
-function toDiaDoMesLocal(value: string | Date): number {
+function toDiaLocal(value: string | Date): Date {
   const date = value instanceof Date ? value : new Date(value)
-  return date.getDate()
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+function parseDataInputISO(value: string): Date {
+  const [anoStr, mesStr, diaStr] = value.split('-')
+  const ano = Number(anoStr)
+  const mes = Number(mesStr) - 1
+  const dia = Number(diaStr)
+  return new Date(ano, mes, dia)
+}
+
+function formatarDataPtBR(value: string): string {
+  return parseDataInputISO(value).toLocaleDateString('pt-BR')
+}
+
+function formatarTipoAtendimento(tipo: RegistroAtendimento['atendimento']): string {
+  if (tipo === 'whatsapp') return 'WhatsApp'
+  if (tipo === 'telefone') return 'Telefone'
+  return 'Outro'
+}
+
+function gerarListaDatas(inicio: Date, fim: Date): string[] {
+  const datas: string[] = []
+  const cursor = new Date(inicio)
+  while (cursor <= fim) {
+    datas.push(toDataInputISO(cursor))
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  return datas
 }
 
 export function AtendimentosPage() {
@@ -58,7 +89,9 @@ export function AtendimentosPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [mesSelecionado, setMesSelecionado] = useState(getMesAtualISO())
+  const mesAtual = getMesAtualISO()
+  const [dataInicio, setDataInicio] = useState(inicioMesISO(mesAtual))
+  const [dataFim, setDataFim] = useState(fimMesISO(mesAtual))
   const [usuarioSelecionado, setUsuarioSelecionado] = useState<string>('')
 
   useEffect(() => {
@@ -98,9 +131,10 @@ export function AtendimentosPage() {
   useEffect(() => {
     if (loading) return
     if (mesesDisponiveis.length === 0) return
-    if (mesesDisponiveis.includes(mesSelecionado)) return
-    setMesSelecionado(mesesDisponiveis[0])
-  }, [loading, mesesDisponiveis, mesSelecionado])
+    const mesMaisRecente = mesesDisponiveis[0]
+    setDataInicio(inicioMesISO(mesMaisRecente))
+    setDataFim(fimMesISO(mesMaisRecente))
+  }, [loading, mesesDisponiveis])
 
   useEffect(() => {
     if (loading) return
@@ -109,30 +143,52 @@ export function AtendimentosPage() {
     setUsuarioSelecionado(usuariosDisponiveis[0])
   }, [loading, usuarioSelecionado, usuariosDisponiveis])
 
+  const { inicioPeriodo, fimPeriodo } = useMemo(() => {
+    const inicio = parseDataInputISO(dataInicio)
+    const fim = parseDataInputISO(dataFim)
+    return inicio <= fim ? { inicioPeriodo: inicio, fimPeriodo: fim } : { inicioPeriodo: fim, fimPeriodo: inicio }
+  }, [dataFim, dataInicio])
+
+  const periodoSelecionadoLabel = useMemo(() => {
+    return `${formatarDataPtBR(toDataInputISO(inicioPeriodo))} a ${formatarDataPtBR(toDataInputISO(fimPeriodo))}`
+  }, [fimPeriodo, inicioPeriodo])
+
   const registrosFiltrados = useMemo(() => {
     return registros.filter((r) => {
-      const mesOk = toMesLocalISO(r.data) === mesSelecionado
+      const dataRegistro = toDiaLocal(r.data)
+      const periodoOk = dataRegistro >= inicioPeriodo && dataRegistro <= fimPeriodo
       const userOk = !usuarioSelecionado || r.atendente === usuarioSelecionado
-      return mesOk && userOk
+      return periodoOk && userOk
     })
-  }, [mesSelecionado, registros, usuarioSelecionado])
+  }, [fimPeriodo, inicioPeriodo, registros, usuarioSelecionado])
 
   const dadosGrafico = useMemo(() => {
-    const totalDias = diasNoMes(mesSelecionado)
-    const contagemPorDia = new Array<number>(totalDias).fill(0)
-    registrosFiltrados.forEach((r) => {
-      const dia = toDiaDoMesLocal(r.data)
-      if (dia >= 1 && dia <= totalDias) contagemPorDia[dia - 1] += 1
-    })
-    const dias = Array.from({ length: totalDias }, (_, i) => String(i + 1))
-    return { dias, contagens: contagemPorDia }
-  }, [mesSelecionado, registrosFiltrados])
+    const datasPeriodo = gerarListaDatas(inicioPeriodo, fimPeriodo)
+    const contagemPorData = new Map<string, number>(datasPeriodo.map((data) => [data, 0]))
 
-  const dadosPizza = useMemo(() => {
-    const registrosDoMes = registros.filter((r) => toMesLocalISO(r.data) === mesSelecionado)
+    registrosFiltrados.forEach((r) => {
+      const data = toDataInputISO(r.data)
+      if (contagemPorData.has(data)) {
+        contagemPorData.set(data, (contagemPorData.get(data) ?? 0) + 1)
+      }
+    })
+
+    const labels = datasPeriodo.map((data) => formatarDataPtBR(data))
+    const contagens = datasPeriodo.map((data) => contagemPorData.get(data) ?? 0)
+    return { labels, contagens }
+  }, [fimPeriodo, inicioPeriodo, registrosFiltrados])
+
+  const registrosDoPeriodo = useMemo(() => {
+    return registros.filter((r) => {
+      const dataRegistro = toDiaLocal(r.data)
+      return dataRegistro >= inicioPeriodo && dataRegistro <= fimPeriodo
+    })
+  }, [fimPeriodo, inicioPeriodo, registros])
+
+  const dadosPizzaAtendente = useMemo(() => {
     const contagem = new Map<string, number>()
 
-    registrosDoMes.forEach((r) => {
+    registrosDoPeriodo.forEach((r) => {
       const nomeRaw = r.atendente
       const nome = (typeof nomeRaw === 'string' ? nomeRaw.trim() : '') || 'Sem atendente'
       contagem.set(nome, (contagem.get(nome) ?? 0) + 1)
@@ -140,8 +196,24 @@ export function AtendimentosPage() {
 
     return Array.from(contagem.entries())
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-      .map(([label, value], idx) => ({ id: `${label}-${idx}`, label, value }))
-  }, [mesSelecionado, registros])
+      .map(([label, value], idx) => ({ id: `atendente-${label}-${idx}`, label, value }))
+  }, [registrosDoPeriodo])
+
+  const dadosPizzaTipoAtendimento = useMemo(() => {
+    const contagem = new Map<RegistroAtendimento['atendimento'], number>()
+
+    registrosDoPeriodo.forEach((r) => {
+      contagem.set(r.atendimento, (contagem.get(r.atendimento) ?? 0) + 1)
+    })
+
+    return Array.from(contagem.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([tipo, value], idx) => ({
+        id: `tipo-${tipo}-${idx}`,
+        label: formatarTipoAtendimento(tipo),
+        value,
+      }))
+  }, [registrosDoPeriodo])
 
   const tituloUsuario = usuarioSelecionado ? usuarioSelecionado : 'Usuário'
 
@@ -157,22 +229,22 @@ export function AtendimentosPage() {
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', sm: 'center' }}>
           <TextField
-            select
-            label="Mês"
-            value={mesSelecionado}
-            onChange={(event) => setMesSelecionado(event.target.value)}
-            sx={{ minWidth: 220 }}
-          >
-            {mesesDisponiveis.length === 0 ? (
-              <MenuItem value={mesSelecionado}>{labelMes(mesSelecionado)}</MenuItem>
-            ) : (
-              mesesDisponiveis.map((mes) => (
-                <MenuItem key={mes} value={mes}>
-                  {labelMes(mes)}
-                </MenuItem>
-              ))
-            )}
-          </TextField>
+            type="date"
+            label="Início"
+            value={dataInicio}
+            onChange={(event) => setDataInicio(event.target.value)}
+            sx={{ minWidth: 190 }}
+            InputLabelProps={{ shrink: true }}
+          />
+
+          <TextField
+            type="date"
+            label="Fim"
+            value={dataFim}
+            onChange={(event) => setDataFim(event.target.value)}
+            sx={{ minWidth: 190 }}
+            InputLabelProps={{ shrink: true }}
+          />
 
           <TextField
             select
@@ -209,11 +281,11 @@ export function AtendimentosPage() {
         <Stack spacing={2}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" sx={{ mb: 2 }}>
-              Quantidade de atendimentos por dia ({labelMes(mesSelecionado)}) — {tituloUsuario}
+              Quantidade de atendimentos por dia ({periodoSelecionadoLabel}) — {tituloUsuario}
             </Typography>
             <Box sx={{ width: '100%', height: 380 }}>
               <BarChart
-                xAxis={[{ data: dadosGrafico.dias, scaleType: 'band', label: 'Dia do mês' }]}
+                xAxis={[{ data: dadosGrafico.labels, scaleType: 'band', label: 'Data' }]}
                 yAxis={[{ label: 'Quantidade' }]}
                 series={[{ data: dadosGrafico.contagens, label: 'Atendimentos' }]}
               />
@@ -222,15 +294,24 @@ export function AtendimentosPage() {
 
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" sx={{ mb: 2 }}>
-              Soma de atendimentos por atendente ({labelMes(mesSelecionado)})
+              Soma de atendimentos por atendente (anel interno) e tipo de atendimento (anel externo) — {periodoSelecionadoLabel}
             </Typography>
             <Box sx={{ width: '100%', height: 380 }}>
               <PieChart
                 series={[
                   {
-                    data: dadosPizza,
+                    data: dadosPizzaAtendente,
                     highlightScope: { highlight: 'item', fade: 'global' },
                     innerRadius: 50,
+                    outerRadius: 90,
+                    paddingAngle: 2,
+                    cornerRadius: 4,
+                  },
+                  {
+                    data: dadosPizzaTipoAtendimento,
+                    highlightScope: { highlight: 'item', fade: 'global' },
+                    innerRadius: 96,
+                    outerRadius: 118,
                     paddingAngle: 2,
                     cornerRadius: 4,
                   },
