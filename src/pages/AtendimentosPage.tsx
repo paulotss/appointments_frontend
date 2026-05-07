@@ -185,18 +185,58 @@ export function AtendimentosPage() {
 
   const dadosGraficoDiaSemana = useMemo(() => {
     const ordemDias = [1, 2, 3, 4, 5, 6, 0]
-    const contagemPorDia = new Map<number, number>(ordemDias.map((dia) => [dia, 0]))
+    const contagemWhatsappPorDia = new Map<number, number>(ordemDias.map((dia) => [dia, 0]))
+    const contagemTelefonePorDia = new Map<number, number>(ordemDias.map((dia) => [dia, 0]))
+    const contagemOutrosPorDia = new Map<number, number>(ordemDias.map((dia) => [dia, 0]))
 
     registrosFiltrados.forEach((r) => {
       const diaSemana = toDiaLocal(r.data).getDay()
-      if (contagemPorDia.has(diaSemana)) {
-        contagemPorDia.set(diaSemana, (contagemPorDia.get(diaSemana) ?? 0) + 1)
+      if (r.atendimento === 'whatsapp' && contagemWhatsappPorDia.has(diaSemana)) {
+        contagemWhatsappPorDia.set(diaSemana, (contagemWhatsappPorDia.get(diaSemana) ?? 0) + 1)
+        return
+      }
+
+      if (r.atendimento === 'telefone' && contagemTelefonePorDia.has(diaSemana)) {
+        contagemTelefonePorDia.set(diaSemana, (contagemTelefonePorDia.get(diaSemana) ?? 0) + 1)
+        return
+      }
+
+      if (contagemOutrosPorDia.has(diaSemana)) {
+        contagemOutrosPorDia.set(diaSemana, (contagemOutrosPorDia.get(diaSemana) ?? 0) + 1)
       }
     })
 
     const labels = ordemDias.map((dia) => getDiaSemanaLabel(dia))
-    const contagens = ordemDias.map((dia) => contagemPorDia.get(dia) ?? 0)
-    return { labels, contagens }
+    const contagensWhatsapp = ordemDias.map((dia) => contagemWhatsappPorDia.get(dia) ?? 0)
+    const contagensTelefone = ordemDias.map((dia) => contagemTelefonePorDia.get(dia) ?? 0)
+    const contagensOutros = ordemDias.map((dia) => contagemOutrosPorDia.get(dia) ?? 0)
+    return { labels, contagensWhatsapp, contagensTelefone, contagensOutros }
+  }, [registrosFiltrados])
+
+  const dadosGraficoTipoAtendimento = useMemo(() => {
+    const categorias = ['WhatsApp', 'Telefone', 'Outros']
+    let totalWhatsapp = 0
+    let totalTelefone = 0
+    let totalOutros = 0
+
+    registrosFiltrados.forEach((r) => {
+      if (r.atendimento === 'whatsapp') {
+        totalWhatsapp += 1
+        return
+      }
+
+      if (r.atendimento === 'telefone') {
+        totalTelefone += 1
+        return
+      }
+
+      totalOutros += 1
+    })
+
+    return {
+      categorias,
+      contagens: [totalWhatsapp, totalTelefone, totalOutros],
+    }
   }, [registrosFiltrados])
 
   const registrosDoPeriodo = useMemo(() => {
@@ -321,7 +361,29 @@ export function AtendimentosPage() {
               <BarChart
                 xAxis={[{ data: dadosGraficoDiaSemana.labels, scaleType: 'band', label: 'Dia da semana' }]}
                 yAxis={[{ label: 'Quantidade' }]}
-                series={[{ data: dadosGraficoDiaSemana.contagens, label: 'Atendimentos' }]}
+                series={[
+                  { data: dadosGraficoDiaSemana.contagensWhatsapp, label: 'WhatsApp', color: '#25D366' },
+                  { data: dadosGraficoDiaSemana.contagensTelefone, label: 'Telefone', color: '#1976D2' },
+                  { data: dadosGraficoDiaSemana.contagensOutros, label: 'Outros', color: '#ED6C02' },
+                ]}
+              />
+            </Box>
+          </Paper>
+
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              Quantidade de atendimentos por tipo ({periodoSelecionadoLabel}) — {tituloUsuario}
+            </Typography>
+            <Box sx={{ width: '100%', height: 360 }}>
+              <BarChart
+                xAxis={[{ data: dadosGraficoTipoAtendimento.categorias, scaleType: 'band', label: 'Tipo' }]}
+                yAxis={[{ label: 'Quantidade' }]}
+                series={[{ data: dadosGraficoTipoAtendimento.contagens, label: 'Atendimentos' }]}
+                sx={{
+                  '& .MuiBarElement-root:nth-of-type(1)': { fill: '#25D366' },
+                  '& .MuiBarElement-root:nth-of-type(2)': { fill: '#1976D2' },
+                  '& .MuiBarElement-root:nth-of-type(3)': { fill: '#ED6C02' },
+                }}
               />
             </Box>
           </Paper>

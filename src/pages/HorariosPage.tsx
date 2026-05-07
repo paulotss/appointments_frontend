@@ -93,16 +93,29 @@ export function HorariosPage() {
   }, [atendenteSelecionado, dataFim, dataInicio, registros])
 
   const dadosGrafico = useMemo(() => {
-    const contagemPorHora = new Array<number>(24).fill(0)
+    const contagemWhatsappPorHora = new Array<number>(24).fill(0)
+    const contagemTelefonePorHora = new Array<number>(24).fill(0)
+    const contagemOutrosPorHora = new Array<number>(24).fill(0)
     registrosDoPeriodo.forEach((r) => {
       const hora = toHoraLocal(r.data)
       if (hora >= 0 && hora <= 23) {
-        contagemPorHora[hora] += 1
+        if (r.atendimento === 'whatsapp') {
+          contagemWhatsappPorHora[hora] += 1
+        } else if (r.atendimento === 'telefone') {
+          contagemTelefonePorHora[hora] += 1
+        } else {
+          contagemOutrosPorHora[hora] += 1
+        }
       }
     })
     const horas = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
 
-    return { horas, contagens: contagemPorHora }
+    return {
+      horas,
+      contagensWhatsapp: contagemWhatsappPorHora,
+      contagensTelefone: contagemTelefonePorHora,
+      contagensOutros: contagemOutrosPorHora,
+    }
   }, [registrosDoPeriodo])
 
   return (
@@ -173,7 +186,11 @@ export function HorariosPage() {
             <BarChart
               xAxis={[{ data: dadosGrafico.horas, scaleType: 'band', label: 'Hora' }]}
               yAxis={[{ label: 'Quantidade' }]}
-              series={[{ data: dadosGrafico.contagens, label: 'Atendimentos' }]}
+              series={[
+                { data: dadosGrafico.contagensWhatsapp, label: 'WhatsApp', color: '#25D366' },
+                { data: dadosGrafico.contagensTelefone, label: 'Telefone', color: '#1976D2' },
+                { data: dadosGrafico.contagensOutros, label: 'Outros', color: '#ED6C02' },
+              ]}
             />
           </Box>
         </Paper>
