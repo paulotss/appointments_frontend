@@ -80,6 +80,7 @@ export function EspecialidadesAtendidasPage() {
 
     return totaisOrdenados.map(([especialidade, total]) => ({
       especialidade,
+      total,
       percentual: totalAtendimentos > 0 ? Number(((total / totalAtendimentos) * 100).toFixed(2)) : 0,
     }))
   }, [dataFim, dataInicio, registros])
@@ -171,7 +172,11 @@ export function EspecialidadesAtendidasPage() {
                     color: '#1976d2',
                   },
                 ]}
-                barLabel={(item) => `${Number(item.value ?? 0).toFixed(1)}%`}
+                barLabel={(item) => {
+                  const percentual = Number(item.value ?? 0).toFixed(1)
+                  const total = dadosBarras[item.dataIndex]?.total ?? 0
+                  return `${percentual}% (${total})`
+                }}
               />
             </Box>
           )}
