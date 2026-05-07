@@ -73,6 +73,11 @@ function formatarTipoAtendimento(tipo: RegistroAtendimento['atendimento']): stri
   return 'Outro'
 }
 
+function getDiaSemanaLabel(index: number): string {
+  const labels = ['Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado']
+  return labels[index] ?? 'Desconhecido'
+}
+
 function gerarListaDatas(inicio: Date, fim: Date): string[] {
   const datas: string[] = []
   const cursor = new Date(inicio)
@@ -177,6 +182,22 @@ export function AtendimentosPage() {
     const contagens = datasPeriodo.map((data) => contagemPorData.get(data) ?? 0)
     return { labels, contagens }
   }, [fimPeriodo, inicioPeriodo, registrosFiltrados])
+
+  const dadosGraficoDiaSemana = useMemo(() => {
+    const ordemDias = [1, 2, 3, 4, 5, 6, 0]
+    const contagemPorDia = new Map<number, number>(ordemDias.map((dia) => [dia, 0]))
+
+    registrosFiltrados.forEach((r) => {
+      const diaSemana = toDiaLocal(r.data).getDay()
+      if (contagemPorDia.has(diaSemana)) {
+        contagemPorDia.set(diaSemana, (contagemPorDia.get(diaSemana) ?? 0) + 1)
+      }
+    })
+
+    const labels = ordemDias.map((dia) => getDiaSemanaLabel(dia))
+    const contagens = ordemDias.map((dia) => contagemPorDia.get(dia) ?? 0)
+    return { labels, contagens }
+  }, [registrosFiltrados])
 
   const registrosDoPeriodo = useMemo(() => {
     return registros.filter((r) => {
@@ -288,6 +309,19 @@ export function AtendimentosPage() {
                 xAxis={[{ data: dadosGrafico.labels, scaleType: 'band', label: 'Data' }]}
                 yAxis={[{ label: 'Quantidade' }]}
                 series={[{ data: dadosGrafico.contagens, label: 'Atendimentos' }]}
+              />
+            </Box>
+          </Paper>
+
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              Quantidade de atendimentos por dia da semana ({periodoSelecionadoLabel}) — {tituloUsuario}
+            </Typography>
+            <Box sx={{ width: '100%', height: 380 }}>
+              <BarChart
+                xAxis={[{ data: dadosGraficoDiaSemana.labels, scaleType: 'band', label: 'Dia da semana' }]}
+                yAxis={[{ label: 'Quantidade' }]}
+                series={[{ data: dadosGraficoDiaSemana.contagens, label: 'Atendimentos' }]}
               />
             </Box>
           </Paper>
