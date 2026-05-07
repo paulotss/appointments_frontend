@@ -4,6 +4,7 @@ import {
   Alert,
   Box,
   CircularProgress,
+  MenuItem,
   Paper,
   Stack,
   TextField,
@@ -46,6 +47,7 @@ export function HorariosPage() {
   const [error, setError] = useState<string | null>(null)
   const [dataInicio, setDataInicio] = useState(getInicioMesAtualISO())
   const [dataFim, setDataFim] = useState(getDataHojeISO())
+  const [atendenteSelecionado, setAtendenteSelecionado] = useState('todos')
 
   useEffect(() => {
     async function carregarRegistros() {
@@ -64,8 +66,17 @@ export function HorariosPage() {
     void carregarRegistros()
   }, [])
 
+  const atendentesDisponiveis = useMemo(() => {
+    return Array.from(new Set(registros.map((r) => r.atendente).filter(Boolean))).sort((a, b) =>
+      a.localeCompare(b, 'pt-BR')
+    )
+  }, [registros])
+
   const registrosDoPeriodo = useMemo(() => {
-    if (!dataInicio || !dataFim) return registros
+    const filtrarAtendente = (registro: RegistroAtendimento) =>
+      atendenteSelecionado === 'todos' || registro.atendente === atendenteSelecionado
+
+    if (!dataInicio || !dataFim) return registros.filter(filtrarAtendente)
 
     const inicio = new Date(`${dataInicio}T00:00:00`)
     const fim = new Date(`${dataFim}T23:59:59.999`)
@@ -75,10 +86,11 @@ export function HorariosPage() {
     }
 
     return registros.filter((r) => {
+      if (!filtrarAtendente(r)) return false
       const dataRegistro = new Date(r.data)
       return dataRegistro >= inicio && dataRegistro <= fim
     })
-  }, [dataFim, dataInicio, registros])
+  }, [atendenteSelecionado, dataFim, dataInicio, registros])
 
   const dadosGrafico = useMemo(() => {
     const contagemPorHora = new Array<number>(24).fill(0)
@@ -104,6 +116,20 @@ export function HorariosPage() {
         </Stack>
 
         <Stack direction="row" spacing={1.5} flexWrap="wrap">
+          <TextField
+            select
+            label="Atendente"
+            value={atendenteSelecionado}
+            onChange={(event) => setAtendenteSelecionado(event.target.value)}
+            sx={{ minWidth: 220 }}
+          >
+            <MenuItem value="todos">Todos</MenuItem>
+            {atendentesDisponiveis.map((atendente) => (
+              <MenuItem key={atendente} value={atendente}>
+                {atendente}
+              </MenuItem>
+            ))}
+          </TextField>
           <TextField
             label="Início"
             type="date"
