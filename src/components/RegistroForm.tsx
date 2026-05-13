@@ -1,17 +1,22 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button, Grid, MenuItem, Paper, TextField } from '@mui/material'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { registroSchema, type RegistroFormInput, type RegistroFormValues } from '../schemas/registro.schema'
 import type { Especialidade } from '../types/registro'
+
+export interface ContatoFixoChamada {
+  telefone: string
+}
 
 interface RegistroFormProps {
   especialidades: Especialidade[]
   onSubmit: (values: RegistroFormValues) => Promise<void>
   loading: boolean
+  contatoFixoChamada?: ContatoFixoChamada | null
 }
 
-const defaultValues: Partial<RegistroFormInput> = {
+const baseDefaultValues: Partial<RegistroFormInput> = {
   nome: '',
   telefone: '',
   motivo: null,
@@ -23,7 +28,19 @@ export function RegistroForm({
   especialidades,
   onSubmit,
   loading,
+  contatoFixoChamada,
 }: RegistroFormProps) {
+  const defaultValues = useMemo<Partial<RegistroFormInput>>(() => {
+    if (!contatoFixoChamada) {
+      return { ...baseDefaultValues }
+    }
+    return {
+      ...baseDefaultValues,
+      telefone: contatoFixoChamada.telefone,
+      atendimento: 'telefone',
+    }
+  }, [contatoFixoChamada])
+
   const {
     control,
     register,
@@ -70,25 +87,43 @@ export function RegistroForm({
             error={Boolean(errors.telefone)}
             helperText={errors.telefone?.message}
             {...register('telefone')}
+            slotProps={{
+              input: {
+                readOnly: Boolean(contatoFixoChamada),
+              },
+            }}
           />
         </Grid>
 
         <Grid size={{ xs: 12, md: 6 }}>
-          <TextField
-            select
-            label="Atendimento"
-            fullWidth
-            required
-            defaultValue=""
-            error={Boolean(errors.atendimento)}
-            helperText={errors.atendimento?.message}
-            {...register('atendimento')}
-          >
-            <MenuItem value="">Selecione...</MenuItem>
-            <MenuItem value="whatsapp">WhatsApp</MenuItem>
-            <MenuItem value="telefone">Telefone</MenuItem>
-            <MenuItem value="outro">Outro</MenuItem>
-          </TextField>
+          {contatoFixoChamada ? (
+            <>
+              <input type="hidden" {...register('atendimento')} />
+              <TextField
+                label="Atendimento"
+                fullWidth
+                required
+                defaultValue="Telefone"
+                slotProps={{ input: { readOnly: true } }}
+              />
+            </>
+          ) : (
+            <TextField
+              select
+              label="Atendimento"
+              fullWidth
+              required
+              defaultValue=""
+              error={Boolean(errors.atendimento)}
+              helperText={errors.atendimento?.message}
+              {...register('atendimento')}
+            >
+              <MenuItem value="">Selecione...</MenuItem>
+              <MenuItem value="whatsapp">WhatsApp</MenuItem>
+              <MenuItem value="telefone">Telefone</MenuItem>
+              <MenuItem value="outro">Outro</MenuItem>
+            </TextField>
+          )}
         </Grid>
 
         <Grid size={{ xs: 12, md: 6 }}>

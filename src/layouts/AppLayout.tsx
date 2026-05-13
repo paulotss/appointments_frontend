@@ -1,3 +1,4 @@
+import CallIcon from '@mui/icons-material/Call'
 import EventNoteIcon from '@mui/icons-material/EventNote'
 import AssessmentIcon from '@mui/icons-material/Assessment'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
@@ -38,6 +39,7 @@ export function AppLayout() {
   const menuItems = useMemo(() => {
     return [
       { label: 'Registros', to: '/registros', icon: <EventNoteIcon /> },
+      { label: 'Chamadas', to: '/chamadas', icon: <CallIcon /> },
       ...(isAdmin
         ? [
             { label: 'Especialidades', to: '/especialidades', icon: <MedicalServicesIcon /> },

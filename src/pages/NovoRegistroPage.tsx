@@ -1,20 +1,39 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { Alert, Button, CircularProgress, Stack, Typography } from '@mui/material'
 import { isAxiosError } from 'axios'
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { RegistroForm } from '../components/RegistroForm'
 import type { RegistroFormValues } from '../schemas/registro.schema'
+import { atualizarChamada } from '../services/calls.service'
 import { listarEspecialidades } from '../services/especialidades.service'
 import { criarRegistro } from '../services/registros.service'
 import type { Especialidade } from '../types/registro'
 
 export function NovoRegistroPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [especialidades, setEspecialidades] = useState<Especialidade[]>([])
   const [loadingEspecialidades, setLoadingEspecialidades] = useState(true)
   const [loadingSubmit, setLoadingSubmit] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const { callIdParaPatch, contatoFixoChamada, formKey, voltarPath, voltarLabel } = useMemo(() => {
+    const callIdRaw = searchParams.get('callId')
+    const origin = searchParams.get('origin')
+    const callIdNum =
+      callIdRaw != null && callIdRaw !== '' ? Number.parseInt(callIdRaw, 10) : Number.NaN
+    const callIdOk = Number.isFinite(callIdNum)
+    const originOk = origin != null && origin !== ''
+    const fromCall = callIdOk && originOk
+    return {
+      callIdParaPatch: fromCall ? callIdNum : null,
+      contatoFixoChamada: fromCall ? { telefone: origin } : null,
+      formKey: fromCall ? `call-${callIdNum}` : 'sem-chamada',
+      voltarPath: fromCall ? '/chamadas' : '/registros',
+      voltarLabel: fromCall ? 'Voltar para chamadas' : 'Voltar para listagem',
+    }
+  }, [searchParams])
 
   useEffect(() => {
     async function carregarEspecialidades() {
@@ -38,6 +57,16 @@ export function NovoRegistroPage() {
     setLoadingSubmit(true)
     try {
       await criarRegistro(values)
+      if (callIdParaPatch != null) {
+        try {
+          await atualizarChamada(callIdParaPatch, { recordStatus: 'registered' })
+        } catch {
+          setError(
+            'Registro criado, mas nao foi possivel atualizar o status da chamada. Atualize manualmente na lista de chamadas.',
+          )
+          return
+        }
+      }
       navigate('/registros', { replace: true })
     } catch (err: unknown) {
       let mensagem = 'Nao foi possivel cadastrar o registro.'
@@ -65,9 +94,9 @@ export function NovoRegistroPage() {
         <Button
           variant="outlined"
           startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/registros')}
+          onClick={() => navigate(voltarPath)}
         >
-          Voltar para listagem
+          {voltarLabel}
         </Button>
       </Stack>
 
@@ -81,9 +110,11 @@ export function NovoRegistroPage() {
 
       {!loadingEspecialidades ? (
         <RegistroForm
+          key={formKey}
           especialidades={especialidades}
           onSubmit={handleSubmit}
           loading={loadingSubmit}
+          contatoFixoChamada={contatoFixoChamada}
         />
       ) : null}
     </Stack>
