@@ -72,7 +72,7 @@ function recordStatusColor(status: CallRecordStatus): string {
   if (status === 'cancelled') {
     return '#c62828'
   }
-  return '#ef6c00'
+  return '#fbc02d'
 }
 
 function recordStatusTooltip(chamada: Call): string {
