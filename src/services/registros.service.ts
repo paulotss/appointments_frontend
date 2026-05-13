@@ -1,5 +1,6 @@
 import { apiClient } from './apiClient'
 import { getLoggedUserId } from './authStorage'
+import { formatAtendenteExibicao } from '../utils/formatAtendente'
 import type {
   BackendAppointment,
   CreateAppointmentRequest,
@@ -30,7 +31,12 @@ function mapAppointmentToRegistro(item: BackendAppointment): RegistroAtendimento
     especialidade_id: item.specialtyId,
     especialidade_nome: item.specialty?.name,
     observacoes: item.notes,
-    atendente: item.attendant?.name ?? `ID ${item.attendantId}`,
+    atendente: item.attendant
+      ? formatAtendenteExibicao(
+          item.attendant.name,
+          item.attendant.extension ?? item.attendant.extensions,
+        )
+      : `ID ${item.attendantId}`,
   }
 }
 

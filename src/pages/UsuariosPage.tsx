@@ -21,6 +21,18 @@ import { UsuariosTable } from '../components/UsuariosTable'
 import { atualizarUsuario, excluirUsuario, listarUsuarios } from '../services/users.service'
 import type { SystemUser } from '../types/user'
 
+function parseRamalOpcional(raw: string): { ok: true; value: number | null } | { ok: false } {
+  const t = raw.trim()
+  if (t === '') {
+    return { ok: true, value: null }
+  }
+  const n = Number(t)
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n <= 0) {
+    return { ok: false }
+  }
+  return { ok: true, value: n }
+}
+
 export function UsuariosPage() {
   const navigate = useNavigate()
   const [usuarios, setUsuarios] = useState<SystemUser[]>([])
@@ -30,6 +42,7 @@ export function UsuariosPage() {
   const [editando, setEditando] = useState<SystemUser | null>(null)
   const [nomeEdicao, setNomeEdicao] = useState('')
   const [loginEdicao, setLoginEdicao] = useState('')
+  const [ramalEdicao, setRamalEdicao] = useState('')
   const [senhaEdicao, setSenhaEdicao] = useState('')
   const [isAdminEdicao, setIsAdminEdicao] = useState(false)
   const [savingEdit, setSavingEdit] = useState(false)
@@ -37,6 +50,7 @@ export function UsuariosPage() {
     setEditando(usuario)
     setNomeEdicao(usuario.name)
     setLoginEdicao(usuario.usernameLogin)
+    setRamalEdicao(usuario.extension != null ? String(usuario.extension) : '')
     setSenhaEdicao('')
     setIsAdminEdicao(usuario.isAdmin)
   }
@@ -45,12 +59,18 @@ export function UsuariosPage() {
     setEditando(null)
     setNomeEdicao('')
     setLoginEdicao('')
+    setRamalEdicao('')
     setSenhaEdicao('')
     setIsAdminEdicao(false)
   }
 
   async function salvarEdicao() {
     if (!editando) return
+    const ramalRes = parseRamalOpcional(ramalEdicao)
+    if (!ramalRes.ok) {
+      setError('Ramal invalido.')
+      return
+    }
     setSavingEdit(true)
     setError(null)
     setSuccess(null)
@@ -60,6 +80,7 @@ export function UsuariosPage() {
         usernameLogin: loginEdicao.trim(),
         isAdmin: isAdminEdicao,
         passwordHash: senhaEdicao.trim() || undefined,
+        extension: ramalRes.value,
       })
       setUsuarios((prev) => prev.map((item) => (item.id === atualizado.id ? atualizado : item)))
       fecharEdicao()
@@ -73,6 +94,7 @@ export function UsuariosPage() {
 
   const nomeInvalido = nomeEdicao.trim().length < 3
   const loginInvalido = loginEdicao.trim().length < 3
+  const ramalInvalido = !parseRamalOpcional(ramalEdicao).ok
 
   async function excluir(usuario: SystemUser) {
     const confirmou = window.confirm(`Confirma excluir o usuario "${usuario.name}"?`)
@@ -157,6 +179,18 @@ export function UsuariosPage() {
               helperText={Boolean(loginEdicao) && loginInvalido ? 'Minimo 3 caracteres' : ' '}
             />
             <TextField
+              label="Ramal (opcional)"
+              inputProps={{ inputMode: 'numeric' }}
+              value={ramalEdicao}
+              onChange={(event) => setRamalEdicao(event.target.value)}
+              error={Boolean(ramalEdicao.trim()) && ramalInvalido}
+              helperText={
+                Boolean(ramalEdicao.trim()) && ramalInvalido
+                  ? 'Informe um inteiro positivo ou deixe em branco'
+                  : ' '
+              }
+            />
+            <TextField
               label="Nova senha (opcional)"
               type="password"
               value={senhaEdicao}
@@ -175,7 +209,7 @@ export function UsuariosPage() {
           <Button
             onClick={salvarEdicao}
             variant="contained"
-            disabled={savingEdit || nomeInvalido || loginInvalido}
+            disabled={savingEdit || nomeInvalido || loginInvalido || ramalInvalido}
           >
             Salvar
           </Button>

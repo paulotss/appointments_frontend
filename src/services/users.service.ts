@@ -7,14 +7,18 @@ interface BackendUser {
   usernameLogin: string
   isAdmin?: boolean
   is_admin?: boolean
+  extension?: number | null
+  extensions?: number | null
 }
 
 function mapBackendUser(item: BackendUser): SystemUser {
+  const raw = item.extension ?? item.extensions
   return {
     id: item.id,
     name: item.name,
     usernameLogin: item.usernameLogin,
     isAdmin: item.isAdmin ?? item.is_admin ?? false,
+    extension: raw != null && Number.isFinite(raw) ? Math.trunc(raw) : null,
   }
 }
 

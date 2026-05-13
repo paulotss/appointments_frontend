@@ -18,11 +18,12 @@ export function isAuthenticated(): boolean {
   return Boolean(getToken())
 }
 
-interface StoredUser {
+export interface StoredUser {
   id: number
   usernameLogin: string
   isAdmin: boolean
   name: string
+  extension?: number | null
 }
 
 export function saveLoggedUser(user: StoredUser): void {
@@ -40,6 +41,33 @@ export function getLoggedUser(): StoredUser | null {
   } catch {
     return null
   }
+}
+
+function parseNumericUserIdFromPayload(payload: Record<string, unknown> | null): number | null {
+  if (!payload) {
+    return null
+  }
+  const keys = ['userId', 'user_id', 'id', 'sub'] as const
+  for (const key of keys) {
+    const value = payload[key]
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return Math.trunc(value)
+    }
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      if (/^\d+$/.test(trimmed)) {
+        return Number(trimmed)
+      }
+    }
+  }
+  return null
+}
+
+export function readNumericUserIdFromToken(token: string | null): number | null {
+  if (!token) {
+    return null
+  }
+  return parseNumericUserIdFromPayload(decodeJwtPayload(token))
 }
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
@@ -61,30 +89,11 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 
 export function getLoggedUserId(): number | null {
   const user = getLoggedUser()
-  if (user?.id) {
+  if (user != null && typeof user.id === 'number' && Number.isFinite(user.id)) {
     return user.id
   }
 
-  const token = getToken()
-  if (!token) {
-    return null
-  }
-
-  const payload = decodeJwtPayload(token)
-  if (!payload) {
-    return null
-  }
-
-  const sub = payload.sub
-  if (typeof sub === 'number') {
-    return sub
-  }
-  if (typeof sub === 'string') {
-    const parsed = Number(sub)
-    return Number.isFinite(parsed) ? parsed : null
-  }
-
-  return null
+  return readNumericUserIdFromToken(getToken())
 }
 
 export function getIsAdmin(): boolean {

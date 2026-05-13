@@ -16,6 +16,7 @@ import {
 } from '@mui/material'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { formatAtendenteExibicao } from '../utils/formatAtendente'
 import { RegistrosTable } from '../components/RegistrosTable'
 import { getIsAdmin, getLoggedUser } from '../services/authStorage'
 import { listarRegistros } from '../services/registros.service'
@@ -57,17 +58,16 @@ function escaparCampoCSV(valor: string | number | null | undefined): string {
 
 export function RegistrosPage() {
   const navigate = useNavigate()
-  const loggedUser = getLoggedUser()
   const isAdmin = getIsAdmin()
   const filtroDataPadrao = getHojeLocalISO()
-  const filtroAtendentePadrao = loggedUser?.name ?? ''
   const [registros, setRegistros] = useState<RegistroAtendimento[]>([])
   const [usuarios, setUsuarios] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filtroDataInicio, setFiltroDataInicio] = useState(filtroDataPadrao)
   const [filtroDataFim, setFiltroDataFim] = useState(filtroDataPadrao)
-  const [filtroAtendente, setFiltroAtendente] = useState(filtroAtendentePadrao)
+  /** Valor inicial vazio; apos carregar usuarios da API alinhamos ao rotulo exato das opcoes (ex.: nome | ramal). */
+  const [filtroAtendente, setFiltroAtendente] = useState('')
   const [modoVisualizacao, setModoVisualizacao] = useState<'tabela' | 'grafico'>('tabela')
 
   useEffect(() => {
@@ -78,10 +78,22 @@ export function RegistrosPage() {
         const [registrosData, usuariosData] = await Promise.all([listarRegistros(), listarUsuarios()])
         setRegistros(registrosData)
         const nomesUsuarios = usuariosData
-          .map((usuario) => usuario.name.trim())
+          .map((usuario) => formatAtendenteExibicao(usuario.name.trim(), usuario.extension))
           .filter((nome) => nome.length > 0)
           .sort((a, b) => a.localeCompare(b))
-        setUsuarios(Array.from(new Set(nomesUsuarios)))
+        const opcoesAtendentes = Array.from(new Set(nomesUsuarios))
+        setUsuarios(opcoesAtendentes)
+
+        const loggedUser = getLoggedUser()
+        if (loggedUser) {
+          const linhaUsuario = usuariosData.find((u) => u.id === loggedUser.id)
+          const rotuloPreferido = linhaUsuario
+            ? formatAtendenteExibicao(linhaUsuario.name.trim(), linhaUsuario.extension)
+            : formatAtendenteExibicao(loggedUser.name.trim(), loggedUser.extension)
+          if (opcoesAtendentes.includes(rotuloPreferido)) {
+            setFiltroAtendente(rotuloPreferido)
+          }
+        }
       } catch {
         setError('Nao foi possivel carregar os registros.')
       } finally {

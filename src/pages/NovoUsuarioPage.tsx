@@ -4,7 +4,7 @@ import { Alert, Button, FormControlLabel, Stack, Switch, TextField, Typography }
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
-import { usuarioSchema, type UsuarioFormValues } from '../schemas/usuario.schema'
+import { usuarioSchema, type UsuarioFormInput, type UsuarioFormValues } from '../schemas/usuario.schema'
 import { criarUsuario } from '../services/users.service'
 
 export function NovoUsuarioPage() {
@@ -18,13 +18,14 @@ export function NovoUsuarioPage() {
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<UsuarioFormValues>({
+  } = useForm<UsuarioFormInput, unknown, UsuarioFormValues>({
     resolver: zodResolver(usuarioSchema),
     defaultValues: {
       name: '',
       usernameLogin: '',
       passwordHash: '',
       isAdmin: false,
+      extension: '',
     },
   })
 
@@ -32,7 +33,13 @@ export function NovoUsuarioPage() {
     setLoading(true)
     setError(null)
     try {
-      await criarUsuario(values)
+      await criarUsuario({
+        name: values.name,
+        passwordHash: values.passwordHash,
+        usernameLogin: values.usernameLogin,
+        isAdmin: values.isAdmin,
+        ...(values.extension != null ? { extension: values.extension } : {}),
+      })
       reset()
       navigate('/usuarios', { replace: true })
     } catch {
@@ -69,6 +76,13 @@ export function NovoUsuarioPage() {
           error={Boolean(errors.passwordHash)}
           helperText={errors.passwordHash?.message}
           {...register('passwordHash')}
+        />
+        <TextField
+          label="Ramal (opcional)"
+          inputProps={{ inputMode: 'numeric' }}
+          error={Boolean(errors.extension)}
+          helperText={errors.extension?.message ?? 'Numero inteiro unico por atendente; deixe em branco se nao usar.'}
+          {...register('extension')}
         />
         <FormControlLabel
           control={

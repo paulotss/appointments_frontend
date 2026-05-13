@@ -3,6 +3,7 @@ export interface LoggedUser {
   usernameLogin: string
   isAdmin: boolean
   name: string
+  extension?: number | null
 }
 
 export interface LoginRequest {

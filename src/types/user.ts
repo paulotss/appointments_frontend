@@ -3,6 +3,7 @@ export interface SystemUser {
   name: string
   usernameLogin: string
   isAdmin: boolean
+  extension: number | null
 }
 
 export interface CreateUserRequest {
@@ -10,6 +11,7 @@ export interface CreateUserRequest {
   passwordHash: string
   usernameLogin: string
   isAdmin?: boolean
+  extension?: number | null
 }
 
 export interface UpdateUserRequest {
@@ -17,4 +19,5 @@ export interface UpdateUserRequest {
   usernameLogin: string
   isAdmin?: boolean
   passwordHash?: string
+  extension?: number | null
 }

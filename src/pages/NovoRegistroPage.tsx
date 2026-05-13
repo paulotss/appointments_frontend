@@ -1,5 +1,6 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { Alert, Button, CircularProgress, Stack, Typography } from '@mui/material'
+import { isAxiosError } from 'axios'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { RegistroForm } from '../components/RegistroForm'
@@ -38,8 +39,18 @@ export function NovoRegistroPage() {
     try {
       await criarRegistro(values)
       navigate('/registros', { replace: true })
-    } catch {
-      setError('Nao foi possivel cadastrar o registro.')
+    } catch (err: unknown) {
+      let mensagem = 'Nao foi possivel cadastrar o registro.'
+      if (isAxiosError(err) && err.response?.data != null) {
+        const data = err.response.data as { message?: unknown; error?: unknown }
+        const apiMsg = data.message ?? data.error
+        if (typeof apiMsg === 'string' && apiMsg.trim()) {
+          mensagem = apiMsg.trim()
+        } else if (Array.isArray(apiMsg) && apiMsg.length > 0) {
+          mensagem = apiMsg.map(String).join('; ')
+        }
+      }
+      setError(mensagem)
     } finally {
       setLoadingSubmit(false)
     }
