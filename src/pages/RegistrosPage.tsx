@@ -59,6 +59,11 @@ function escaparCampoCSV(valor: string | number | null | undefined): string {
 export function RegistrosPage() {
   const navigate = useNavigate()
   const isAdmin = getIsAdmin()
+  const usuarioLogado = getLoggedUser()
+  const idUsuarioLogado =
+    usuarioLogado != null && typeof usuarioLogado.id === 'number' && Number.isFinite(usuarioLogado.id)
+      ? usuarioLogado.id
+      : null
   const filtroDataPadrao = getHojeLocalISO()
   const [registros, setRegistros] = useState<RegistroAtendimento[]>([])
   const [usuarios, setUsuarios] = useState<string[]>([])
@@ -75,24 +80,31 @@ export function RegistrosPage() {
       setLoading(true)
       setError(null)
       try {
-        const [registrosData, usuariosData] = await Promise.all([listarRegistros(), listarUsuarios()])
-        setRegistros(registrosData)
-        const nomesUsuarios = usuariosData
-          .map((usuario) => formatAtendenteExibicao(usuario.name.trim(), usuario.extension))
-          .filter((nome) => nome.length > 0)
-          .sort((a, b) => a.localeCompare(b))
-        const opcoesAtendentes = Array.from(new Set(nomesUsuarios))
-        setUsuarios(opcoesAtendentes)
+        if (isAdmin) {
+          const [registrosData, usuariosData] = await Promise.all([listarRegistros(), listarUsuarios()])
+          setRegistros(registrosData)
+          const nomesUsuarios = usuariosData
+            .map((usuario) => formatAtendenteExibicao(usuario.name.trim(), usuario.extension))
+            .filter((nome) => nome.length > 0)
+            .sort((a, b) => a.localeCompare(b))
+          const opcoesAtendentes = Array.from(new Set(nomesUsuarios))
+          setUsuarios(opcoesAtendentes)
 
-        const loggedUser = getLoggedUser()
-        if (loggedUser) {
-          const linhaUsuario = usuariosData.find((u) => u.id === loggedUser.id)
-          const rotuloPreferido = linhaUsuario
-            ? formatAtendenteExibicao(linhaUsuario.name.trim(), linhaUsuario.extension)
-            : formatAtendenteExibicao(loggedUser.name.trim(), loggedUser.extension)
-          if (opcoesAtendentes.includes(rotuloPreferido)) {
-            setFiltroAtendente(rotuloPreferido)
+          const loggedUser = getLoggedUser()
+          if (loggedUser) {
+            const linhaUsuario = usuariosData.find((u) => u.id === loggedUser.id)
+            const rotuloPreferido = linhaUsuario
+              ? formatAtendenteExibicao(linhaUsuario.name.trim(), linhaUsuario.extension)
+              : formatAtendenteExibicao(loggedUser.name.trim(), loggedUser.extension)
+            if (opcoesAtendentes.includes(rotuloPreferido)) {
+              setFiltroAtendente(rotuloPreferido)
+            }
           }
+        } else {
+          const registrosData = await listarRegistros()
+          setRegistros(registrosData)
+          setUsuarios([])
+          setFiltroAtendente('')
         }
       } catch {
         setError('Nao foi possivel carregar os registros.')
@@ -102,25 +114,38 @@ export function RegistrosPage() {
     }
 
     void carregarRegistros()
-  }, [])
+  }, [isAdmin])
 
   const atendentes = useMemo(() => {
+    if (!isAdmin) {
+      return []
+    }
     if (usuarios.length > 0) {
       return usuarios
     }
     const unicos = Array.from(new Set(registros.map((registro) => registro.atendente)))
     return unicos.sort((a, b) => a.localeCompare(b))
-  }, [registros, usuarios])
+  }, [isAdmin, registros, usuarios])
+
+  const registrosVisiveis = useMemo(() => {
+    if (isAdmin) {
+      return registros
+    }
+    if (idUsuarioLogado == null) {
+      return []
+    }
+    return registros.filter((registro) => registro.atendente_id === idUsuarioLogado)
+  }, [idUsuarioLogado, isAdmin, registros])
 
   const registrosFiltrados = useMemo(() => {
-    return registros.filter((registro) => {
+    return registrosVisiveis.filter((registro) => {
       const dataRegistro = toDataLocalISO(registro.data)
       const dataOkInicio = !filtroDataInicio || dataRegistro >= filtroDataInicio
       const dataOkFim = !filtroDataFim || dataRegistro <= filtroDataFim
-      const atendenteOk = !filtroAtendente || registro.atendente === filtroAtendente
+      const atendenteOk = !isAdmin || !filtroAtendente || registro.atendente === filtroAtendente
       return dataOkInicio && dataOkFim && atendenteOk
     })
-  }, [filtroAtendente, filtroDataFim, filtroDataInicio, registros])
+  }, [filtroAtendente, filtroDataFim, filtroDataInicio, isAdmin, registrosVisiveis])
 
   const dadosGrafico = useMemo(() => {
     const agrupado = new Map<string, { whatsapp: number; telefone: number; outro: number }>()
@@ -220,7 +245,7 @@ export function RegistrosPage() {
 
       {error ? <Alert severity="error">{error}</Alert> : null}
 
-      {!loading && !error && registros.length > 0 ? (
+      {!loading && !error && registrosVisiveis.length > 0 ? (
         <Paper sx={{ p: 2 }}>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} flexWrap="wrap">
             <TextField
@@ -239,26 +264,30 @@ export function RegistrosPage() {
               InputLabelProps={{ shrink: true }}
               sx={{ minWidth: 220 }}
             />
-            <TextField
-              select
-              label="Filtrar por atendente"
-              value={filtroAtendente}
-              onChange={(event) => setFiltroAtendente(event.target.value)}
-              sx={{ minWidth: 220 }}
-            >
-              <MenuItem value="">Todos</MenuItem>
-              {atendentes.map((atendente) => (
-                <MenuItem key={atendente} value={atendente}>
-                  {atendente}
-                </MenuItem>
-              ))}
-            </TextField>
+            {isAdmin ? (
+              <TextField
+                select
+                label="Filtrar por atendente"
+                value={filtroAtendente}
+                onChange={(event) => setFiltroAtendente(event.target.value)}
+                sx={{ minWidth: 220 }}
+              >
+                <MenuItem value="">Todos</MenuItem>
+                {atendentes.map((atendente) => (
+                  <MenuItem key={atendente} value={atendente}>
+                    {atendente}
+                  </MenuItem>
+                ))}
+              </TextField>
+            ) : null}
             <Button
               variant="outlined"
               onClick={() => {
                 setFiltroDataInicio('')
                 setFiltroDataFim('')
-                setFiltroAtendente('')
+                if (isAdmin) {
+                  setFiltroAtendente('')
+                }
               }}
             >
               Limpar filtros
@@ -284,13 +313,13 @@ export function RegistrosPage() {
         </Paper>
       ) : null}
 
-      {!loading && !error && registros.length === 0 ? (
+      {!loading && !error && registrosVisiveis.length === 0 ? (
         <Paper sx={{ p: 3 }}>
           <Typography>Nenhum registro encontrado.</Typography>
         </Paper>
       ) : null}
 
-      {!loading && !error && registros.length > 0 && registrosFiltrados.length === 0 ? (
+      {!loading && !error && registrosVisiveis.length > 0 && registrosFiltrados.length === 0 ? (
         <Paper sx={{ p: 3 }}>
           <Typography>Nenhum registro para os filtros selecionados.</Typography>
         </Paper>

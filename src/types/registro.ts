@@ -14,6 +14,8 @@ export interface RegistroAtendimento {
   especialidade_nome?: string
   observacoes: string
   atendente: string
+  /** Presente quando a API envia o id do atendente (usado para filtrar registros do usuario logado). */
+  atendente_id?: number | null
 }
 
 export interface CriarRegistroAtendimentoInput {

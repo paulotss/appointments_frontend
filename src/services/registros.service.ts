@@ -37,6 +37,7 @@ function mapAppointmentToRegistro(item: BackendAppointment): RegistroAtendimento
           item.attendant.extension ?? item.attendant.extensions,
         )
       : `ID ${item.attendantId}`,
+    atendente_id: item.attendantId ?? item.attendant?.id ?? null,
   }
 }
 
