@@ -38,6 +38,7 @@ function mapAppointmentToRegistro(item: BackendAppointment): RegistroAtendimento
         )
       : `ID ${item.attendantId}`,
     atendente_id: item.attendantId ?? item.attendant?.id ?? null,
+    callId: item.callId ?? null,
   }
 }
 
@@ -58,7 +59,7 @@ function mapCriarRegistroToAppointment(
 ): CreateAppointmentRequest {
   const loggedUserId = getLoggedUserId()
 
-  return {
+  const body: CreateAppointmentRequest = {
     date: new Date().toISOString(),
     clientName: payload.nome,
     phone: payload.telefone?.trim() || undefined,
@@ -70,6 +71,10 @@ function mapCriarRegistroToAppointment(
     notes: payload.observacoes?.trim() || undefined,
     attendantId: loggedUserId ?? payload.atendente_id ?? null,
   }
+  if (payload.callId != null && Number.isFinite(payload.callId)) {
+    body.callId = payload.callId
+  }
+  return body
 }
 
 export async function listarRegistros(): Promise<RegistroAtendimento[]> {

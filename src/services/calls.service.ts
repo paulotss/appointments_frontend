@@ -12,3 +12,8 @@ export async function atualizarChamada(
 ): Promise<void> {
   await apiClient.patch(`/calls/${id}`, payload)
 }
+
+export async function buscarChamadaPorId(id: number): Promise<Call> {
+  const response = await apiClient.get<Call>(`/calls/${id}`)
+  return response.data
+}

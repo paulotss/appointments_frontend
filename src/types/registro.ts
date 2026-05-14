@@ -16,6 +16,8 @@ export interface RegistroAtendimento {
   atendente: string
   /** Presente quando a API envia o id do atendente (usado para filtrar registros do usuario logado). */
   atendente_id?: number | null
+  /** Id da chamada vinculada, quando existir. */
+  callId?: number | null
 }
 
 export interface CriarRegistroAtendimentoInput {
@@ -28,6 +30,8 @@ export interface CriarRegistroAtendimentoInput {
   especialidade_id?: number | null
   observacoes?: string
   atendente_id?: number | null
+  /** Ao criar a partir de uma chamada, envia o vínculo para a API. */
+  callId?: number | null
 }
 
 export interface Especialidade {
@@ -47,6 +51,7 @@ export interface BackendAppointment {
   specialtyId: number
   notes: string
   attendantId: number
+  callId?: number | null
   specialty?: {
     id: number
     name: string
@@ -72,6 +77,7 @@ export interface CreateAppointmentRequest {
   specialtyId?: number | null
   notes?: string
   attendantId?: number | null
+  callId?: number | null
 }
 
 export interface CreateSpecialtyRequest {

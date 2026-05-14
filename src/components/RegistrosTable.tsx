@@ -5,6 +5,7 @@ import {
   Box,
   Collapse,
   IconButton,
+  Link,
   Table,
   TableBody,
   TableCell,
@@ -15,6 +16,7 @@ import {
   Typography,
 } from '@mui/material'
 import { Fragment, useState } from 'react'
+import { Link as RouterLink } from 'react-router-dom'
 import type { RegistroAtendimento } from '../types/registro'
 
 interface RegistrosTableProps {
@@ -57,7 +59,20 @@ function RegistroRow({ registro }: RegistroRowProps) {
         <TableCell>{`${dataFormatada} ${horaFormatada}`}</TableCell>
         <TableCell>{registro.nome}</TableCell>
         <TableCell>{registro.telefone}</TableCell>
-        <TableCell>{formatarAtendimento(registro.atendimento)}</TableCell>
+        <TableCell>
+          {registro.callId != null ? (
+            <Link
+              component={RouterLink}
+              to={`/chamadas/${registro.callId}`}
+              underline="always"
+              color="primary"
+            >
+              {formatarAtendimento(registro.atendimento)}
+            </Link>
+          ) : (
+            formatarAtendimento(registro.atendimento)
+          )}
+        </TableCell>
         <TableCell>{registro.primeira_vez === 'sim' ? 'Sim' : 'Nao'}</TableCell>
         <TableCell>
           <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>

@@ -1,3 +1,5 @@
+import type { BackendAppointment } from './registro'
+
 export type CallRecordStatus = 'pending' | 'registered' | 'cancelled'
 
 export type CallStatus = 'ATENDIDO' | 'NAO_ATENDIDO' | 'REALIZADO'
@@ -21,4 +23,6 @@ export interface Call {
   note: string | null
   userId: number | null
   user: CallUser | null
+  /** Somente leitura: registro de atendimento vinculado, quando existir. */
+  appointment?: BackendAppointment | null
 }

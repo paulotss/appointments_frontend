@@ -62,7 +62,10 @@ export function NovoRegistroPage() {
     setError(null)
     setLoadingSubmit(true)
     try {
-      await criarRegistro(values)
+      await criarRegistro({
+        ...values,
+        ...(callIdParaPatch != null ? { callId: callIdParaPatch } : {}),
+      })
       if (callIdParaPatch != null) {
         try {
           await atualizarChamada(callIdParaPatch, { recordStatus: 'registered' })

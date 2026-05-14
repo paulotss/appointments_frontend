@@ -7,6 +7,7 @@ import { AtendimentosPage } from './pages/AtendimentosPage'
 import { HorariosPage } from './pages/HorariosPage'
 import { TaxaConversaoPage } from './pages/TaxaConversaoPage'
 import { NovaEspecialidadePage } from './pages/NovaEspecialidadePage'
+import { ChamadaDetalhePage } from './pages/ChamadaDetalhePage'
 import { ChamadasPage } from './pages/ChamadasPage'
 import { NovoRegistroPage } from './pages/NovoRegistroPage'
 import { RegistrosPage } from './pages/RegistrosPage'
@@ -30,6 +31,7 @@ function App() {
         <Route path="/registros" element={<RegistrosPage />} />
         <Route path="/registros/novo" element={<NovoRegistroPage />} />
         <Route path="/chamadas" element={<ChamadasPage />} />
+        <Route path="/chamadas/:callId" element={<ChamadaDetalhePage />} />
         <Route path="/relatorios/horarios" element={<HorariosPage />} />
         <Route path="/relatorios/atendimentos" element={<AtendimentosPage />} />
         <Route path="/relatorios/taxa-conversao" element={<TaxaConversaoPage />} />

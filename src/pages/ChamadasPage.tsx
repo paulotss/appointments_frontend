@@ -2,6 +2,7 @@ import BlockIcon from '@mui/icons-material/Block'
 import CallReceivedIcon from '@mui/icons-material/CallReceived'
 import NoteAddIcon from '@mui/icons-material/NoteAdd'
 import PhoneMissedIcon from '@mui/icons-material/PhoneMissed'
+import RefreshIcon from '@mui/icons-material/Refresh'
 import TaskAltIcon from '@mui/icons-material/TaskAlt'
 import {
   Alert,
@@ -255,9 +256,24 @@ export function ChamadasPage() {
 
   return (
     <Stack spacing={2}>
-      <Typography variant="h5" fontWeight={700}>
-        Chamadas
-      </Typography>
+      <Stack direction="row" alignItems="center" spacing={1}>
+        <Typography variant="h5" fontWeight={700}>
+          Chamadas
+        </Typography>
+        <Tooltip title="Atualizar lista">
+          <span>
+            <IconButton
+              size="small"
+              color="primary"
+              onClick={() => void carregar()}
+              disabled={loading}
+              aria-label="Atualizar lista"
+            >
+              <RefreshIcon fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
+      </Stack>
 
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }} flexWrap="wrap">
         <TextField
