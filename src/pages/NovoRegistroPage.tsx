@@ -20,15 +20,21 @@ export function NovoRegistroPage() {
 
   const { callIdParaPatch, contatoFixoChamada, formKey, voltarPath, voltarLabel } = useMemo(() => {
     const callIdRaw = searchParams.get('callId')
+    const telefoneParam = searchParams.get('telefone')
     const origin = searchParams.get('origin')
+    const telefone =
+      telefoneParam != null && telefoneParam !== ''
+        ? telefoneParam
+        : origin != null && origin !== ''
+          ? origin
+          : null
     const callIdNum =
       callIdRaw != null && callIdRaw !== '' ? Number.parseInt(callIdRaw, 10) : Number.NaN
     const callIdOk = Number.isFinite(callIdNum)
-    const originOk = origin != null && origin !== ''
-    const fromCall = callIdOk && originOk
+    const fromCall = callIdOk && telefone != null && telefone !== ''
     return {
       callIdParaPatch: fromCall ? callIdNum : null,
-      contatoFixoChamada: fromCall ? { telefone: origin } : null,
+      contatoFixoChamada: fromCall ? { telefone } : null,
       formKey: fromCall ? `call-${callIdNum}` : 'sem-chamada',
       voltarPath: fromCall ? '/chamadas' : '/registros',
       voltarLabel: fromCall ? 'Voltar para chamadas' : 'Voltar para listagem',

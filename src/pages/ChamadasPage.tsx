@@ -1,16 +1,25 @@
 import BlockIcon from '@mui/icons-material/Block'
+import CallReceivedIcon from '@mui/icons-material/CallReceived'
 import NoteAddIcon from '@mui/icons-material/NoteAdd'
+import PhoneMissedIcon from '@mui/icons-material/PhoneMissed'
+import TaskAltIcon from '@mui/icons-material/TaskAlt'
 import {
   Alert,
   Box,
   Button,
+  Checkbox,
   CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
+  FormControlLabel,
   IconButton,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   Table,
   TableBody,
@@ -26,7 +35,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { atualizarChamada, listarChamadas } from '../services/calls.service'
 import { getIsAdmin, getLoggedUserId } from '../services/authStorage'
-import type { Call, CallRecordStatus } from '../types/call'
+import type { Call, CallRecordStatus, CallStatus } from '../types/call'
 
 function getHojeLocalISO(): string {
   const agora = new Date()
@@ -86,6 +95,20 @@ function recordStatusTooltip(chamada: Call): string {
   return recordStatusLabel(chamada.recordStatus)
 }
 
+function callStatusIconProps(status: CallStatus): {
+  Icon: typeof CallReceivedIcon
+  label: string
+  color: string
+} {
+  if (status === 'ATENDIDO') {
+    return { Icon: CallReceivedIcon, label: 'Atendido', color: 'success.main' }
+  }
+  if (status === 'NAO_ATENDIDO') {
+    return { Icon: PhoneMissedIcon, label: 'Não atendido', color: 'warning.main' }
+  }
+  return { Icon: TaskAltIcon, label: 'Realizado', color: 'info.main' }
+}
+
 export function ChamadasPage() {
   const navigate = useNavigate()
   const isAdmin = getIsAdmin()
@@ -98,6 +121,10 @@ export function ChamadasPage() {
 
   const [dataInicio, setDataInicio] = useState(getHojeLocalISO())
   const [dataFim, setDataFim] = useState(getHojeLocalISO())
+
+  const [mostrarNaoAtendidos, setMostrarNaoAtendidos] = useState(false)
+  const [mostrarRealizados, setMostrarRealizados] = useState(false)
+  const [filtroRegistro, setFiltroRegistro] = useState<CallRecordStatus>('pending')
 
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [cancelTarget, setCancelTarget] = useState<Call | null>(null)
@@ -125,19 +152,43 @@ export function ChamadasPage() {
     const ini = dataInicio <= dataFim ? dataInicio : dataFim
     const fim = dataFim >= dataInicio ? dataFim : dataInicio
 
+    const statusPermitidos = new Set<CallStatus>(['ATENDIDO'])
+    if (mostrarNaoAtendidos) {
+      statusPermitidos.add('NAO_ATENDIDO')
+    }
+    if (mostrarRealizados) {
+      statusPermitidos.add('REALIZADO')
+    }
+
     return chamadas.filter((c) => {
+      if (c.recordStatus !== filtroRegistro) {
+        return false
+      }
+      if (!statusPermitidos.has(c.status)) {
+        return false
+      }
       if (!isAdmin) {
         if (loggedUserId == null) {
           return false
         }
-        if (c.userId !== loggedUserId) {
+        const visivelParaTodos = c.status === 'NAO_ATENDIDO'
+        if (!visivelParaTodos && c.userId !== loggedUserId) {
           return false
         }
       }
       const dataRecebida = toDataLocalISO(c.receivedAt)
       return dataRecebida >= ini && dataRecebida <= fim
     })
-  }, [chamadas, dataInicio, dataFim, isAdmin, loggedUserId])
+  }, [
+    chamadas,
+    dataInicio,
+    dataFim,
+    filtroRegistro,
+    isAdmin,
+    loggedUserId,
+    mostrarNaoAtendidos,
+    mostrarRealizados,
+  ])
 
   function abrirCancelar(chamada: Call) {
     if (chamada.recordStatus !== 'pending') {
@@ -191,9 +242,13 @@ export function ChamadasPage() {
     if (chamada.recordStatus !== 'pending') {
       return
     }
+    const telefone =
+      chamada.status === 'REALIZADO'
+        ? chamada.destination?.trim() || chamada.origin
+        : chamada.origin
     const params = new URLSearchParams({
       callId: String(chamada.id),
-      origin: chamada.origin,
+      telefone,
     })
     navigate(`/registros/novo?${params.toString()}`)
   }
@@ -223,6 +278,37 @@ export function ChamadasPage() {
           InputLabelProps={{ shrink: true }}
           sx={{ minWidth: 220 }}
         />
+        <FormControl size="small" sx={{ minWidth: 200 }}>
+          <InputLabel id="filtro-registro-label">Registro</InputLabel>
+          <Select
+            labelId="filtro-registro-label"
+            label="Registro"
+            value={filtroRegistro}
+            onChange={(e) => setFiltroRegistro(e.target.value as CallRecordStatus)}
+          >
+            <MenuItem value="pending">Pendente</MenuItem>
+            <MenuItem value="registered">Registrados</MenuItem>
+            <MenuItem value="cancelled">Cancelados</MenuItem>
+          </Select>
+        </FormControl>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={mostrarNaoAtendidos}
+              onChange={(e) => setMostrarNaoAtendidos(e.target.checked)}
+            />
+          }
+          label="Mostrar não atendidos"
+        />
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={mostrarRealizados}
+              onChange={(e) => setMostrarRealizados(e.target.checked)}
+            />
+          }
+          label="Mostrar realizados"
+        />
       </Stack>
 
       {loading ? (
@@ -240,6 +326,7 @@ export function ChamadasPage() {
               <TableRow>
                 <TableCell>Recebida em</TableCell>
                 <TableCell>Origem</TableCell>
+                <TableCell>Destino</TableCell>
                 <TableCell>Ramal</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell align="center">Registro</TableCell>
@@ -250,7 +337,7 @@ export function ChamadasPage() {
             <TableBody>
               {chamadasFiltradas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7}>
+                  <TableCell colSpan={8}>
                     <Typography color="text.secondary">Nenhuma chamada encontrada.</Typography>
                   </TableCell>
                 </TableRow>
@@ -258,12 +345,19 @@ export function ChamadasPage() {
                 chamadasFiltradas.map((chamada) => {
                   const pendente = chamada.recordStatus === 'pending'
                   const busy = actionId === chamada.id
+                  const { Icon: StatusIcon, label: statusLabel, color: statusColor } =
+                    callStatusIconProps(chamada.status)
                   return (
                     <TableRow key={chamada.id} hover>
                       <TableCell>{formatarDataHora(chamada.receivedAt)}</TableCell>
                       <TableCell>{chamada.origin}</TableCell>
+                      <TableCell>{chamada.destination?.trim() || '—'}</TableCell>
                       <TableCell>{chamada.extension}</TableCell>
-                      <TableCell>{chamada.status}</TableCell>
+                      <TableCell>
+                        <Tooltip title={statusLabel} arrow>
+                          <StatusIcon sx={{ color: statusColor, verticalAlign: 'middle' }} fontSize="small" />
+                        </Tooltip>
+                      </TableCell>
                       <TableCell align="center">
                         <Tooltip title={recordStatusTooltip(chamada)} arrow>
                           <Box

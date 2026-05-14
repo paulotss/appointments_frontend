@@ -1,5 +1,7 @@
 export type CallRecordStatus = 'pending' | 'registered' | 'cancelled'
 
+export type CallStatus = 'ATENDIDO' | 'NAO_ATENDIDO' | 'REALIZADO'
+
 export interface CallUser {
   id: number
   name: string
@@ -12,8 +14,9 @@ export interface Call {
   id: number
   receivedAt: string
   origin: string
+  destination: string | null
   extension: number
-  status: string
+  status: CallStatus
   recordStatus: CallRecordStatus
   note: string | null
   userId: number | null
