@@ -12,6 +12,7 @@ import { ChamadasPage } from './pages/ChamadasPage'
 import { NovoRegistroPage } from './pages/NovoRegistroPage'
 import { RegistrosPage } from './pages/RegistrosPage'
 import { NovoUsuarioPage } from './pages/NovoUsuarioPage'
+import { PlaceholderPage } from './pages/PlaceholderPage'
 import { UsuariosPage } from './pages/UsuariosPage'
 import { AdminRoute } from './routes/AdminRoute'
 import { ProtectedRoute } from './routes/ProtectedRoute'
@@ -36,6 +37,62 @@ function App() {
         <Route path="/relatorios/atendimentos" element={<AtendimentosPage />} />
         <Route path="/relatorios/taxa-conversao" element={<TaxaConversaoPage />} />
         <Route path="/relatorios/especialidades-atendidas" element={<EspecialidadesAtendidasPage />} />
+        <Route
+          path="/estoque/produtos"
+          element={
+            <AdminRoute>
+              <PlaceholderPage title="Produtos" />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/estoque/movimentacoes"
+          element={
+            <AdminRoute>
+              <PlaceholderPage title="Movimentações" />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/relatorios/estoque"
+          element={
+            <AdminRoute>
+              <PlaceholderPage title="Relatório de Estoque" />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/configuracoes/estoque/categorias"
+          element={
+            <AdminRoute>
+              <PlaceholderPage title="Categorias" />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/configuracoes/estoque/produtos"
+          element={
+            <AdminRoute>
+              <PlaceholderPage title="Produtos" />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/configuracoes/estoque/setores"
+          element={
+            <AdminRoute>
+              <PlaceholderPage title="Setores" />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/configuracoes/estoque/locais"
+          element={
+            <AdminRoute>
+              <PlaceholderPage title="Locais" />
+            </AdminRoute>
+          }
+        />
         <Route
           path="/especialidades"
           element={
