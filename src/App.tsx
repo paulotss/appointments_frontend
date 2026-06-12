@@ -1,18 +1,26 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './layouts/AppLayout'
+import { CategoriasPage } from './pages/CategoriasPage'
 import { EspecialidadesPage } from './pages/EspecialidadesPage'
 import { EspecialidadesAtendidasPage } from './pages/EspecialidadesAtendidasPage'
+import { LocaisPage } from './pages/LocaisPage'
 import { LoginPage } from './pages/LoginPage'
 import { AtendimentosPage } from './pages/AtendimentosPage'
 import { HorariosPage } from './pages/HorariosPage'
 import { TaxaConversaoPage } from './pages/TaxaConversaoPage'
+import { NovaCategoriaPage } from './pages/NovaCategoriaPage'
 import { NovaEspecialidadePage } from './pages/NovaEspecialidadePage'
+import { NovoLocalPage } from './pages/NovoLocalPage'
+import { NovoProdutoConfigPage } from './pages/NovoProdutoConfigPage'
+import { NovoSetorPage } from './pages/NovoSetorPage'
 import { ChamadaDetalhePage } from './pages/ChamadaDetalhePage'
 import { ChamadasPage } from './pages/ChamadasPage'
 import { NovoRegistroPage } from './pages/NovoRegistroPage'
 import { RegistrosPage } from './pages/RegistrosPage'
 import { NovoUsuarioPage } from './pages/NovoUsuarioPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
+import { ProdutosConfigPage } from './pages/ProdutosConfigPage'
+import { SetoresPage } from './pages/SetoresPage'
 import { UsuariosPage } from './pages/UsuariosPage'
 import { AdminRoute } from './routes/AdminRoute'
 import { ProtectedRoute } from './routes/ProtectedRoute'
@@ -65,7 +73,15 @@ function App() {
           path="/configuracoes/estoque/categorias"
           element={
             <AdminRoute>
-              <PlaceholderPage title="Categorias" />
+              <CategoriasPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/configuracoes/estoque/categorias/nova"
+          element={
+            <AdminRoute>
+              <NovaCategoriaPage />
             </AdminRoute>
           }
         />
@@ -73,7 +89,15 @@ function App() {
           path="/configuracoes/estoque/produtos"
           element={
             <AdminRoute>
-              <PlaceholderPage title="Produtos" />
+              <ProdutosConfigPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/configuracoes/estoque/produtos/novo"
+          element={
+            <AdminRoute>
+              <NovoProdutoConfigPage />
             </AdminRoute>
           }
         />
@@ -81,7 +105,15 @@ function App() {
           path="/configuracoes/estoque/setores"
           element={
             <AdminRoute>
-              <PlaceholderPage title="Setores" />
+              <SetoresPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/configuracoes/estoque/setores/novo"
+          element={
+            <AdminRoute>
+              <NovoSetorPage />
             </AdminRoute>
           }
         />
@@ -89,7 +121,15 @@ function App() {
           path="/configuracoes/estoque/locais"
           element={
             <AdminRoute>
-              <PlaceholderPage title="Locais" />
+              <LocaisPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/configuracoes/estoque/locais/novo"
+          element={
+            <AdminRoute>
+              <NovoLocalPage />
             </AdminRoute>
           }
         />
