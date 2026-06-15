@@ -8,11 +8,9 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  FormControlLabel,
   MenuItem,
   Paper,
   Stack,
-  Switch,
   TextField,
   Typography,
 } from '@mui/material'
@@ -35,7 +33,6 @@ export function ProdutosConfigPage() {
   const [skuEdicao, setSkuEdicao] = useState('')
   const [categoryIdEdicao, setCategoryIdEdicao] = useState('')
   const [minimumStockEdicao, setMinimumStockEdicao] = useState('')
-  const [isActiveEdicao, setIsActiveEdicao] = useState(true)
   const [savingEdit, setSavingEdit] = useState(false)
 
   const categoriasPorId = useMemo(
@@ -49,7 +46,6 @@ export function ProdutosConfigPage() {
     setSkuEdicao(produto.sku)
     setCategoryIdEdicao(String(produto.categoryId))
     setMinimumStockEdicao(String(produto.minimumStock))
-    setIsActiveEdicao(produto.isActive)
   }
 
   function fecharEdicao() {
@@ -58,7 +54,6 @@ export function ProdutosConfigPage() {
     setSkuEdicao('')
     setCategoryIdEdicao('')
     setMinimumStockEdicao('')
-    setIsActiveEdicao(true)
   }
 
   async function salvarEdicao() {
@@ -72,7 +67,6 @@ export function ProdutosConfigPage() {
         sku: skuEdicao.trim(),
         categoryId: Number(categoryIdEdicao),
         minimumStock: Number(minimumStockEdicao),
-        isActive: isActiveEdicao,
       })
       setProdutos((prev) => prev.map((item) => (item.id === atualizado.id ? atualizado : item)))
       fecharEdicao()
@@ -212,15 +206,6 @@ export function ProdutosConfigPage() {
                   ? 'Informe um inteiro maior ou igual a zero'
                   : ' '
               }
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={isActiveEdicao}
-                  onChange={(_, checked) => setIsActiveEdicao(checked)}
-                />
-              }
-              label="Ativo"
             />
           </Stack>
         </DialogContent>

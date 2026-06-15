@@ -25,7 +25,6 @@ export interface CreateProductRequest {
   sku: string
   categoryId: number
   minimumStock: number
-  isActive?: boolean
 }
 
 export interface UpdateProductRequest {
@@ -33,7 +32,6 @@ export interface UpdateProductRequest {
   sku?: string
   categoryId?: number
   minimumStock?: number
-  isActive?: boolean
 }
 
 export interface Setor {

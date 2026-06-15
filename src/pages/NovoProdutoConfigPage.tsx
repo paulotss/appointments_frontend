@@ -4,10 +4,8 @@ import {
   Alert,
   Button,
   CircularProgress,
-  FormControlLabel,
   MenuItem,
   Stack,
-  Switch,
   TextField,
   Typography,
 } from '@mui/material'
@@ -39,7 +37,6 @@ export function NovoProdutoConfigPage() {
       sku: '',
       categoryId: undefined,
       minimumStock: 0,
-      isActive: true,
     },
   })
 
@@ -145,16 +142,6 @@ export function NovoProdutoConfigPage() {
             error={Boolean(errors.minimumStock)}
             helperText={errors.minimumStock?.message}
             {...register('minimumStock', { valueAsNumber: true })}
-          />
-          <Controller
-            name="isActive"
-            control={control}
-            render={({ field }) => (
-              <FormControlLabel
-                control={<Switch checked={field.value} onChange={(_, checked) => field.onChange(checked)} />}
-                label="Ativo"
-              />
-            )}
           />
           <Button type="submit" variant="contained" disabled={loading || categorias.length === 0}>
             {loading ? 'Salvando...' : 'Cadastrar produto'}

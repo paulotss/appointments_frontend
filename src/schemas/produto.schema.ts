@@ -5,7 +5,6 @@ export const produtoSchema = z.object({
   sku: z.string().min(1, 'Informe o SKU'),
   categoryId: z.number().int().positive('Selecione uma categoria'),
   minimumStock: z.number().int().min(0, 'Informe um valor maior ou igual a zero'),
-  isActive: z.boolean(),
 })
 
 export type ProdutoFormValues = z.infer<typeof produtoSchema>

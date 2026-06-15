@@ -1,6 +1,6 @@
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import EditIcon from '@mui/icons-material/Edit'
-import { Chip, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material'
+import { IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material'
 import type { ProdutoConfig } from '../types/estoque'
 
 interface ProdutosConfigTableProps {
@@ -25,7 +25,6 @@ export function ProdutosConfigTable({
             <TableCell>SKU</TableCell>
             <TableCell>Categoria</TableCell>
             <TableCell>Estoque mínimo</TableCell>
-            <TableCell>Status</TableCell>
             <TableCell align="right">Ações</TableCell>
           </TableRow>
         </TableHead>
@@ -36,13 +35,6 @@ export function ProdutosConfigTable({
               <TableCell>{produto.sku}</TableCell>
               <TableCell>{categoriasPorId[produto.categoryId] ?? produto.categoryId}</TableCell>
               <TableCell>{produto.minimumStock}</TableCell>
-              <TableCell>
-                <Chip
-                  size="small"
-                  label={produto.isActive ? 'Ativo' : 'Inativo'}
-                  color={produto.isActive ? 'success' : 'default'}
-                />
-              </TableCell>
               <TableCell align="right">
                 <IconButton
                   size="small"
