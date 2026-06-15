@@ -1,6 +1,7 @@
 import type {
   CreateProductRequest,
   ProdutoConfig,
+  ProdutoEstoqueConsolidado,
   UpdateProductRequest,
 } from '../types/estoque'
 import { apiClient } from './apiClient'
@@ -45,4 +46,9 @@ export async function atualizarProduto(
 
 export async function excluirProduto(id: number): Promise<void> {
   await apiClient.delete(`/products/${id}`)
+}
+
+export async function listarEstoqueConsolidado(): Promise<ProdutoEstoqueConsolidado[]> {
+  const response = await apiClient.get<ProdutoEstoqueConsolidado[]>('/products/stock-consolidation')
+  return response.data
 }

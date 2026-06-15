@@ -35,6 +35,7 @@ const allMenuItems: MenuItem[] = [
     adminOnly: true,
     items: [
       { kind: 'link', label: 'Produtos', to: '/estoque/produtos' },
+      { kind: 'link', label: 'Lotes', to: '/estoque/lotes' },
       { kind: 'link', label: 'Movimentações', to: '/estoque/movimentacoes' },
     ],
   },
