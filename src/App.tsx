@@ -13,6 +13,7 @@ import { TaxaConversaoPage } from './pages/TaxaConversaoPage'
 import { NovaCategoriaPage } from './pages/NovaCategoriaPage'
 import { NovaEspecialidadePage } from './pages/NovaEspecialidadePage'
 import { NovoLocalPage } from './pages/NovoLocalPage'
+import { NovaSaidaPage } from './pages/NovaSaidaPage'
 import { NovoLotePage } from './pages/NovoLotePage'
 import { NovoProdutoConfigPage } from './pages/NovoProdutoConfigPage'
 import { NovoSetorPage } from './pages/NovoSetorPage'
@@ -24,6 +25,7 @@ import { NovoUsuarioPage } from './pages/NovoUsuarioPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
 import { ProdutosConfigPage } from './pages/ProdutosConfigPage'
 import { ProdutosEstoquePage } from './pages/ProdutosEstoquePage'
+import { SaidasPage } from './pages/SaidasPage'
 import { SetoresPage } from './pages/SetoresPage'
 import { UsuariosPage } from './pages/UsuariosPage'
 import { AdminRoute } from './routes/AdminRoute'
@@ -82,10 +84,18 @@ function App() {
           }
         />
         <Route
-          path="/estoque/movimentacoes"
+          path="/estoque/saidas"
           element={
             <AdminRoute>
-              <PlaceholderPage title="Movimentações" />
+              <SaidasPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/estoque/saidas/nova"
+          element={
+            <AdminRoute>
+              <NovaSaidaPage />
             </AdminRoute>
           }
         />

@@ -142,3 +142,37 @@ export interface ProdutoEstoqueConsolidado {
   minimumStock: number
   stockBatches: LoteEstoque[]
 }
+
+export interface SaidaEstoqueBatchProduto {
+  id: number
+  name: string
+}
+
+export interface SaidaEstoqueBatch {
+  id: number
+  productId: number
+  locationId: number
+  product?: SaidaEstoqueBatchProduto
+}
+
+export interface SaidaEstoqueUsuario {
+  id: number
+  name: string
+}
+
+export interface SaidaEstoque {
+  id: number
+  batchId: number
+  quantity: number
+  userId: number
+  exitDate: string
+  batch: SaidaEstoqueBatch
+  user: SaidaEstoqueUsuario
+}
+
+export interface CreateStockExitRequest {
+  batchId: number
+  quantity: number
+  userId: number
+  exitDate: string
+}

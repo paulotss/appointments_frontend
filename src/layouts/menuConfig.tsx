@@ -36,7 +36,7 @@ const allMenuItems: MenuItem[] = [
     items: [
       { kind: 'link', label: 'Produtos', to: '/estoque/produtos' },
       { kind: 'link', label: 'Lotes', to: '/estoque/lotes' },
-      { kind: 'link', label: 'Movimentações', to: '/estoque/movimentacoes' },
+      { kind: 'link', label: 'Saídas', to: '/estoque/saidas' },
     ],
   },
   {
