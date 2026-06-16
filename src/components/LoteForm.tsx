@@ -16,7 +16,8 @@ interface LoteFormProps {
   produtos: ProdutoConfig[]
   setores: Setor[]
   locais: LocalArmazenamento[]
-  usuarios: SystemUser[]
+  usuarios?: SystemUser[]
+  exibirUsuario?: boolean
   loading: boolean
   submitLabel: string
 }
@@ -28,7 +29,8 @@ export function LoteForm({
   produtos,
   setores,
   locais,
-  usuarios,
+  usuarios = [],
+  exibirUsuario = true,
   loading,
   submitLabel,
 }: LoteFormProps) {
@@ -103,29 +105,31 @@ export function LoteForm({
           </TextField>
         )}
       />
-      <Controller
-        name="userId"
-        control={control}
-        render={({ field }) => (
-          <TextField
-            select
-            label="Usuario"
-            value={field.value ?? ''}
-            onChange={(event) => field.onChange(Number(event.target.value))}
-            error={Boolean(errors.userId)}
-            helperText={errors.userId?.message}
-          >
-            <MenuItem value="" disabled>
-              Selecione um usuario
-            </MenuItem>
-            {usuarios.map((usuario) => (
-              <MenuItem key={usuario.id} value={usuario.id}>
-                {usuario.name}
+      {exibirUsuario ? (
+        <Controller
+          name="userId"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              select
+              label="Usuario"
+              value={field.value ?? ''}
+              onChange={(event) => field.onChange(Number(event.target.value))}
+              error={Boolean(errors.userId)}
+              helperText={errors.userId?.message}
+            >
+              <MenuItem value="" disabled>
+                Selecione um usuario
               </MenuItem>
-            ))}
-          </TextField>
-        )}
-      />
+              {usuarios.map((usuario) => (
+                <MenuItem key={usuario.id} value={usuario.id}>
+                  {usuario.name}
+                </MenuItem>
+              ))}
+            </TextField>
+          )}
+        />
+      ) : null}
       <TextField
         label="Qtd. inicial"
         type="number"

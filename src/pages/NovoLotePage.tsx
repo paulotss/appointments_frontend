@@ -6,24 +6,23 @@ import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { LoteForm } from '../components/LoteForm'
 import { loteSchema, type LoteFormValues } from '../schemas/lote.schema'
+import { getLoggedUserId } from '../services/authStorage'
 import { listarLocais } from '../services/storage-locations.service'
 import { listarProdutos } from '../services/products.service'
 import { criarLote } from '../services/stock-batches.service'
 import { listarSetores } from '../services/sectors.service'
-import { listarUsuarios } from '../services/users.service'
 import type { LocalArmazenamento, ProdutoConfig, Setor } from '../types/estoque'
-import type { SystemUser } from '../types/user'
 import { montarPayloadCriacao } from '../utils/loteForm'
 
 export function NovoLotePage() {
   const navigate = useNavigate()
+  const loggedUserId = getLoggedUserId()
   const [loading, setLoading] = useState(false)
   const [loadingDados, setLoadingDados] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [produtos, setProdutos] = useState<ProdutoConfig[]>([])
   const [setores, setSetores] = useState<Setor[]>([])
   const [locais, setLocais] = useState<LocalArmazenamento[]>([])
-  const [usuarios, setUsuarios] = useState<SystemUser[]>([])
 
   const {
     register,
@@ -37,7 +36,7 @@ export function NovoLotePage() {
       productId: undefined,
       sectorId: undefined,
       locationId: undefined,
-      userId: undefined,
+      userId: loggedUserId ?? undefined,
       initialQuantity: undefined,
       currentQuantity: undefined,
       value: undefined,
@@ -53,16 +52,14 @@ export function NovoLotePage() {
       setLoadingDados(true)
       setError(null)
       try {
-        const [produtosData, setoresData, locaisData, usuariosData] = await Promise.all([
+        const [produtosData, setoresData, locaisData] = await Promise.all([
           listarProdutos(),
           listarSetores(),
           listarLocais(),
-          listarUsuarios(),
         ])
         setProdutos(produtosData)
         setSetores(setoresData)
         setLocais(locaisData)
-        setUsuarios(usuariosData)
       } catch {
         setError('Nao foi possivel carregar os dados do formulario.')
       } finally {
@@ -74,10 +71,15 @@ export function NovoLotePage() {
   }, [])
 
   async function onSubmit(values: LoteFormValues) {
+    if (loggedUserId == null) {
+      setError('Nao foi possivel identificar o usuario logado.')
+      return
+    }
+
     setLoading(true)
     setError(null)
     try {
-      await criarLote(montarPayloadCriacao(values))
+      await criarLote(montarPayloadCriacao({ ...values, userId: loggedUserId }))
       reset()
       navigate('/estoque/lotes', { replace: true })
     } catch {
@@ -88,7 +90,7 @@ export function NovoLotePage() {
   }
 
   const formularioPronto =
-    produtos.length > 0 && setores.length > 0 && locais.length > 0 && usuarios.length > 0
+    loggedUserId != null && produtos.length > 0 && setores.length > 0 && locais.length > 0
 
   return (
     <Stack spacing={2}>
@@ -114,9 +116,13 @@ export function NovoLotePage() {
         </Stack>
       ) : null}
 
-      {!loadingDados && !formularioPronto ? (
+      {!loadingDados && loggedUserId == null ? (
+        <Alert severity="error">Nao foi possivel identificar o usuario logado.</Alert>
+      ) : null}
+
+      {!loadingDados && loggedUserId != null && !formularioPronto ? (
         <Alert severity="warning">
-          Cadastre produtos, setores, locais e usuarios antes de criar um lote.
+          Cadastre produtos, setores e locais antes de criar um lote.
         </Alert>
       ) : null}
 
@@ -129,7 +135,7 @@ export function NovoLotePage() {
             produtos={produtos}
             setores={setores}
             locais={locais}
-            usuarios={usuarios}
+            exibirUsuario={false}
             loading={loading}
             submitLabel="Cadastrar lote"
           />
