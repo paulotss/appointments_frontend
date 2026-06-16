@@ -4,11 +4,14 @@ import {
   Box,
   Button,
   CircularProgress,
+  MenuItem,
   Paper,
+  Snackbar,
   Stack,
+  TextField,
   Typography,
 } from '@mui/material'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LotesTable } from '../components/LotesTable'
 import { excluirLote, listarLotes } from '../services/stock-batches.service'
@@ -17,9 +20,13 @@ import type { LoteEstoque } from '../types/estoque'
 export function LotesPage() {
   const navigate = useNavigate()
   const [lotes, setLotes] = useState<LoteEstoque[]>([])
+  const [buscaNome, setBuscaNome] = useState('')
+  const [setorFiltro, setSetorFiltro] = useState('')
+  const [localFiltro, setLocalFiltro] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [snackbarCopiaAberto, setSnackbarCopiaAberto] = useState(false)
 
   useEffect(() => {
     async function carregarLotes() {
@@ -37,6 +44,43 @@ export function LotesPage() {
 
     void carregarLotes()
   }, [])
+
+  const setoresDisponiveis = useMemo(() => {
+    const map = new Map<number, string>()
+    for (const lote of lotes) {
+      if (lote.sector) {
+        map.set(lote.sector.id, lote.sector.name)
+      }
+    }
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'))
+  }, [lotes])
+
+  const locaisDisponiveis = useMemo(() => {
+    const map = new Map<number, string>()
+    for (const lote of lotes) {
+      if (lote.location) {
+        map.set(lote.location.id, lote.location.name)
+      }
+    }
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'))
+  }, [lotes])
+
+  const lotesFiltrados = useMemo(() => {
+    const termo = buscaNome.trim().toLowerCase()
+
+    return lotes.filter((lote) => {
+      if (termo && !(lote.product?.name ?? '').toLowerCase().includes(termo)) {
+        return false
+      }
+      if (setorFiltro && String(lote.sectorId) !== setorFiltro) {
+        return false
+      }
+      if (localFiltro && String(lote.locationId) !== localFiltro) {
+        return false
+      }
+      return true
+    })
+  }, [buscaNome, localFiltro, lotes, setorFiltro])
 
   function editar(lote: LoteEstoque) {
     navigate(`/estoque/lotes/${lote.id}/editar`)
@@ -89,10 +133,79 @@ export function LotesPage() {
       ) : null}
 
       {!loading && !error && lotes.length > 0 ? (
-        <Paper sx={{ p: 0 }}>
-          <LotesTable lotes={lotes} onEditar={editar} onExcluir={excluir} />
-        </Paper>
+        <Stack spacing={2}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+            <TextField
+              label="Buscar por nome do produto"
+              size="small"
+              fullWidth
+              value={buscaNome}
+              onChange={(event) => setBuscaNome(event.target.value)}
+            />
+            <TextField
+              select
+              label="Setor"
+              size="small"
+              value={setorFiltro}
+              onChange={(event) => setSetorFiltro(event.target.value)}
+              sx={{ minWidth: { xs: '100%', md: 220 } }}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              {setoresDisponiveis.map(([id, nome]) => (
+                <MenuItem key={id} value={String(id)}>
+                  {nome}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Local"
+              size="small"
+              value={localFiltro}
+              onChange={(event) => setLocalFiltro(event.target.value)}
+              sx={{ minWidth: { xs: '100%', md: 220 } }}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              {locaisDisponiveis.map(([id, nome]) => (
+                <MenuItem key={id} value={String(id)}>
+                  {nome}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Stack>
+
+          {lotesFiltrados.length === 0 ? (
+            <Paper sx={{ p: 3 }}>
+              <Typography>Nenhum lote encontrado para os filtros selecionados.</Typography>
+            </Paper>
+          ) : (
+            <Paper sx={{ p: 0 }}>
+              <LotesTable
+                lotes={lotesFiltrados}
+                onEditar={editar}
+                onExcluir={excluir}
+                onChaveCopiada={() => setSnackbarCopiaAberto(true)}
+              />
+            </Paper>
+          )}
+        </Stack>
       ) : null}
+
+      <Snackbar
+        open={snackbarCopiaAberto}
+        autoHideDuration={3000}
+        onClose={() => setSnackbarCopiaAberto(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity="success"
+          variant="filled"
+          onClose={() => setSnackbarCopiaAberto(false)}
+          sx={{ width: '100%' }}
+        >
+          Chave NF-e copiada para a área de transferência.
+        </Alert>
+      </Snackbar>
     </Stack>
   )
 }
