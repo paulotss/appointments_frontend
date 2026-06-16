@@ -12,7 +12,7 @@ import { listarProdutos } from '../services/products.service'
 import { criarLote } from '../services/stock-batches.service'
 import { listarSetores } from '../services/sectors.service'
 import type { LocalArmazenamento, ProdutoConfig, Setor } from '../types/estoque'
-import { montarPayloadCriacao } from '../utils/loteForm'
+import { dataHojeISO, montarPayloadCriacao } from '../utils/loteForm'
 
 export function NovoLotePage() {
   const navigate = useNavigate()
@@ -39,7 +39,7 @@ export function NovoLotePage() {
       userId: loggedUserId ?? undefined,
       initialQuantity: undefined,
       value: undefined,
-      movementDate: '',
+      movementDate: dataHojeISO(),
       expirationDate: '',
       notes: '',
       invoiceAccessKey: '',
@@ -136,6 +136,7 @@ export function NovoLotePage() {
             locais={locais}
             exibirUsuario={false}
             exibirQuantidadeAtual={false}
+            exibirInclusao={false}
             loading={loading}
             submitLabel="Cadastrar lote"
           />

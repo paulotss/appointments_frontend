@@ -19,6 +19,7 @@ interface LoteFormProps {
   usuarios?: SystemUser[]
   exibirUsuario?: boolean
   exibirQuantidadeAtual?: boolean
+  exibirInclusao?: boolean
   loading: boolean
   submitLabel: string
 }
@@ -33,6 +34,7 @@ export function LoteForm({
   usuarios = [],
   exibirUsuario = true,
   exibirQuantidadeAtual = true,
+  exibirInclusao = true,
   loading,
   submitLabel,
 }: LoteFormProps) {
@@ -158,14 +160,16 @@ export function LoteForm({
         helperText={errors.value?.message}
         {...register('value', { valueAsNumber: true })}
       />
-      <TextField
-        label="Inclusao"
-        type="date"
-        InputLabelProps={{ shrink: true }}
-        error={Boolean(errors.movementDate)}
-        helperText={errors.movementDate?.message}
-        {...register('movementDate')}
-      />
+      {exibirInclusao ? (
+        <TextField
+          label="Inclusao"
+          type="date"
+          InputLabelProps={{ shrink: true }}
+          error={Boolean(errors.movementDate)}
+          helperText={errors.movementDate?.message}
+          {...register('movementDate')}
+        />
+      ) : null}
       <TextField
         label="Validade"
         type="date"

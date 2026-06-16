@@ -6,6 +6,10 @@ export function toDataInputISO(value: string | null | undefined): string {
   return value.includes('T') ? value.split('T')[0] : value.split(' ')[0]
 }
 
+export function dataHojeISO(): string {
+  return toDataInputISO(new Date().toISOString())
+}
+
 function limparOpcionais(values: LoteFormValues) {
   const currentQuantity =
     values.currentQuantity != null && !Number.isNaN(values.currentQuantity)
@@ -27,7 +31,7 @@ export function montarPayloadCriacao(values: LoteFormValues): CreateStockBatchRe
     productId: values.productId,
     sectorId: values.sectorId,
     initialQuantity: values.initialQuantity,
-    movementDate: values.movementDate,
+    movementDate: dataHojeISO(),
     userId: values.userId,
     locationId: values.locationId,
     ...opcionais,
