@@ -2,6 +2,7 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import {
   Box,
+  Chip,
   Collapse,
   IconButton,
   Table,
@@ -10,14 +11,41 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TableSortLabel,
   Typography,
 } from '@mui/material'
-import { Fragment, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import type { LoteEstoque, ProdutoEstoqueConsolidado } from '../types/estoque'
 import { normalizarValorLote } from '../services/stock-batches.service'
 
 interface ProdutosEstoqueTableProps {
   produtos: ProdutoEstoqueConsolidado[]
+}
+
+type ColunaOrdenacao =
+  | 'name'
+  | 'sku'
+  | 'totalQuantity'
+  | 'averagePrice'
+  | 'expiringBatchesCount'
+  | 'expiredBatchesCount'
+  | 'minimumStock'
+
+type DirecaoOrdenacao = 'asc' | 'desc'
+
+function compararProdutos(
+  a: ProdutoEstoqueConsolidado,
+  b: ProdutoEstoqueConsolidado,
+  coluna: ColunaOrdenacao,
+  direcao: DirecaoOrdenacao,
+): number {
+  const fator = direcao === 'asc' ? 1 : -1
+
+  if (coluna === 'name' || coluna === 'sku') {
+    return fator * a[coluna].localeCompare(b[coluna], 'pt-BR', { sensitivity: 'base' })
+  }
+
+  return fator * (a[coluna] - b[coluna])
 }
 
 const formatadorMoeda = new Intl.NumberFormat('pt-BR', {
@@ -43,21 +71,38 @@ function formatarData(value: string | null | undefined): string {
   return `${dia.padStart(2, '0')}/${mes.padStart(2, '0')}/${ano}`
 }
 
-function ContadorLotes({ valor, tipo }: { valor: number; tipo: 'expiring' | 'expired' }) {
-  if (valor <= 0) return <>{valor}</>
+const MARGEM_ESTOQUE_MINIMO = 10
 
-  const cor = tipo === 'expired' ? 'error.main' : 'warning.main'
+function ContadorLotes({ valor, tipo }: { valor: number; tipo: 'expiring' | 'expired' }) {
+  if (valor <= 0) {
+    return <Chip size="small" label={valor} color="primary" />
+  }
+
   return (
-    <Typography component="span" color={cor} fontWeight={600}>
-      {valor}
-    </Typography>
+    <Chip
+      size="small"
+      label={valor}
+      color={tipo === 'expired' ? 'error' : 'warning'}
+    />
   )
+}
+
+function QuantidadeTotal({ quantidade, estoqueMinimo }: { quantidade: number; estoqueMinimo: number }) {
+  if (quantidade <= estoqueMinimo) {
+    return <Chip size="small" label={quantidade} color="error" />
+  }
+
+  if (quantidade <= estoqueMinimo + MARGEM_ESTOQUE_MINIMO) {
+    return <Chip size="small" label={quantidade} color="warning" />
+  }
+
+  return <Chip size="small" label={quantidade} color="primary" />
 }
 
 function LotesCollapse({ lotes }: { lotes: LoteEstoque[] }) {
   if (lotes.length === 0) {
     return (
-      <Box sx={{ py: 2, px: 3 }}>
+      <Box sx={{ py: 2, px: 3, bgcolor: '#d6f4e8' }}>
         <Typography variant="body2" color="text.secondary">
           Nenhum lote
         </Typography>
@@ -66,7 +111,7 @@ function LotesCollapse({ lotes }: { lotes: LoteEstoque[] }) {
   }
 
   return (
-    <Box sx={{ py: 1, px: 2 }}>
+    <Box sx={{ py: 1, px: 2, bgcolor: '#d6f4e8' }}>
       <Table size="small">
         <TableHead>
           <TableRow>
@@ -114,7 +159,9 @@ function ProdutoEstoqueRow({ produto }: { produto: ProdutoEstoqueConsolidado }) 
         </TableCell>
         <TableCell>{produto.name}</TableCell>
         <TableCell>{produto.sku}</TableCell>
-        <TableCell>{produto.totalQuantity}</TableCell>
+        <TableCell>
+          <QuantidadeTotal quantidade={produto.totalQuantity} estoqueMinimo={produto.minimumStock} />
+        </TableCell>
         <TableCell>{formatadorMoeda.format(produto.averagePrice)}</TableCell>
         <TableCell>
           <ContadorLotes valor={produto.expiringBatchesCount} tipo="expiring" />
@@ -135,24 +182,111 @@ function ProdutoEstoqueRow({ produto }: { produto: ProdutoEstoqueConsolidado }) 
   )
 }
 
+function CabecalhoOrdenavel({
+  coluna,
+  label,
+  colunaAtiva,
+  direcao,
+  onOrdenar,
+}: {
+  coluna: ColunaOrdenacao
+  label: string
+  colunaAtiva: ColunaOrdenacao
+  direcao: DirecaoOrdenacao
+  onOrdenar: (coluna: ColunaOrdenacao) => void
+}) {
+  return (
+    <TableCell sortDirection={colunaAtiva === coluna ? direcao : false}>
+      <TableSortLabel
+        active={colunaAtiva === coluna}
+        direction={colunaAtiva === coluna ? direcao : 'asc'}
+        onClick={() => onOrdenar(coluna)}
+      >
+        {label}
+      </TableSortLabel>
+    </TableCell>
+  )
+}
+
 export function ProdutosEstoqueTable({ produtos }: ProdutosEstoqueTableProps) {
+  const [colunaOrdenacao, setColunaOrdenacao] = useState<ColunaOrdenacao>('name')
+  const [direcaoOrdenacao, setDirecaoOrdenacao] = useState<DirecaoOrdenacao>('asc')
+
+  const produtosOrdenados = useMemo(
+    () =>
+      [...produtos].sort((a, b) => compararProdutos(a, b, colunaOrdenacao, direcaoOrdenacao)),
+    [colunaOrdenacao, direcaoOrdenacao, produtos],
+  )
+
+  function alternarOrdenacao(coluna: ColunaOrdenacao) {
+    if (colunaOrdenacao === coluna) {
+      setDirecaoOrdenacao((atual) => (atual === 'asc' ? 'desc' : 'asc'))
+      return
+    }
+
+    setColunaOrdenacao(coluna)
+    setDirecaoOrdenacao('asc')
+  }
+
   return (
     <TableContainer>
       <Table size="small">
         <TableHead>
           <TableRow>
             <TableCell />
-            <TableCell>Nome</TableCell>
-            <TableCell>SKU</TableCell>
-            <TableCell>Quantidade total</TableCell>
-            <TableCell>Preço médio</TableCell>
-            <TableCell>Lotes a vencer</TableCell>
-            <TableCell>Lotes vencidos</TableCell>
-            <TableCell>Estoque mínimo</TableCell>
+            <CabecalhoOrdenavel
+              coluna="name"
+              label="Nome"
+              colunaAtiva={colunaOrdenacao}
+              direcao={direcaoOrdenacao}
+              onOrdenar={alternarOrdenacao}
+            />
+            <CabecalhoOrdenavel
+              coluna="sku"
+              label="SKU"
+              colunaAtiva={colunaOrdenacao}
+              direcao={direcaoOrdenacao}
+              onOrdenar={alternarOrdenacao}
+            />
+            <CabecalhoOrdenavel
+              coluna="totalQuantity"
+              label="Quantidade total"
+              colunaAtiva={colunaOrdenacao}
+              direcao={direcaoOrdenacao}
+              onOrdenar={alternarOrdenacao}
+            />
+            <CabecalhoOrdenavel
+              coluna="averagePrice"
+              label="Preço médio"
+              colunaAtiva={colunaOrdenacao}
+              direcao={direcaoOrdenacao}
+              onOrdenar={alternarOrdenacao}
+            />
+            <CabecalhoOrdenavel
+              coluna="expiringBatchesCount"
+              label="Lotes a vencer"
+              colunaAtiva={colunaOrdenacao}
+              direcao={direcaoOrdenacao}
+              onOrdenar={alternarOrdenacao}
+            />
+            <CabecalhoOrdenavel
+              coluna="expiredBatchesCount"
+              label="Lotes vencidos"
+              colunaAtiva={colunaOrdenacao}
+              direcao={direcaoOrdenacao}
+              onOrdenar={alternarOrdenacao}
+            />
+            <CabecalhoOrdenavel
+              coluna="minimumStock"
+              label="Estoque mínimo"
+              colunaAtiva={colunaOrdenacao}
+              direcao={direcaoOrdenacao}
+              onOrdenar={alternarOrdenacao}
+            />
           </TableRow>
         </TableHead>
         <TableBody>
-          {produtos.map((produto, index) => (
+          {produtosOrdenados.map((produto, index) => (
             <ProdutoEstoqueRow key={`${produto.sku}-${index}`} produto={produto} />
           ))}
         </TableBody>
