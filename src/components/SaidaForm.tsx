@@ -2,14 +2,12 @@ import { Button, MenuItem, Stack, TextField } from '@mui/material'
 import { Controller, type Control, type FieldErrors, type UseFormRegister } from 'react-hook-form'
 import type { SaidaFormValues } from '../schemas/saida.schema'
 import type { LoteEstoque } from '../types/estoque'
-import type { SystemUser } from '../types/user'
 
 interface SaidaFormProps {
   register: UseFormRegister<SaidaFormValues>
   control: Control<SaidaFormValues>
   errors: FieldErrors<SaidaFormValues>
   lotes: LoteEstoque[]
-  usuarios: SystemUser[]
   loading: boolean
   submitLabel: string
 }
@@ -25,7 +23,6 @@ export function SaidaForm({
   control,
   errors,
   lotes,
-  usuarios,
   loading,
   submitLabel,
 }: SaidaFormProps) {
@@ -61,29 +58,6 @@ export function SaidaForm({
         error={Boolean(errors.quantity)}
         helperText={errors.quantity?.message}
         {...register('quantity', { valueAsNumber: true })}
-      />
-      <Controller
-        name="userId"
-        control={control}
-        render={({ field }) => (
-          <TextField
-            select
-            label="Usuario"
-            value={field.value ?? ''}
-            onChange={(event) => field.onChange(Number(event.target.value))}
-            error={Boolean(errors.userId)}
-            helperText={errors.userId?.message}
-          >
-            <MenuItem value="" disabled>
-              Selecione um usuario
-            </MenuItem>
-            {usuarios.map((usuario) => (
-              <MenuItem key={usuario.id} value={usuario.id}>
-                {usuario.name}
-              </MenuItem>
-            ))}
-          </TextField>
-        )}
       />
       <TextField
         label="Data da saida"

@@ -3,6 +3,7 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import {
   Box,
+  Chip,
   Collapse,
   IconButton,
   Link,
@@ -15,20 +16,22 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import { Fragment, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import type { RegistroAtendimento } from '../types/registro'
 
 interface RegistrosTableProps {
   registros: RegistroAtendimento[]
+  expandAll?: boolean
 }
 
 interface RegistroRowProps {
   registro: RegistroAtendimento
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
 
-function RegistroRow({ registro }: RegistroRowProps) {
-  const [open, setOpen] = useState(false)
+function RegistroRow({ registro, open, onOpenChange }: RegistroRowProps) {
 
   function formatarAtendimento(value: RegistroAtendimento['atendimento']) {
     if (value === 'telefone') {
@@ -52,7 +55,7 @@ function RegistroRow({ registro }: RegistroRowProps) {
     <Fragment>
       <TableRow hover>
         <TableCell padding="checkbox">
-          <IconButton size="small" onClick={() => setOpen((prev) => !prev)}>
+          <IconButton size="small" onClick={() => onOpenChange(!open)}>
             {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
           </IconButton>
         </TableCell>
@@ -107,28 +110,50 @@ function RegistroRow({ registro }: RegistroRowProps) {
   )
 }
 
-export function RegistrosTable({ registros }: RegistrosTableProps) {
+export function RegistrosTable({ registros, expandAll = false }: RegistrosTableProps) {
+  const [expandedById, setExpandedById] = useState<Record<number, boolean>>({})
+
+  useEffect(() => {
+    const next: Record<number, boolean> = {}
+    registros.forEach((registro) => {
+      next[registro.id] = expandAll
+    })
+    setExpandedById(next)
+  }, [expandAll, registros])
+
   return (
-    <TableContainer>
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            <TableCell />
-            <TableCell>Data</TableCell>
-            <TableCell>Nome</TableCell>
-            <TableCell>Telefone</TableCell>
-            <TableCell>Atend.</TableCell>
-            <TableCell>1a vez</TableCell>
-            <TableCell>Agend.</TableCell>
-            <TableCell>Atendente</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {registros.map((registro) => (
-            <RegistroRow key={registro.id} registro={registro} />
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
+    <>
+      <TableContainer>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell />
+              <TableCell>Data</TableCell>
+              <TableCell>Nome</TableCell>
+              <TableCell>Telefone</TableCell>
+              <TableCell>Atend.</TableCell>
+              <TableCell>1a vez</TableCell>
+              <TableCell>Agend.</TableCell>
+              <TableCell>Atendente</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {registros.map((registro) => (
+              <RegistroRow
+                key={registro.id}
+                registro={registro}
+                open={expandedById[registro.id] ?? false}
+                onOpenChange={(open) =>
+                  setExpandedById((prev) => ({ ...prev, [registro.id]: open }))
+                }
+              />
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+      <Box sx={{ px: 2, py: 1.5, display: 'flex', justifyContent: 'flex-end' }}>
+        <Chip label={`Total: ${registros.length}`} size="small" color="default" variant="outlined" />
+      </Box>
+    </>
   )
 }

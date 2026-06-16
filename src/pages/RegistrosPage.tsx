@@ -1,17 +1,18 @@
 import AddIcon from '@mui/icons-material/Add'
-import BarChartIcon from '@mui/icons-material/BarChart'
 import DownloadIcon from '@mui/icons-material/Download'
-import TableRowsIcon from '@mui/icons-material/TableRows'
-import { BarChart } from '@mui/x-charts/BarChart'
+import UnfoldLessIcon from '@mui/icons-material/UnfoldLess'
+import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore'
 import {
   Alert,
   Box,
   Button,
   CircularProgress,
+  IconButton,
   MenuItem,
   Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import { useEffect, useMemo, useState } from 'react'
@@ -21,7 +22,7 @@ import { RegistrosTable } from '../components/RegistrosTable'
 import { getIsAdmin, getLoggedUser } from '../services/authStorage'
 import { listarRegistros } from '../services/registros.service'
 import { listarUsuarios } from '../services/users.service'
-import type { RegistroAtendimento } from '../types/registro'
+import type { RegistroAtendimento, SimNao } from '../types/registro'
 
 function getHojeLocalISO(): string {
   const agora = new Date()
@@ -73,7 +74,10 @@ export function RegistrosPage() {
   const [filtroDataFim, setFiltroDataFim] = useState(filtroDataPadrao)
   /** Valor inicial vazio; apos carregar usuarios da API alinhamos ao rotulo exato das opcoes (ex.: nome | ramal). */
   const [filtroAtendente, setFiltroAtendente] = useState('')
-  const [modoVisualizacao, setModoVisualizacao] = useState<'tabela' | 'grafico'>('tabela')
+  const [filtroPrimeiraVez, setFiltroPrimeiraVez] = useState<'' | SimNao>('')
+  const [filtroAgendamento, setFiltroAgendamento] = useState<'' | SimNao>('')
+  const [filtroEspecialidade, setFiltroEspecialidade] = useState('')
+  const [todosExpandidos, setTodosExpandidos] = useState(false)
 
   useEffect(() => {
     async function carregarRegistros() {
@@ -137,37 +141,48 @@ export function RegistrosPage() {
     return registros.filter((registro) => registro.atendente_id === idUsuarioLogado)
   }, [idUsuarioLogado, isAdmin, registros])
 
+  const especialidades = useMemo(() => {
+    const map = new Map<number, string>()
+    registrosVisiveis.forEach((registro) => {
+      const nome = registro.especialidade_nome?.trim()
+      if (nome) {
+        map.set(registro.especialidade_id, nome)
+      }
+    })
+    return Array.from(map.entries())
+      .map(([id, nome]) => ({ id, nome }))
+      .sort((a, b) => a.nome.localeCompare(b.nome))
+  }, [registrosVisiveis])
+
   const registrosFiltrados = useMemo(() => {
     return registrosVisiveis.filter((registro) => {
       const dataRegistro = toDataLocalISO(registro.data)
       const dataOkInicio = !filtroDataInicio || dataRegistro >= filtroDataInicio
       const dataOkFim = !filtroDataFim || dataRegistro <= filtroDataFim
       const atendenteOk = !isAdmin || !filtroAtendente || registro.atendente === filtroAtendente
-      return dataOkInicio && dataOkFim && atendenteOk
+      const primeiraVezOk = !filtroPrimeiraVez || registro.primeira_vez === filtroPrimeiraVez
+      const agendamentoOk = !filtroAgendamento || registro.agendamento === filtroAgendamento
+      const especialidadeOk =
+        !filtroEspecialidade || registro.especialidade_id === Number(filtroEspecialidade)
+      return (
+        dataOkInicio &&
+        dataOkFim &&
+        atendenteOk &&
+        primeiraVezOk &&
+        agendamentoOk &&
+        especialidadeOk
+      )
     })
-  }, [filtroAtendente, filtroDataFim, filtroDataInicio, isAdmin, registrosVisiveis])
-
-  const dadosGrafico = useMemo(() => {
-    const agrupado = new Map<string, { whatsapp: number; telefone: number; outro: number }>()
-
-    registrosFiltrados.forEach((registro) => {
-      const dataRegistro = new Date(registro.data)
-      const periodo = `${dataRegistro.getFullYear()}-${String(dataRegistro.getMonth() + 1).padStart(2, '0')}-${String(dataRegistro.getDate()).padStart(2, '0')}`
-
-      const atual = agrupado.get(periodo) ?? { whatsapp: 0, telefone: 0, outro: 0 }
-      atual[registro.atendimento] += 1
-      agrupado.set(periodo, atual)
-    })
-
-    const periodos = Array.from(agrupado.keys()).sort((a, b) => a.localeCompare(b))
-
-    return {
-      periodos,
-      whatsapp: periodos.map((periodo) => agrupado.get(periodo)?.whatsapp ?? 0),
-      telefone: periodos.map((periodo) => agrupado.get(periodo)?.telefone ?? 0),
-      outro: periodos.map((periodo) => agrupado.get(periodo)?.outro ?? 0),
-    }
-  }, [registrosFiltrados])
+  }, [
+    filtroAgendamento,
+    filtroAtendente,
+    filtroDataFim,
+    filtroDataInicio,
+    filtroEspecialidade,
+    filtroPrimeiraVez,
+    isAdmin,
+    registrosVisiveis,
+  ])
 
   const exportarCSV = () => {
     const cabecalho = [
@@ -221,11 +236,14 @@ export function RegistrosPage() {
           Registros de atendimentos
         </Typography>
         <Stack direction="row" spacing={1.5}>
-          {isAdmin ? (
-            <Button variant="outlined" onClick={() => navigate('/especialidades')}>
-              Especialidades
-            </Button>
-          ) : null}
+          <Button
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={exportarCSV}
+            disabled={registrosFiltrados.length === 0}
+          >
+            Exportar CSV
+          </Button>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -236,124 +254,120 @@ export function RegistrosPage() {
         </Stack>
       </Box>
 
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-start' }}>
+        <TextField
+          label="Período inicial"
+          type="date"
+          size="small"
+          value={filtroDataInicio}
+          onChange={(event) => setFiltroDataInicio(event.target.value)}
+          InputLabelProps={{ shrink: true }}
+          sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
+        />
+        <TextField
+          label="Período final"
+          type="date"
+          size="small"
+          value={filtroDataFim}
+          onChange={(event) => setFiltroDataFim(event.target.value)}
+          InputLabelProps={{ shrink: true }}
+          sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
+        />
+        {isAdmin ? (
+          <TextField
+            select
+            size="small"
+            label="Filtrar por atendente"
+            value={filtroAtendente}
+            onChange={(event) => setFiltroAtendente(event.target.value)}
+            sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
+          >
+            <MenuItem value="">Todos</MenuItem>
+            {atendentes.map((atendente) => (
+              <MenuItem key={atendente} value={atendente}>
+                {atendente}
+              </MenuItem>
+            ))}
+          </TextField>
+        ) : null}
+        <TextField
+          select
+          size="small"
+          label="1ª vez"
+          value={filtroPrimeiraVez}
+          onChange={(event) => setFiltroPrimeiraVez(event.target.value as '' | SimNao)}
+          sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 160 } }}
+        >
+          <MenuItem value="">Todos</MenuItem>
+          <MenuItem value="sim">Sim</MenuItem>
+          <MenuItem value="nao">Não</MenuItem>
+        </TextField>
+        <TextField
+          select
+          size="small"
+          label="Agendamento"
+          value={filtroAgendamento}
+          onChange={(event) => setFiltroAgendamento(event.target.value as '' | SimNao)}
+          sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 160 } }}
+        >
+          <MenuItem value="">Todos</MenuItem>
+          <MenuItem value="sim">Sim</MenuItem>
+          <MenuItem value="nao">Não</MenuItem>
+        </TextField>
+        <TextField
+          select
+          size="small"
+          label="Especialidade"
+          value={filtroEspecialidade}
+          onChange={(event) => setFiltroEspecialidade(event.target.value)}
+          sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
+        >
+          <MenuItem value="">Todas</MenuItem>
+          {especialidades.map((especialidade) => (
+            <MenuItem key={especialidade.id} value={String(especialidade.id)}>
+              {especialidade.nome}
+            </MenuItem>
+          ))}
+        </TextField>
+        <Tooltip title={todosExpandidos ? 'Fechar tudo' : 'Abrir tudo'}>
+          <span>
+            <IconButton
+              size="small"
+              color="primary"
+              onClick={() => setTodosExpandidos((prev) => !prev)}
+              disabled={registrosFiltrados.length === 0}
+              aria-label={todosExpandidos ? 'Fechar tudo' : 'Abrir tudo'}
+              sx={{ mt: { xs: 0, sm: 0.5 } }}
+            >
+              {todosExpandidos ? (
+                <UnfoldLessIcon fontSize="small" />
+              ) : (
+                <UnfoldMoreIcon fontSize="small" />
+              )}
+            </IconButton>
+          </span>
+        </Tooltip>
+      </Box>
+
       {loading ? (
-        <Paper sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        <Stack direction="row" spacing={1.5} alignItems="center">
           <CircularProgress size={20} />
           <Typography>Carregando registros...</Typography>
-        </Paper>
+        </Stack>
       ) : null}
 
       {error ? <Alert severity="error">{error}</Alert> : null}
 
-      {!loading && !error && registrosVisiveis.length > 0 ? (
-        <Paper sx={{ p: 2 }}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} flexWrap="wrap">
-            <TextField
-              label="Início"
-              type="date"
-              value={filtroDataInicio}
-              onChange={(event) => setFiltroDataInicio(event.target.value)}
-              InputLabelProps={{ shrink: true }}
-              sx={{ minWidth: 220 }}
-            />
-            <TextField
-              label="Fim"
-              type="date"
-              value={filtroDataFim}
-              onChange={(event) => setFiltroDataFim(event.target.value)}
-              InputLabelProps={{ shrink: true }}
-              sx={{ minWidth: 220 }}
-            />
-            {isAdmin ? (
-              <TextField
-                select
-                label="Filtrar por atendente"
-                value={filtroAtendente}
-                onChange={(event) => setFiltroAtendente(event.target.value)}
-                sx={{ minWidth: 220 }}
-              >
-                <MenuItem value="">Todos</MenuItem>
-                {atendentes.map((atendente) => (
-                  <MenuItem key={atendente} value={atendente}>
-                    {atendente}
-                  </MenuItem>
-                ))}
-              </TextField>
-            ) : null}
-            <Button
-              variant="outlined"
-              onClick={() => {
-                setFiltroDataInicio('')
-                setFiltroDataFim('')
-                if (isAdmin) {
-                  setFiltroAtendente('')
-                }
-              }}
-            >
-              Limpar filtros
-            </Button>
-            <Button
-              variant={modoVisualizacao === 'grafico' ? 'contained' : 'outlined'}
-              startIcon={modoVisualizacao === 'grafico' ? <TableRowsIcon /> : <BarChartIcon />}
-              onClick={() =>
-                setModoVisualizacao((prev) => (prev === 'grafico' ? 'tabela' : 'grafico'))
-              }
-            >
-              {modoVisualizacao === 'grafico' ? 'Ver tabela' : 'Ver gráfico'}
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<DownloadIcon />}
-              onClick={exportarCSV}
-              disabled={registrosFiltrados.length === 0}
-            >
-              Exportar CSV
-            </Button>
-          </Stack>
-        </Paper>
-      ) : null}
-
-      {!loading && !error && registrosVisiveis.length === 0 ? (
-        <Paper sx={{ p: 3 }}>
-          <Typography>Nenhum registro encontrado.</Typography>
-        </Paper>
-      ) : null}
-
-      {!loading && !error && registrosVisiveis.length > 0 && registrosFiltrados.length === 0 ? (
-        <Paper sx={{ p: 3 }}>
-          <Typography>Nenhum registro para os filtros selecionados.</Typography>
-        </Paper>
-      ) : null}
-
-      {!loading && !error && registrosFiltrados.length > 0 && modoVisualizacao === 'tabela' ? (
-        <Paper sx={{ p: 0 }}>
-          <RegistrosTable registros={registrosFiltrados} />
-        </Paper>
-      ) : null}
-
-      {!loading && !error && registrosFiltrados.length > 0 && modoVisualizacao === 'grafico' ? (
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Quantidade de atendimentos por dia
-          </Typography>
-          <Box sx={{ width: '100%', height: 380 }}>
-            <BarChart
-              xAxis={[
-                {
-                  data: dadosGrafico.periodos,
-                  scaleType: 'band',
-                  label: 'Dia',
-                },
-              ]}
-              yAxis={[{ label: 'Quantidade de atendimentos' }]}
-              series={[
-                { data: dadosGrafico.whatsapp, label: 'WhatsApp', stack: 'total' },
-                { data: dadosGrafico.telefone, label: 'Telefone', stack: 'total' },
-                { data: dadosGrafico.outro, label: 'Outro', stack: 'total' },
-              ]}
-            />
-          </Box>
-        </Paper>
+      {!loading && !error ? (
+        registrosFiltrados.length > 0 ? (
+          <Paper sx={{ p: 0 }}>
+            <RegistrosTable registros={registrosFiltrados} expandAll={todosExpandidos} />
+          </Paper>
+        ) : (
+          <Paper sx={{ p: 3 }}>
+            <Typography color="text.secondary">Nenhum registro encontrado.</Typography>
+          </Paper>
+        )
       ) : null}
     </Stack>
   )

@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { Alert, Button, CircularProgress, Stack, Typography } from '@mui/material'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { SaidaForm } from '../components/SaidaForm'
@@ -9,9 +9,7 @@ import { saidaSchema, type SaidaFormValues } from '../schemas/saida.schema'
 import { getLoggedUserId } from '../services/authStorage'
 import { listarLotes } from '../services/stock-batches.service'
 import { criarSaida } from '../services/stock-exits.service'
-import { listarUsuarios } from '../services/users.service'
 import type { LoteEstoque } from '../types/estoque'
-import type { SystemUser } from '../types/user'
 import { toDataInputISO } from '../utils/loteForm'
 
 function dataHojeISO(): string {
@@ -20,13 +18,11 @@ function dataHojeISO(): string {
 
 export function NovaSaidaPage() {
   const navigate = useNavigate()
+  const loggedUserId = getLoggedUserId()
   const [loading, setLoading] = useState(false)
   const [loadingDados, setLoadingDados] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lotes, setLotes] = useState<LoteEstoque[]>([])
-  const [usuarios, setUsuarios] = useState<SystemUser[]>([])
-
-  const loggedUserId = getLoggedUserId()
 
   const {
     register,
@@ -39,7 +35,6 @@ export function NovaSaidaPage() {
     defaultValues: {
       batchId: undefined,
       quantity: undefined,
-      userId: loggedUserId ?? undefined,
       exitDate: dataHojeISO(),
     },
   })
@@ -49,9 +44,8 @@ export function NovaSaidaPage() {
       setLoadingDados(true)
       setError(null)
       try {
-        const [lotesData, usuariosData] = await Promise.all([listarLotes(), listarUsuarios()])
+        const lotesData = await listarLotes()
         setLotes(lotesData.filter((lote) => lote.currentQuantity > 0))
-        setUsuarios(usuariosData)
       } catch {
         setError('Nao foi possivel carregar os dados do formulario.')
       } finally {
@@ -62,19 +56,21 @@ export function NovaSaidaPage() {
     void carregarDados()
   }, [])
 
-  const formularioPronto = useMemo(
-    () => lotes.length > 0 && usuarios.length > 0,
-    [lotes.length, usuarios.length],
-  )
+  const formularioPronto = loggedUserId != null && lotes.length > 0
 
   async function onSubmit(values: SaidaFormValues) {
+    if (loggedUserId == null) {
+      setError('Nao foi possivel identificar o usuario logado.')
+      return
+    }
+
     setLoading(true)
     setError(null)
     try {
       await criarSaida({
         batchId: values.batchId,
         quantity: values.quantity,
-        userId: values.userId,
+        userId: loggedUserId,
         exitDate: values.exitDate,
       })
       reset()
@@ -110,10 +106,12 @@ export function NovaSaidaPage() {
         </Stack>
       ) : null}
 
-      {!loadingDados && !formularioPronto ? (
-        <Alert severity="warning">
-          Cadastre lotes com saldo e usuarios antes de registrar uma saida.
-        </Alert>
+      {!loadingDados && loggedUserId == null ? (
+        <Alert severity="error">Nao foi possivel identificar o usuario logado.</Alert>
+      ) : null}
+
+      {!loadingDados && loggedUserId != null && lotes.length === 0 ? (
+        <Alert severity="warning">Cadastre lotes com saldo antes de registrar uma saida.</Alert>
       ) : null}
 
       {!loadingDados && formularioPronto ? (
@@ -123,7 +121,6 @@ export function NovaSaidaPage() {
             control={control}
             errors={errors}
             lotes={lotes}
-            usuarios={usuarios}
             loading={loading}
             submitLabel="Cadastrar saida"
           />
