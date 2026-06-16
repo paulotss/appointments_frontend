@@ -15,7 +15,7 @@ const optionalNonNegativeNumber = z
 export const loteSchema = z.object({
   productId: z.number().int().positive('Selecione um produto'),
   sectorId: z.number().int().positive('Selecione um setor'),
-  initialQuantity: z.number().int().positive('Informe uma quantidade inicial maior que zero'),
+  initialQuantity: z.number().int().positive('Informe uma quantidade maior que zero'),
   movementDate: z.string().min(1, 'Informe a data de inclusao'),
   userId: z.number().int().positive('Selecione um usuario'),
   locationId: z.number().int().positive('Selecione um local'),

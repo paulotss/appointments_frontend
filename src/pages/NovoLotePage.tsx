@@ -38,7 +38,6 @@ export function NovoLotePage() {
       locationId: undefined,
       userId: loggedUserId ?? undefined,
       initialQuantity: undefined,
-      currentQuantity: undefined,
       value: undefined,
       movementDate: '',
       expirationDate: '',
@@ -136,6 +135,7 @@ export function NovoLotePage() {
             setores={setores}
             locais={locais}
             exibirUsuario={false}
+            exibirQuantidadeAtual={false}
             loading={loading}
             submitLabel="Cadastrar lote"
           />

@@ -18,6 +18,7 @@ interface LoteFormProps {
   locais: LocalArmazenamento[]
   usuarios?: SystemUser[]
   exibirUsuario?: boolean
+  exibirQuantidadeAtual?: boolean
   loading: boolean
   submitLabel: string
 }
@@ -31,6 +32,7 @@ export function LoteForm({
   locais,
   usuarios = [],
   exibirUsuario = true,
+  exibirQuantidadeAtual = true,
   loading,
   submitLabel,
 }: LoteFormProps) {
@@ -131,21 +133,23 @@ export function LoteForm({
         />
       ) : null}
       <TextField
-        label="Qtd. inicial"
+        label={exibirQuantidadeAtual ? 'Qtd. inicial' : 'Quantidade'}
         type="number"
         inputProps={{ min: 1, step: 1 }}
         error={Boolean(errors.initialQuantity)}
         helperText={errors.initialQuantity?.message}
         {...register('initialQuantity', { valueAsNumber: true })}
       />
-      <TextField
-        label="Qtd. atual"
-        type="number"
-        inputProps={{ min: 1, step: 1 }}
-        error={Boolean(errors.currentQuantity)}
-        helperText={errors.currentQuantity?.message ?? 'Opcional. Se vazio, usa a quantidade inicial.'}
-        {...register('currentQuantity', { valueAsNumber: true })}
-      />
+      {exibirQuantidadeAtual ? (
+        <TextField
+          label="Qtd. atual"
+          type="number"
+          inputProps={{ min: 1, step: 1 }}
+          error={Boolean(errors.currentQuantity)}
+          helperText={errors.currentQuantity?.message ?? 'Opcional. Se vazio, usa a quantidade inicial.'}
+          {...register('currentQuantity', { valueAsNumber: true })}
+        />
+      ) : null}
       <TextField
         label="Valor"
         type="number"

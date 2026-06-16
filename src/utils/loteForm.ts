@@ -31,6 +31,7 @@ export function montarPayloadCriacao(values: LoteFormValues): CreateStockBatchRe
     userId: values.userId,
     locationId: values.locationId,
     ...opcionais,
+    currentQuantity: opcionais.currentQuantity ?? values.initialQuantity,
   }
 }
 
