@@ -54,7 +54,6 @@ const allMenuItems: MenuItem[] = [
         label: 'Especialidades atendidas',
         to: '/relatorios/especialidades-atendidas',
       },
-      { kind: 'link', label: 'Estoque', to: '/relatorios/estoque' },
     ],
   },
   {

@@ -22,7 +22,6 @@ import { ChamadasPage } from './pages/ChamadasPage'
 import { NovoRegistroPage } from './pages/NovoRegistroPage'
 import { RegistrosPage } from './pages/RegistrosPage'
 import { NovoUsuarioPage } from './pages/NovoUsuarioPage'
-import { PlaceholderPage } from './pages/PlaceholderPage'
 import { ProdutosConfigPage } from './pages/ProdutosConfigPage'
 import { ProdutosEstoquePage } from './pages/ProdutosEstoquePage'
 import { SaidasPage } from './pages/SaidasPage'
@@ -96,14 +95,6 @@ function App() {
           element={
             <AdminRoute>
               <NovaSaidaPage />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/relatorios/estoque"
-          element={
-            <AdminRoute>
-              <PlaceholderPage title="Relatório de Estoque" />
             </AdminRoute>
           }
         />
