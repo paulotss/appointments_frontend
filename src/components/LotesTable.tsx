@@ -1,5 +1,5 @@
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import EditIcon from '@mui/icons-material/Edit'
 import {
   IconButton,
@@ -18,7 +18,7 @@ import { normalizarValorLote } from '../services/stock-batches.service'
 interface LotesTableProps {
   lotes: LoteEstoque[]
   onEditar: (lote: LoteEstoque) => void
-  onExcluir: (lote: LoteEstoque) => void
+  onFechar: (lote: LoteEstoque) => void
   onChaveCopiada?: () => void
 }
 
@@ -144,7 +144,7 @@ function CabecalhoOrdenavel({
   )
 }
 
-export function LotesTable({ lotes, onEditar, onExcluir, onChaveCopiada }: LotesTableProps) {
+export function LotesTable({ lotes, onEditar, onFechar, onChaveCopiada }: LotesTableProps) {
   const [colunaOrdenacao, setColunaOrdenacao] = useState<ColunaOrdenacao>('id')
   const [direcaoOrdenacao, setDirecaoOrdenacao] = useState<DirecaoOrdenacao>('desc')
 
@@ -277,11 +277,11 @@ export function LotesTable({ lotes, onEditar, onExcluir, onChaveCopiada }: Lotes
                 </IconButton>
                 <IconButton
                   size="small"
-                  color="error"
-                  aria-label="Excluir lote"
-                  onClick={() => onExcluir(lote)}
+                  aria-label="Fechar lote"
+                  disabled={lote.isClosed}
+                  onClick={() => onFechar(lote)}
                 >
-                  <DeleteOutlineIcon fontSize="small" />
+                  <LockOutlinedIcon fontSize="small" />
                 </IconButton>
               </TableCell>
             </TableRow>

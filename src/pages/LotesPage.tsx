@@ -14,8 +14,8 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LotesTable } from '../components/LotesTable'
-import { excluirLote, listarLotes } from '../services/stock-batches.service'
-import type { LoteEstoque } from '../types/estoque'
+import { fecharLote, listarLotes } from '../services/stock-batches.service'
+import type { LoteEstoque, StatusLoteFiltro } from '../types/estoque'
 
 export function LotesPage() {
   const navigate = useNavigate()
@@ -23,6 +23,7 @@ export function LotesPage() {
   const [buscaNome, setBuscaNome] = useState('')
   const [setorFiltro, setSetorFiltro] = useState('')
   const [localFiltro, setLocalFiltro] = useState('')
+  const [statusFiltro, setStatusFiltro] = useState<StatusLoteFiltro>('open')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -33,7 +34,7 @@ export function LotesPage() {
       setLoading(true)
       setError(null)
       try {
-        const data = await listarLotes()
+        const data = await listarLotes(statusFiltro)
         setLotes(data)
       } catch {
         setError('Nao foi possivel carregar os lotes.')
@@ -43,7 +44,7 @@ export function LotesPage() {
     }
 
     void carregarLotes()
-  }, [])
+  }, [statusFiltro])
 
   const setoresDisponiveis = useMemo(() => {
     const map = new Map<number, string>()
@@ -86,19 +87,27 @@ export function LotesPage() {
     navigate(`/estoque/lotes/${lote.id}/editar`)
   }
 
-  async function excluir(lote: LoteEstoque) {
+  async function fechar(lote: LoteEstoque) {
     const nomeProduto = lote.product?.name ?? `lote #${lote.id}`
-    const confirmou = window.confirm(`Confirma excluir o lote do produto "${nomeProduto}"?`)
+    const confirmou = window.confirm(`Confirma fechar o lote do produto "${nomeProduto}"?`)
     if (!confirmou) return
 
     setError(null)
     setSuccess(null)
     try {
-      await excluirLote(lote.id)
-      setLotes((prev) => prev.filter((item) => item.id !== lote.id))
-      setSuccess('Lote excluido com sucesso.')
+      const loteFechado = await fecharLote(lote.id)
+      setLotes((prev) => {
+        if (statusFiltro === 'open') {
+          return prev.filter((item) => item.id !== lote.id)
+        }
+        if (statusFiltro === 'all') {
+          return prev.map((item) => (item.id === lote.id ? loteFechado : item))
+        }
+        return prev
+      })
+      setSuccess('Lote fechado com sucesso.')
     } catch {
-      setError('Nao foi possivel excluir o lote.')
+      setError('Nao foi possivel fechar o lote.')
     }
   }
 
@@ -144,6 +153,18 @@ export function LotesPage() {
             />
             <TextField
               select
+              label="Status"
+              size="small"
+              value={statusFiltro}
+              onChange={(event) => setStatusFiltro(event.target.value as StatusLoteFiltro)}
+              sx={{ minWidth: { xs: '100%', md: 180 } }}
+            >
+              <MenuItem value="open">Abertos</MenuItem>
+              <MenuItem value="closed">Fechados</MenuItem>
+              <MenuItem value="all">Todos</MenuItem>
+            </TextField>
+            <TextField
+              select
               label="Setor"
               size="small"
               value={setorFiltro}
@@ -183,7 +204,7 @@ export function LotesPage() {
               <LotesTable
                 lotes={lotesFiltrados}
                 onEditar={editar}
-                onExcluir={excluir}
+                onFechar={fechar}
                 onChaveCopiada={() => setSnackbarCopiaAberto(true)}
               />
             </Paper>

@@ -5,6 +5,7 @@ import type {
   LoteEstoqueProduto,
   LoteEstoqueSetor,
   LoteEstoqueUsuario,
+  StatusLoteFiltro,
   UpdateStockBatchRequest,
 } from '../types/estoque'
 import { apiClient } from './apiClient'
@@ -22,6 +23,7 @@ interface BackendLote {
   userId: number
   invoiceAccessKey: string | null
   locationId: number
+  isClosed: boolean
   sector: LoteEstoqueSetor
   location: LoteEstoqueLocal
   product?: LoteEstoqueProduto
@@ -42,6 +44,7 @@ function mapBackendLote(item: BackendLote): LoteEstoque {
     userId: item.userId,
     invoiceAccessKey: item.invoiceAccessKey,
     locationId: item.locationId,
+    isClosed: item.isClosed,
     sector: item.sector,
     location: item.location,
     product: item.product,
@@ -55,8 +58,9 @@ export function normalizarValorLote(value: number | string | null | undefined): 
   return Number.isFinite(numero) ? numero : null
 }
 
-export async function listarLotes(): Promise<LoteEstoque[]> {
-  const response = await apiClient.get<BackendLote[]>('/stock-batches')
+export async function listarLotes(status: StatusLoteFiltro = 'open'): Promise<LoteEstoque[]> {
+  const params = status === 'open' ? undefined : { status }
+  const response = await apiClient.get<BackendLote[]>('/stock-batches', { params })
   return response.data.map(mapBackendLote)
 }
 
@@ -78,6 +82,7 @@ export async function atualizarLote(
   return mapBackendLote(response.data)
 }
 
-export async function excluirLote(id: number): Promise<void> {
-  await apiClient.delete(`/stock-batches/${id}`)
+export async function fecharLote(id: number): Promise<LoteEstoque> {
+  const response = await apiClient.patch<BackendLote>(`/stock-batches/${id}/close`)
+  return mapBackendLote(response.data)
 }

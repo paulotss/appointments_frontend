@@ -85,6 +85,8 @@ export interface LoteEstoqueUsuario {
   name: string
 }
 
+export type StatusLoteFiltro = 'open' | 'closed' | 'all'
+
 export interface LoteEstoque {
   id: number
   productId: number
@@ -98,6 +100,7 @@ export interface LoteEstoque {
   userId: number
   invoiceAccessKey: string | number | null
   locationId: number
+  isClosed: boolean
   sector: LoteEstoqueSetor
   location: LoteEstoqueLocal
   product?: LoteEstoqueProduto
