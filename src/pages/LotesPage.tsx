@@ -3,6 +3,7 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   MenuItem,
   Paper,
@@ -14,8 +15,13 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LotesTable } from '../components/LotesTable'
-import { fecharLote, listarLotes } from '../services/stock-batches.service'
+import { fecharLote, listarLotes, normalizarValorLote } from '../services/stock-batches.service'
 import type { LoteEstoque, StatusLoteFiltro } from '../types/estoque'
+
+const formatadorMoeda = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+})
 
 export function LotesPage() {
   const navigate = useNavigate()
@@ -82,6 +88,22 @@ export function LotesPage() {
       return true
     })
   }, [buscaNome, localFiltro, lotes, setorFiltro])
+
+  const resumoFiltrado = useMemo(() => {
+    let valorTotal = 0
+    let quantidadeTotal = 0
+
+    for (const lote of lotesFiltrados) {
+      valorTotal += normalizarValorLote(lote.value) ?? 0
+      quantidadeTotal += lote.currentQuantity
+    }
+
+    return {
+      valorTotal,
+      quantidadeTotal,
+      numeroLinhas: lotesFiltrados.length,
+    }
+  }, [lotesFiltrados])
 
   function editar(lote: LoteEstoque) {
     navigate(`/estoque/lotes/${lote.id}/editar`)
@@ -193,6 +215,27 @@ export function LotesPage() {
                 </MenuItem>
               ))}
             </TextField>
+          </Stack>
+
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Chip
+              label={`Valor total: ${formatadorMoeda.format(resumoFiltrado.valorTotal)}`}
+              size="small"
+              color="default"
+              variant="outlined"
+            />
+            <Chip
+              label={`Quantidade total: ${resumoFiltrado.quantidadeTotal}`}
+              size="small"
+              color="default"
+              variant="outlined"
+            />
+            <Chip
+              label={`Número de linhas: ${resumoFiltrado.numeroLinhas}`}
+              size="small"
+              color="default"
+              variant="outlined"
+            />
           </Stack>
 
           {lotesFiltrados.length === 0 ? (
