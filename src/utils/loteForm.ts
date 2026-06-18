@@ -45,13 +45,9 @@ export function montarPayloadAtualizacao(values: LoteFormValues): UpdateStockBat
   return {
     productId: values.productId,
     sectorId: values.sectorId,
-    initialQuantity: values.initialQuantity,
-    currentQuantity: opcionais.currentQuantity,
     value: opcionais.value,
-    movementDate: values.movementDate,
     expirationDate: opcionais.expirationDate,
     notes: opcionais.notes,
-    userId: values.userId,
     invoiceAccessKey: opcionais.invoiceAccessKey,
     locationId: values.locationId,
   }

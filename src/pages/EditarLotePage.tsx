@@ -10,9 +10,7 @@ import { listarLocais } from '../services/storage-locations.service'
 import { listarProdutos } from '../services/products.service'
 import { atualizarLote, buscarLote, normalizarValorLote } from '../services/stock-batches.service'
 import { listarSetores } from '../services/sectors.service'
-import { listarUsuarios } from '../services/users.service'
 import type { LocalArmazenamento, ProdutoConfig, Setor } from '../types/estoque'
-import type { SystemUser } from '../types/user'
 import { montarPayloadAtualizacao, toDataInputISO } from '../utils/loteForm'
 
 export function EditarLotePage() {
@@ -26,7 +24,6 @@ export function EditarLotePage() {
   const [produtos, setProdutos] = useState<ProdutoConfig[]>([])
   const [setores, setSetores] = useState<Setor[]>([])
   const [locais, setLocais] = useState<LocalArmazenamento[]>([])
-  const [usuarios, setUsuarios] = useState<SystemUser[]>([])
 
   const {
     register,
@@ -62,18 +59,16 @@ export function EditarLotePage() {
       setLoadingDados(true)
       setError(null)
       try {
-        const [lote, produtosData, setoresData, locaisData, usuariosData] = await Promise.all([
+        const [lote, produtosData, setoresData, locaisData] = await Promise.all([
           buscarLote(loteId),
           listarProdutos(),
           listarSetores(),
           listarLocais(),
-          listarUsuarios(),
         ])
 
         setProdutos(produtosData)
         setSetores(setoresData)
         setLocais(locaisData)
-        setUsuarios(usuariosData)
 
         reset({
           productId: lote.productId,
@@ -113,8 +108,7 @@ export function EditarLotePage() {
     }
   }
 
-  const formularioPronto =
-    produtos.length > 0 && setores.length > 0 && locais.length > 0 && usuarios.length > 0
+  const formularioPronto = produtos.length > 0 && setores.length > 0 && locais.length > 0
 
   return (
     <Stack spacing={2}>
@@ -149,7 +143,10 @@ export function EditarLotePage() {
             produtos={produtos}
             setores={setores}
             locais={locais}
-            usuarios={usuarios}
+            exibirUsuario={false}
+            exibirQuantidadeInicial={false}
+            exibirQuantidadeAtual={false}
+            exibirInclusao={false}
             loading={loading}
             submitLabel="Salvar alteracoes"
           />
