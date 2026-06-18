@@ -275,7 +275,7 @@ export function ChamadasPage() {
         </Tooltip>
       </Stack>
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }} flexWrap="wrap">
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-start' }}>
         <TextField
           label="Período inicial"
           type="date"
@@ -283,7 +283,7 @@ export function ChamadasPage() {
           value={dataInicio}
           onChange={(e) => setDataInicio(e.target.value)}
           InputLabelProps={{ shrink: true }}
-          sx={{ minWidth: 220 }}
+          sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
         />
         <TextField
           label="Período final"
@@ -292,9 +292,9 @@ export function ChamadasPage() {
           value={dataFim}
           onChange={(e) => setDataFim(e.target.value)}
           InputLabelProps={{ shrink: true }}
-          sx={{ minWidth: 220 }}
+          sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
         />
-        <FormControl size="small" sx={{ minWidth: 200 }}>
+        <FormControl size="small" sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 200 } }}>
           <InputLabel id="filtro-registro-label">Registro</InputLabel>
           <Select
             labelId="filtro-registro-label"
@@ -308,6 +308,7 @@ export function ChamadasPage() {
           </Select>
         </FormControl>
         <FormControlLabel
+          sx={{ width: { xs: '100%', sm: 'auto' }, m: 0 }}
           control={
             <Checkbox
               checked={mostrarNaoAtendidos}
@@ -317,6 +318,7 @@ export function ChamadasPage() {
           label="Mostrar não atendidos"
         />
         <FormControlLabel
+          sx={{ width: { xs: '100%', sm: 'auto' }, m: 0 }}
           control={
             <Checkbox
               checked={mostrarRealizados}
@@ -325,7 +327,7 @@ export function ChamadasPage() {
           }
           label="Mostrar realizados"
         />
-      </Stack>
+      </Box>
 
       {loading ? (
         <Stack direction="row" spacing={1.5} alignItems="center">
