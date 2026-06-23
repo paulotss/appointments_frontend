@@ -2,9 +2,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import {
   Alert,
+  Autocomplete,
   Button,
   CircularProgress,
-  MenuItem,
   Stack,
   TextField,
   Typography,
@@ -115,24 +115,25 @@ export function NovoProdutoConfigPage() {
             name="categoryId"
             control={control}
             rules={{ required: true }}
-            render={({ field }) => (
-              <TextField
-                select
-                label="Categoria"
-                value={field.value ?? ''}
-                onChange={(event) => field.onChange(Number(event.target.value))}
-                error={Boolean(errors.categoryId)}
-                helperText={errors.categoryId?.message}
-              >
-                <MenuItem value="" disabled>
-                  Selecione uma categoria
-                </MenuItem>
-                {categorias.map((categoria) => (
-                  <MenuItem key={categoria.id} value={categoria.id}>
-                    {categoria.nome}
-                  </MenuItem>
-                ))}
-              </TextField>
+            render={({ field: { onChange, value, ref, onBlur } }) => (
+              <Autocomplete
+                options={categorias}
+                getOptionLabel={(categoria) => categoria.nome}
+                isOptionEqualToValue={(option, selected) => option.id === selected.id}
+                value={categorias.find((categoria) => categoria.id === value) ?? null}
+                onChange={(_, categoria) => onChange(categoria?.id)}
+                onBlur={onBlur}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    inputRef={ref}
+                    label="Categoria"
+                    placeholder="Selecione uma categoria"
+                    error={Boolean(errors.categoryId)}
+                    helperText={errors.categoryId?.message}
+                  />
+                )}
+              />
             )}
           />
           <TextField

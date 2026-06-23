@@ -1,4 +1,5 @@
 import {
+  Autocomplete,
   Button,
   MenuItem,
   Stack,
@@ -45,47 +46,49 @@ export function LoteForm({
       <Controller
         name="productId"
         control={control}
-        render={({ field }) => (
-          <TextField
-            select
-            label="Produto"
-            value={field.value ?? ''}
-            onChange={(event) => field.onChange(Number(event.target.value))}
-            error={Boolean(errors.productId)}
-            helperText={errors.productId?.message}
-          >
-            <MenuItem value="" disabled>
-              Selecione um produto
-            </MenuItem>
-            {produtos.map((produto) => (
-              <MenuItem key={produto.id} value={produto.id}>
-                {produto.nome}
-              </MenuItem>
-            ))}
-          </TextField>
+        render={({ field: { onChange, value, ref, onBlur } }) => (
+          <Autocomplete
+            options={produtos}
+            getOptionLabel={(produto) => produto.nome}
+            isOptionEqualToValue={(option, selected) => option.id === selected.id}
+            value={produtos.find((produto) => produto.id === value) ?? null}
+            onChange={(_, produto) => onChange(produto?.id)}
+            onBlur={onBlur}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                inputRef={ref}
+                label="Produto"
+                placeholder="Selecione um produto"
+                error={Boolean(errors.productId)}
+                helperText={errors.productId?.message}
+              />
+            )}
+          />
         )}
       />
       <Controller
         name="sectorId"
         control={control}
-        render={({ field }) => (
-          <TextField
-            select
-            label="Setor"
-            value={field.value ?? ''}
-            onChange={(event) => field.onChange(Number(event.target.value))}
-            error={Boolean(errors.sectorId)}
-            helperText={errors.sectorId?.message}
-          >
-            <MenuItem value="" disabled>
-              Selecione um setor
-            </MenuItem>
-            {setores.map((setor) => (
-              <MenuItem key={setor.id} value={setor.id}>
-                {setor.nome}
-              </MenuItem>
-            ))}
-          </TextField>
+        render={({ field: { onChange, value, ref, onBlur } }) => (
+          <Autocomplete
+            options={setores}
+            getOptionLabel={(setor) => setor.nome}
+            isOptionEqualToValue={(option, selected) => option.id === selected.id}
+            value={setores.find((setor) => setor.id === value) ?? null}
+            onChange={(_, setor) => onChange(setor?.id)}
+            onBlur={onBlur}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                inputRef={ref}
+                label="Setor"
+                placeholder="Selecione um setor"
+                error={Boolean(errors.sectorId)}
+                helperText={errors.sectorId?.message}
+              />
+            )}
+          />
         )}
       />
       <Controller
