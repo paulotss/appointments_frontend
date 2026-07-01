@@ -34,11 +34,19 @@ export function ProdutosConfigPage() {
   const [categoryIdEdicao, setCategoryIdEdicao] = useState('')
   const [minimumStockEdicao, setMinimumStockEdicao] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
+  const [buscaNome, setBuscaNome] = useState('')
 
   const categoriasPorId = useMemo(
     () => Object.fromEntries(categorias.map((c) => [c.id, c.nome])),
     [categorias],
   )
+
+  const produtosFiltrados = useMemo(() => {
+    const termo = buscaNome.trim().toLowerCase()
+    if (!termo) return produtos
+
+    return produtos.filter((produto) => produto.nome.toLowerCase().includes(termo))
+  }, [buscaNome, produtos])
 
   function abrirEdicao(produto: ProdutoConfig) {
     setEditando(produto)
@@ -153,14 +161,30 @@ export function ProdutosConfigPage() {
       ) : null}
 
       {!loading && !error && produtos.length > 0 ? (
-        <Paper sx={{ p: 0 }}>
-          <ProdutosConfigTable
-            produtos={produtos}
-            categoriasPorId={categoriasPorId}
-            onEditar={abrirEdicao}
-            onExcluir={excluir}
+        <Stack spacing={2}>
+          <TextField
+            label="Buscar por nome"
+            size="small"
+            fullWidth
+            value={buscaNome}
+            onChange={(event) => setBuscaNome(event.target.value)}
           />
-        </Paper>
+
+          {produtosFiltrados.length === 0 ? (
+            <Paper sx={{ p: 3 }}>
+              <Typography>Nenhum produto encontrado para a busca.</Typography>
+            </Paper>
+          ) : (
+            <Paper sx={{ p: 0 }}>
+              <ProdutosConfigTable
+                produtos={produtosFiltrados}
+                categoriasPorId={categoriasPorId}
+                onEditar={abrirEdicao}
+                onExcluir={excluir}
+              />
+            </Paper>
+          )}
+        </Stack>
       ) : null}
 
       <Dialog open={Boolean(editando)} onClose={fecharEdicao} fullWidth maxWidth="sm">

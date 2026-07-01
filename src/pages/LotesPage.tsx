@@ -43,7 +43,7 @@ export function LotesPage() {
         const data = await listarLotes(statusFiltro)
         setLotes(data)
       } catch {
-        setError('Nao foi possivel carregar os lotes.')
+        setError('Nao foi possivel carregar as entradas.')
       } finally {
         setLoading(false)
       }
@@ -110,8 +110,8 @@ export function LotesPage() {
   }
 
   async function fechar(lote: LoteEstoque) {
-    const nomeProduto = lote.product?.name ?? `lote #${lote.id}`
-    const confirmou = window.confirm(`Confirma fechar o lote do produto "${nomeProduto}"?`)
+    const nomeProduto = lote.product?.name ?? `entrada #${lote.id}`
+    const confirmou = window.confirm(`Confirma fechar a entrada do produto "${nomeProduto}"?`)
     if (!confirmou) return
 
     setError(null)
@@ -127,9 +127,9 @@ export function LotesPage() {
         }
         return prev
       })
-      setSuccess('Lote fechado com sucesso.')
+      setSuccess('Entrada fechada com sucesso.')
     } catch {
-      setError('Nao foi possivel fechar o lote.')
+      setError('Nao foi possivel fechar a entrada.')
     }
   }
 
@@ -137,21 +137,21 @@ export function LotesPage() {
     <Stack spacing={2}>
       <Box display="flex" alignItems="center" justifyContent="space-between" gap={2}>
         <Typography variant="h5" fontWeight={700}>
-          Lotes
+          Entradas
         </Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => navigate('/estoque/lotes/novo')}
         >
-          Novo lote
+          Nova entrada
         </Button>
       </Box>
 
       {loading ? (
         <Paper sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <CircularProgress size={20} />
-          <Typography>Carregando lotes...</Typography>
+          <Typography>Carregando entradas...</Typography>
         </Paper>
       ) : null}
       {error ? <Alert severity="error">{error}</Alert> : null}
@@ -159,7 +159,7 @@ export function LotesPage() {
 
       {!loading && !error && lotes.length === 0 ? (
         <Paper sx={{ p: 3 }}>
-          <Typography>Nenhum lote encontrado.</Typography>
+          <Typography>Nenhuma entrada encontrada.</Typography>
         </Paper>
       ) : null}
 
@@ -169,9 +169,9 @@ export function LotesPage() {
             <TextField
               label="Buscar por nome do produto"
               size="small"
-              fullWidth
               value={buscaNome}
               onChange={(event) => setBuscaNome(event.target.value)}
+              sx={{ flex: 1, minWidth: { xs: '100%', md: 220 } }}
             />
             <TextField
               select
@@ -240,7 +240,7 @@ export function LotesPage() {
 
           {lotesFiltrados.length === 0 ? (
             <Paper sx={{ p: 3 }}>
-              <Typography>Nenhum lote encontrado para os filtros selecionados.</Typography>
+              <Typography>Nenhuma entrada encontrada para os filtros selecionados.</Typography>
             </Paper>
           ) : (
             <Paper sx={{ p: 0 }}>

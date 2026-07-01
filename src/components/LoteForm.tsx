@@ -5,10 +5,58 @@ import {
   Stack,
   TextField,
 } from '@mui/material'
+import { useEffect, useState } from 'react'
 import { Controller, type Control, type FieldErrors, type UseFormRegister } from 'react-hook-form'
 import type { LoteFormValues } from '../schemas/lote.schema'
 import type { LocalArmazenamento, ProdutoConfig, Setor } from '../types/estoque'
 import type { SystemUser } from '../types/user'
+import {
+  digitosParaNumeroMoedaBRL,
+  formatarMoedaBRL,
+  normalizarDigitosMoedaBRL,
+  numeroParaDigitosMoedaBRL,
+} from '../utils/moedaBRL'
+
+interface CampoValorMoedaProps {
+  value: number | undefined
+  onChange: (value: number | undefined) => void
+  onBlur: () => void
+  inputRef: React.Ref<HTMLInputElement>
+  error: boolean
+  helperText?: string
+}
+
+function CampoValorMoeda({
+  value,
+  onChange,
+  onBlur,
+  inputRef,
+  error,
+  helperText,
+}: CampoValorMoedaProps) {
+  const [digitos, setDigitos] = useState(() => numeroParaDigitosMoedaBRL(value))
+
+  useEffect(() => {
+    setDigitos(numeroParaDigitosMoedaBRL(value))
+  }, [value])
+
+  return (
+    <TextField
+      label="Valor"
+      value={digitos === '' ? '' : formatarMoedaBRL(digitosParaNumeroMoedaBRL(digitos))}
+      onChange={(event) => {
+        const novosDigitos = normalizarDigitosMoedaBRL(digitos, event.target.value)
+        setDigitos(novosDigitos)
+        onChange(digitosParaNumeroMoedaBRL(novosDigitos))
+      }}
+      onBlur={onBlur}
+      inputRef={inputRef}
+      inputProps={{ inputMode: 'numeric' }}
+      error={error}
+      helperText={helperText}
+    />
+  )
+}
 
 interface LoteFormProps {
   register: UseFormRegister<LoteFormValues>
@@ -159,13 +207,19 @@ export function LoteForm({
           {...register('currentQuantity', { valueAsNumber: true })}
         />
       ) : null}
-      <TextField
-        label="Valor"
-        type="number"
-        inputProps={{ min: 0, step: 0.01 }}
-        error={Boolean(errors.value)}
-        helperText={errors.value?.message}
-        {...register('value', { valueAsNumber: true })}
+      <Controller
+        name="value"
+        control={control}
+        render={({ field: { onChange, onBlur, value, ref } }) => (
+          <CampoValorMoeda
+            value={value}
+            onChange={onChange}
+            onBlur={onBlur}
+            inputRef={ref}
+            error={Boolean(errors.value)}
+            helperText={errors.value?.message}
+          />
+        )}
       />
       {exibirInclusao ? (
         <TextField
