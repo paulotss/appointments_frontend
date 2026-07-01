@@ -82,7 +82,7 @@ export function NovoLotePage() {
       reset()
       navigate('/estoque/lotes', { replace: true })
     } catch {
-      setError('Nao foi possivel cadastrar o lote.')
+      setError('Nao foi possivel cadastrar a entrada.')
     } finally {
       setLoading(false)
     }
@@ -95,7 +95,7 @@ export function NovoLotePage() {
     <Stack spacing={2}>
       <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
         <Typography variant="h5" fontWeight={700}>
-          Novo lote
+          Nova entrada
         </Typography>
         <Button
           variant="outlined"
@@ -121,7 +121,7 @@ export function NovoLotePage() {
 
       {!loadingDados && loggedUserId != null && !formularioPronto ? (
         <Alert severity="warning">
-          Cadastre produtos, setores e locais antes de criar um lote.
+          Cadastre produtos, setores e locais antes de criar uma entrada.
         </Alert>
       ) : null}
 
@@ -138,7 +138,7 @@ export function NovoLotePage() {
             exibirQuantidadeAtual={false}
             exibirInclusao={false}
             loading={loading}
-            submitLabel="Cadastrar lote"
+            submitLabel="Cadastrar entrada"
           />
         </Stack>
       ) : null}

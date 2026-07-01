@@ -7,9 +7,10 @@ import { useNavigate } from 'react-router-dom'
 import { SaidaForm } from '../components/SaidaForm'
 import { saidaSchema, type SaidaFormValues } from '../schemas/saida.schema'
 import { getLoggedUserId } from '../services/authStorage'
+import { listarProdutos } from '../services/products.service'
 import { listarLotes } from '../services/stock-batches.service'
 import { criarSaida } from '../services/stock-exits.service'
-import type { LoteEstoque } from '../types/estoque'
+import type { LoteEstoque, ProdutoConfig } from '../types/estoque'
 import { toDataInputISO } from '../utils/loteForm'
 
 function dataHojeISO(): string {
@@ -22,6 +23,7 @@ export function NovaSaidaPage() {
   const [loading, setLoading] = useState(false)
   const [loadingDados, setLoadingDados] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [produtos, setProdutos] = useState<ProdutoConfig[]>([])
   const [lotes, setLotes] = useState<LoteEstoque[]>([])
 
   const {
@@ -29,13 +31,17 @@ export function NovaSaidaPage() {
     handleSubmit,
     reset,
     control,
+    trigger,
+    resetField,
+    watch,
     formState: { errors },
   } = useForm<SaidaFormValues>({
     resolver: zodResolver(saidaSchema),
     defaultValues: {
+      productId: undefined,
+      locationId: undefined,
       batchId: undefined,
       quantity: undefined,
-      exitDate: dataHojeISO(),
     },
   })
 
@@ -44,7 +50,11 @@ export function NovaSaidaPage() {
       setLoadingDados(true)
       setError(null)
       try {
-        const lotesData = await listarLotes()
+        const [produtosData, lotesData] = await Promise.all([
+          listarProdutos(),
+          listarLotes(),
+        ])
+        setProdutos(produtosData.filter((produto) => produto.isActive))
         setLotes(lotesData.filter((lote) => lote.currentQuantity > 0))
       } catch {
         setError('Nao foi possivel carregar os dados do formulario.')
@@ -64,6 +74,17 @@ export function NovaSaidaPage() {
       return
     }
 
+    const lote = lotes.find((item) => item.id === values.batchId)
+    if (lote == null) {
+      setError('Lote selecionado nao encontrado.')
+      return
+    }
+
+    if (values.quantity > lote.currentQuantity) {
+      setError('Quantidade maior que o saldo disponivel.')
+      return
+    }
+
     setLoading(true)
     setError(null)
     try {
@@ -71,7 +92,7 @@ export function NovaSaidaPage() {
         batchId: values.batchId,
         quantity: values.quantity,
         userId: loggedUserId,
-        exitDate: values.exitDate,
+        exitDate: dataHojeISO(),
       })
       reset()
       navigate('/estoque/saidas', { replace: true })
@@ -120,6 +141,10 @@ export function NovaSaidaPage() {
             register={register}
             control={control}
             errors={errors}
+            trigger={trigger}
+            resetField={resetField}
+            watch={watch}
+            produtos={produtos}
             lotes={lotes}
             loading={loading}
             submitLabel="Cadastrar saida"
