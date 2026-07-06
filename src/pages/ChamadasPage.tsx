@@ -9,6 +9,7 @@ import {
   Box,
   Button,
   Checkbox,
+  Chip,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -37,6 +38,8 @@ import { useNavigate } from 'react-router-dom'
 import { atualizarChamada, listarChamadas } from '../services/calls.service'
 import { getIsAdmin, getLoggedUserId } from '../services/authStorage'
 import type { Call, CallRecordStatus, CallStatus } from '../types/call'
+
+type FiltroRegistro = CallRecordStatus | 'all'
 
 function getHojeLocalISO(): string {
   const agora = new Date()
@@ -125,7 +128,7 @@ export function ChamadasPage() {
 
   const [mostrarNaoAtendidos, setMostrarNaoAtendidos] = useState(false)
   const [mostrarRealizados, setMostrarRealizados] = useState(false)
-  const [filtroRegistro, setFiltroRegistro] = useState<CallRecordStatus>('pending')
+  const [filtroRegistro, setFiltroRegistro] = useState<FiltroRegistro>('pending')
 
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [cancelTarget, setCancelTarget] = useState<Call | null>(null)
@@ -149,7 +152,7 @@ export function ChamadasPage() {
     void carregar()
   }, [carregar])
 
-  const chamadasFiltradas = useMemo(() => {
+  const chamadasPorFiltrosGerais = useMemo(() => {
     const ini = dataInicio <= dataFim ? dataInicio : dataFim
     const fim = dataFim >= dataInicio ? dataFim : dataInicio
 
@@ -162,9 +165,6 @@ export function ChamadasPage() {
     }
 
     return chamadas.filter((c) => {
-      if (c.recordStatus !== filtroRegistro) {
-        return false
-      }
       if (!statusPermitidos.has(c.status)) {
         return false
       }
@@ -184,12 +184,39 @@ export function ChamadasPage() {
     chamadas,
     dataInicio,
     dataFim,
-    filtroRegistro,
     isAdmin,
     loggedUserId,
     mostrarNaoAtendidos,
     mostrarRealizados,
   ])
+
+  const chamadasFiltradas = useMemo(() => {
+    if (filtroRegistro === 'all') {
+      return chamadasPorFiltrosGerais
+    }
+    return chamadasPorFiltrosGerais.filter((c) => c.recordStatus === filtroRegistro)
+  }, [chamadasPorFiltrosGerais, filtroRegistro])
+
+  const totaisRegistro = useMemo(() => {
+    let pendentes = 0
+    let registradas = 0
+    let canceladas = 0
+    for (const chamada of chamadasPorFiltrosGerais) {
+      if (chamada.recordStatus === 'registered') {
+        registradas += 1
+      } else if (chamada.recordStatus === 'cancelled') {
+        canceladas += 1
+      } else {
+        pendentes += 1
+      }
+    }
+    return {
+      pendentes,
+      registradas,
+      canceladas,
+      total: chamadasPorFiltrosGerais.length,
+    }
+  }, [chamadasPorFiltrosGerais])
 
   function abrirCancelar(chamada: Call) {
     if (chamada.recordStatus !== 'pending') {
@@ -300,8 +327,9 @@ export function ChamadasPage() {
             labelId="filtro-registro-label"
             label="Registro"
             value={filtroRegistro}
-            onChange={(e) => setFiltroRegistro(e.target.value as CallRecordStatus)}
+            onChange={(e) => setFiltroRegistro(e.target.value as FiltroRegistro)}
           >
+            <MenuItem value="all">Todos</MenuItem>
             <MenuItem value="pending">Pendente</MenuItem>
             <MenuItem value="registered">Registrados</MenuItem>
             <MenuItem value="cancelled">Cancelados</MenuItem>
@@ -338,7 +366,31 @@ export function ChamadasPage() {
       {error ? <Alert severity="error">{error}</Alert> : null}
 
       {!loading ? (
-        <TableContainer component={Paper}>
+        <>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Chip
+              label={`Pendentes: ${totaisRegistro.pendentes}`}
+              size="small"
+              sx={{ bgcolor: recordStatusColor('pending'), color: '#000' }}
+            />
+            <Chip
+              label={`Registradas: ${totaisRegistro.registradas}`}
+              size="small"
+              sx={{ bgcolor: recordStatusColor('registered'), color: '#fff' }}
+            />
+            <Chip
+              label={`Canceladas: ${totaisRegistro.canceladas}`}
+              size="small"
+              sx={{ bgcolor: recordStatusColor('cancelled'), color: '#fff' }}
+            />
+            <Chip
+              label={`Total: ${totaisRegistro.total}`}
+              size="small"
+              sx={{ bgcolor: '#000', color: '#fff' }}
+            />
+          </Stack>
+
+          <TableContainer component={Paper}>
           <Table size="small">
             <TableHead>
               <TableRow>
@@ -434,6 +486,7 @@ export function ChamadasPage() {
             </TableBody>
           </Table>
         </TableContainer>
+        </>
       ) : null}
 
       <Dialog
