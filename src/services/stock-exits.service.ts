@@ -7,6 +7,7 @@ interface BackendSaida {
   quantity: number
   userId: number
   exitDate: string
+  healthProfessionalId?: number | null
   batch: {
     id: number
     productId: number
@@ -20,6 +21,10 @@ interface BackendSaida {
     id: number
     name: string
   }
+  healthProfessional?: {
+    id: number
+    name: string
+  } | null
 }
 
 function mapBackendSaida(item: BackendSaida): SaidaEstoque {
@@ -29,6 +34,7 @@ function mapBackendSaida(item: BackendSaida): SaidaEstoque {
     quantity: item.quantity,
     userId: item.userId,
     exitDate: item.exitDate,
+    healthProfessionalId: item.healthProfessionalId ?? null,
     batch: {
       id: item.batch.id,
       productId: item.batch.productId,
@@ -36,6 +42,7 @@ function mapBackendSaida(item: BackendSaida): SaidaEstoque {
       product: item.batch.product,
     },
     user: item.user,
+    healthProfessional: item.healthProfessional ?? null,
   }
 }
 

@@ -22,8 +22,10 @@ import { ChamadasPage } from './pages/ChamadasPage'
 import { NovoRegistroPage } from './pages/NovoRegistroPage'
 import { RegistrosPage } from './pages/RegistrosPage'
 import { NovoUsuarioPage } from './pages/NovoUsuarioPage'
+import { NovoProfissionalPage } from './pages/NovoProfissionalPage'
 import { ProdutosConfigPage } from './pages/ProdutosConfigPage'
 import { ProdutosEstoquePage } from './pages/ProdutosEstoquePage'
+import { ProfissionaisPage } from './pages/ProfissionaisPage'
 import { SaidasPage } from './pages/SaidasPage'
 import { SetoresPage } from './pages/SetoresPage'
 import { UsuariosPage } from './pages/UsuariosPage'
@@ -191,6 +193,22 @@ function App() {
           element={
             <AdminRoute>
               <NovoUsuarioPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/profissionais"
+          element={
+            <AdminRoute>
+              <ProfissionaisPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/profissionais/novo"
+          element={
+            <AdminRoute>
+              <NovoProfissionalPage />
             </AdminRoute>
           }
         />

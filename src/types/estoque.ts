@@ -186,14 +186,21 @@ export interface SaidaEstoqueUsuario {
   name: string
 }
 
+export interface SaidaEstoqueProfissional {
+  id: number
+  name: string
+}
+
 export interface SaidaEstoque {
   id: number
   batchId: number
   quantity: number
   userId: number
   exitDate: string
+  healthProfessionalId?: number | null
   batch: SaidaEstoqueBatch
   user: SaidaEstoqueUsuario
+  healthProfessional?: SaidaEstoqueProfissional | null
 }
 
 export interface CreateStockExitRequest {
@@ -202,4 +209,5 @@ export interface CreateStockExitRequest {
   unit?: StockUnit
   userId: number
   exitDate: string
+  healthProfessionalId?: number
 }

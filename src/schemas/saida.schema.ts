@@ -6,6 +6,7 @@ export const saidaSchema = z.object({
   batchId: z.number().int().positive('Selecione um lote'),
   quantity: z.number().int().positive('Informe uma quantidade maior que zero'),
   unit: z.enum(['UNIT', 'BOX'], { required_error: 'Selecione a unidade' }),
+  healthProfessionalId: z.number().int().positive().optional().nullable(),
 })
 
 export type SaidaFormValues = z.infer<typeof saidaSchema>

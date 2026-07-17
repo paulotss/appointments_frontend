@@ -22,6 +22,7 @@ type ColunaOrdenacao =
   | 'location'
   | 'quantity'
   | 'user'
+  | 'professional'
   | 'exitDate'
 
 type DirecaoOrdenacao = 'asc' | 'desc'
@@ -90,6 +91,15 @@ function compararSaidas(
         (a.user?.name ?? '').localeCompare(b.user?.name ?? '', 'pt-BR', {
           sensitivity: 'base',
         })
+      )
+    case 'professional':
+      return (
+        fator *
+        (a.healthProfessional?.name ?? '').localeCompare(
+          b.healthProfessional?.name ?? '',
+          'pt-BR',
+          { sensitivity: 'base' },
+        )
       )
     default:
       return 0
@@ -185,6 +195,13 @@ export function SaidasTable({ saidas, produtosPorId, locaisPorId }: SaidasTableP
               onOrdenar={alternarOrdenacao}
             />
             <CabecalhoOrdenavel
+              coluna="professional"
+              label="Profissional"
+              colunaAtiva={colunaOrdenacao}
+              direcao={direcaoOrdenacao}
+              onOrdenar={alternarOrdenacao}
+            />
+            <CabecalhoOrdenavel
               coluna="exitDate"
               label="Data Saída"
               colunaAtiva={colunaOrdenacao}
@@ -201,6 +218,7 @@ export function SaidasTable({ saidas, produtosPorId, locaisPorId }: SaidasTableP
               <TableCell>{obterNomeLocal(saida, locaisPorId)}</TableCell>
               <TableCell>{saida.quantity}</TableCell>
               <TableCell>{saida.user?.name ?? '-'}</TableCell>
+              <TableCell>{saida.healthProfessional?.name ?? '—'}</TableCell>
               <TableCell>{formatarData(saida.exitDate)}</TableCell>
             </TableRow>
           ))}

@@ -23,6 +23,7 @@ import {
 } from 'react-hook-form'
 import type { SaidaFormValues } from '../schemas/saida.schema'
 import type { LoteEstoque, ProdutoConfig, StockUnit } from '../types/estoque'
+import type { HealthProfessional } from '../types/profissional'
 import {
   labelUnidadePlural,
   podeUsarCaixa,
@@ -38,6 +39,7 @@ interface SaidaFormProps {
   watch: UseFormWatch<SaidaFormValues>
   produtos: ProdutoConfig[]
   lotes: LoteEstoque[]
+  profissionais: HealthProfessional[]
   loading: boolean
   submitLabel: string
 }
@@ -86,6 +88,7 @@ export function SaidaForm({
   watch,
   produtos,
   lotes,
+  profissionais,
   loading,
   submitLabel,
 }: SaidaFormProps) {
@@ -326,6 +329,7 @@ export function SaidaForm({
             unidadeSaida={unidadeSaida}
             saldoEmUnidadeEntrada={saldoEmUnidadeEntrada}
             loteSelecionado={loteSelecionado}
+            profissionais={profissionais}
           />
           <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
             <Button type="submit" variant="contained" disabled={loading}>
@@ -350,6 +354,7 @@ function StackCamposQuantidade({
   unidadeSaida,
   saldoEmUnidadeEntrada,
   loteSelecionado,
+  profissionais,
 }: {
   control: Control<SaidaFormValues>
   errors: FieldErrors<SaidaFormValues>
@@ -359,6 +364,7 @@ function StackCamposQuantidade({
   unidadeSaida: StockUnit
   saldoEmUnidadeEntrada: number | undefined
   loteSelecionado: LoteEstoque | undefined
+  profissionais: HealthProfessional[]
 }) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -404,6 +410,33 @@ function StackCamposQuantidade({
             : undefined)
         }
         {...register('quantity', { valueAsNumber: true })}
+      />
+      <Controller
+        name="healthProfessionalId"
+        control={control}
+        render={({ field: { onChange, value, ref, onBlur } }) => (
+          <Autocomplete
+            fullWidth
+            options={profissionais}
+            getOptionLabel={(profissional) => profissional.name}
+            isOptionEqualToValue={(option, selected) => option.id === selected.id}
+            value={profissionais.find((profissional) => profissional.id === value) ?? null}
+            onChange={(_, profissional) => {
+              onChange(profissional?.id ?? null)
+            }}
+            onBlur={onBlur}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                inputRef={ref}
+                label="Profissional (opcional)"
+                placeholder="Selecione um profissional"
+                error={Boolean(errors.healthProfessionalId)}
+                helperText={errors.healthProfessionalId?.message}
+              />
+            )}
+          />
+        )}
       />
     </Box>
   )
