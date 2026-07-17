@@ -172,7 +172,7 @@ export function SaidasTable({ saidas, produtosPorId, locaisPorId }: SaidasTableP
             />
             <CabecalhoOrdenavel
               coluna="quantity"
-              label="Quantidade"
+              label="Quantidade (un.)"
               colunaAtiva={colunaOrdenacao}
               direcao={direcaoOrdenacao}
               onOrdenar={alternarOrdenacao}

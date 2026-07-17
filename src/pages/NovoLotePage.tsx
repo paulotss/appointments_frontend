@@ -29,6 +29,7 @@ export function NovoLotePage() {
     handleSubmit,
     reset,
     control,
+    setValue,
     formState: { errors },
   } = useForm<LoteFormValues>({
     resolver: zodResolver(loteSchema),
@@ -38,6 +39,7 @@ export function NovoLotePage() {
       locationId: undefined,
       userId: loggedUserId ?? undefined,
       initialQuantity: undefined,
+      unit: 'UNIT',
       value: undefined,
       movementDate: dataHojeISO(),
       expirationDate: '',
@@ -131,6 +133,7 @@ export function NovoLotePage() {
             register={register}
             control={control}
             errors={errors}
+            setValue={setValue}
             produtos={produtos}
             setores={setores}
             locais={locais}

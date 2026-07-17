@@ -1,3 +1,7 @@
+export type StockUnit = 'UNIT' | 'BOX'
+
+export type ValueMode = 'PER_ENTRY_UNIT' | 'PER_BASE_UNIT'
+
 export interface Categoria {
   id: number
   nome: string
@@ -17,6 +21,8 @@ export interface ProdutoConfig {
   sku: string
   categoryId: number
   minimumStock: number
+  baseUnit: StockUnit
+  unitsPerPackage: number
   isActive: boolean
 }
 
@@ -25,6 +31,7 @@ export interface CreateProductRequest {
   sku: string
   categoryId: number
   minimumStock: number
+  unitsPerPackage?: number
 }
 
 export interface UpdateProductRequest {
@@ -32,6 +39,7 @@ export interface UpdateProductRequest {
   sku?: string
   categoryId?: number
   minimumStock?: number
+  unitsPerPackage?: number
 }
 
 export interface Setor {
@@ -78,6 +86,13 @@ export interface LoteEstoqueLocal {
 export interface LoteEstoqueProduto {
   id: number
   name: string
+  sku?: string
+  isActive?: boolean
+  categoryId?: number
+  registeredAt?: string
+  minimumStock?: number
+  baseUnit?: StockUnit
+  unitsPerPackage?: number
 }
 
 export interface LoteEstoqueUsuario {
@@ -93,7 +108,7 @@ export interface LoteEstoque {
   sectorId: number
   initialQuantity: number
   currentQuantity: number
-  value: number | string | null
+  unitCost: number | string | null
   movementDate: string
   expirationDate: string | null
   notes: string | null
@@ -111,11 +126,13 @@ export interface CreateStockBatchRequest {
   productId: number
   sectorId: number
   initialQuantity: number
+  unit: StockUnit
   movementDate: string
   userId: number
   locationId: number
   currentQuantity?: number
   value?: number
+  valueMode?: ValueMode
   expirationDate?: string
   notes?: string
   invoiceAccessKey?: string
@@ -126,7 +143,10 @@ export interface UpdateStockBatchRequest {
   sectorId?: number
   initialQuantity?: number
   currentQuantity?: number
+  unit?: StockUnit
   value?: number
+  valueMode?: ValueMode
+  unitCost?: number
   movementDate?: string
   expirationDate?: string
   notes?: string
@@ -139,10 +159,13 @@ export interface ProdutoEstoqueConsolidado {
   name: string
   sku: string
   totalQuantity: number
-  averagePrice: number
+  totalValue: number | null
+  averagePrice: number | null
   expiringBatchesCount: number
   expiredBatchesCount: number
   minimumStock: number
+  baseUnit: StockUnit
+  unitsPerPackage: number
   stockBatches: LoteEstoque[]
 }
 
@@ -176,6 +199,7 @@ export interface SaidaEstoque {
 export interface CreateStockExitRequest {
   batchId: number
   quantity: number
+  unit?: StockUnit
   userId: number
   exitDate: string
 }

@@ -37,6 +37,7 @@ export function NovoProdutoConfigPage() {
       sku: '',
       categoryId: undefined,
       minimumStock: 0,
+      unitsPerPackage: 1,
     },
   })
 
@@ -137,12 +138,22 @@ export function NovoProdutoConfigPage() {
             )}
           />
           <TextField
-            label="Estoque minimo"
+            label="Estoque minimo (unidades)"
             type="number"
             inputProps={{ min: 0, step: 1 }}
             error={Boolean(errors.minimumStock)}
-            helperText={errors.minimumStock?.message}
+            helperText={errors.minimumStock?.message ?? 'Em unidade base'}
             {...register('minimumStock', { valueAsNumber: true })}
+          />
+          <TextField
+            label="Unidades por caixa"
+            type="number"
+            inputProps={{ min: 1, step: 1 }}
+            error={Boolean(errors.unitsPerPackage)}
+            helperText={
+              errors.unitsPerPackage?.message ?? '1 = produto sem embalagem util'
+            }
+            {...register('unitsPerPackage', { valueAsNumber: true })}
           />
           <Button type="submit" variant="contained" disabled={loading || categorias.length === 0}>
             {loading ? 'Salvando...' : 'Cadastrar produto'}

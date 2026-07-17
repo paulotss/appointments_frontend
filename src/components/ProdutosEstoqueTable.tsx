@@ -45,7 +45,9 @@ function compararProdutos(
     return fator * a[coluna].localeCompare(b[coluna], 'pt-BR', { sensitivity: 'base' })
   }
 
-  return fator * (a[coluna] - b[coluna])
+  const valorA = a[coluna] ?? 0
+  const valorB = b[coluna] ?? 0
+  return fator * (valorA - valorB)
 }
 
 const formatadorMoeda = new Intl.NumberFormat('pt-BR', {
@@ -116,9 +118,9 @@ function LotesCollapse({ lotes }: { lotes: LoteEstoque[] }) {
         <TableHead>
           <TableRow>
             <TableCell>Setor</TableCell>
-            <TableCell>Quantidade inicial</TableCell>
-            <TableCell>Quantidade atual</TableCell>
-            <TableCell>Valor</TableCell>
+            <TableCell>Quantidade inicial (un.)</TableCell>
+            <TableCell>Quantidade atual (un.)</TableCell>
+            <TableCell>Custo unit.</TableCell>
             <TableCell>Data de movimentação</TableCell>
             <TableCell>Data de validade</TableCell>
             <TableCell>Local</TableCell>
@@ -130,7 +132,7 @@ function LotesCollapse({ lotes }: { lotes: LoteEstoque[] }) {
               <TableCell>{lote.sector?.name ?? '-'}</TableCell>
               <TableCell>{lote.initialQuantity}</TableCell>
               <TableCell>{lote.currentQuantity}</TableCell>
-              <TableCell>{formatarValor(lote.value)}</TableCell>
+              <TableCell>{formatarValor(lote.unitCost)}</TableCell>
               <TableCell>{formatarData(lote.movementDate)}</TableCell>
               <TableCell>{formatarData(lote.expirationDate)}</TableCell>
               <TableCell>{lote.location?.name ?? '-'}</TableCell>
@@ -162,7 +164,9 @@ function ProdutoEstoqueRow({ produto }: { produto: ProdutoEstoqueConsolidado }) 
         <TableCell>
           <QuantidadeTotal quantidade={produto.totalQuantity} estoqueMinimo={produto.minimumStock} />
         </TableCell>
-        <TableCell>{formatadorMoeda.format(produto.averagePrice)}</TableCell>
+        <TableCell>
+          {produto.averagePrice != null ? formatadorMoeda.format(produto.averagePrice) : '-'}
+        </TableCell>
         <TableCell>
           <ContadorLotes valor={produto.expiringBatchesCount} tipo="expiring" />
         </TableCell>
@@ -250,7 +254,7 @@ export function ProdutosEstoqueTable({ produtos }: ProdutosEstoqueTableProps) {
             />
             <CabecalhoOrdenavel
               coluna="totalQuantity"
-              label="Quantidade total"
+              label="Quantidade total (un.)"
               colunaAtiva={colunaOrdenacao}
               direcao={direcaoOrdenacao}
               onOrdenar={alternarOrdenacao}
@@ -278,7 +282,7 @@ export function ProdutosEstoqueTable({ produtos }: ProdutosEstoqueTableProps) {
             />
             <CabecalhoOrdenavel
               coluna="minimumStock"
-              label="Estoque mínimo"
+              label="Estoque mínimo (un.)"
               colunaAtiva={colunaOrdenacao}
               direcao={direcaoOrdenacao}
               onOrdenar={alternarOrdenacao}

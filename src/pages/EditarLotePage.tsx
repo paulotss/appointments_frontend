@@ -30,6 +30,7 @@ export function EditarLotePage() {
     handleSubmit,
     reset,
     control,
+    setValue,
     formState: { errors },
   } = useForm<LoteFormValues>({
     resolver: zodResolver(loteSchema),
@@ -40,6 +41,7 @@ export function EditarLotePage() {
       userId: undefined,
       initialQuantity: undefined,
       currentQuantity: undefined,
+      unit: 'UNIT',
       value: undefined,
       movementDate: '',
       expirationDate: '',
@@ -77,7 +79,8 @@ export function EditarLotePage() {
           userId: lote.userId,
           initialQuantity: lote.initialQuantity,
           currentQuantity: lote.currentQuantity,
-          value: normalizarValorLote(lote.value) ?? undefined,
+          unit: 'UNIT',
+          value: normalizarValorLote(lote.unitCost) ?? undefined,
           movementDate: toDataInputISO(lote.movementDate),
           expirationDate: toDataInputISO(lote.expirationDate),
           notes: lote.notes ?? '',
@@ -140,12 +143,14 @@ export function EditarLotePage() {
             register={register}
             control={control}
             errors={errors}
+            setValue={setValue}
             produtos={produtos}
             setores={setores}
             locais={locais}
             exibirUsuario={false}
             exibirQuantidadeInicial={false}
             exibirQuantidadeAtual={false}
+            exibirUnidade={false}
             exibirInclusao={false}
             loading={loading}
             submitLabel="Salvar alteracoes"

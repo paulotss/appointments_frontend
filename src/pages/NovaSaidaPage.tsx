@@ -12,6 +12,7 @@ import { listarLotes } from '../services/stock-batches.service'
 import { criarSaida } from '../services/stock-exits.service'
 import type { LoteEstoque, ProdutoConfig } from '../types/estoque'
 import { toDataInputISO } from '../utils/loteForm'
+import { paraUnidadesBase } from '../utils/stockUnit'
 
 function dataHojeISO(): string {
   return toDataInputISO(new Date().toISOString())
@@ -33,6 +34,7 @@ export function NovaSaidaPage() {
     control,
     trigger,
     resetField,
+    setValue,
     watch,
     formState: { errors },
   } = useForm<SaidaFormValues>({
@@ -42,6 +44,7 @@ export function NovaSaidaPage() {
       locationId: undefined,
       batchId: undefined,
       quantity: undefined,
+      unit: 'UNIT',
     },
   })
 
@@ -80,7 +83,12 @@ export function NovaSaidaPage() {
       return
     }
 
-    if (values.quantity > lote.currentQuantity) {
+    const produto = produtos.find((item) => item.id === values.productId)
+    const unitsPerPackage =
+      produto?.unitsPerPackage ?? lote.product?.unitsPerPackage ?? 1
+    const quantidadeBase = paraUnidadesBase(values.quantity, values.unit, unitsPerPackage)
+
+    if (quantidadeBase > lote.currentQuantity) {
       setError('Quantidade maior que o saldo disponivel.')
       return
     }
@@ -91,6 +99,7 @@ export function NovaSaidaPage() {
       await criarSaida({
         batchId: values.batchId,
         quantity: values.quantity,
+        unit: values.unit,
         userId: loggedUserId,
         exitDate: dataHojeISO(),
       })
@@ -143,6 +152,7 @@ export function NovaSaidaPage() {
             errors={errors}
             trigger={trigger}
             resetField={resetField}
+            setValue={setValue}
             watch={watch}
             produtos={produtos}
             lotes={lotes}

@@ -31,11 +31,13 @@ export function montarPayloadCriacao(values: LoteFormValues): CreateStockBatchRe
     productId: values.productId,
     sectorId: values.sectorId,
     initialQuantity: values.initialQuantity,
+    unit: values.unit,
     movementDate: dataHojeISO(),
     userId: values.userId,
     locationId: values.locationId,
     ...opcionais,
     currentQuantity: opcionais.currentQuantity ?? values.initialQuantity,
+    ...(opcionais.value != null ? { valueMode: 'PER_ENTRY_UNIT' as const } : {}),
   }
 }
 
@@ -45,7 +47,7 @@ export function montarPayloadAtualizacao(values: LoteFormValues): UpdateStockBat
   return {
     productId: values.productId,
     sectorId: values.sectorId,
-    value: opcionais.value,
+    ...(opcionais.value != null ? { unitCost: opcionais.value } : {}),
     expirationDate: opcionais.expirationDate,
     notes: opcionais.notes,
     invoiceAccessKey: opcionais.invoiceAccessKey,

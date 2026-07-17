@@ -16,6 +16,7 @@ export const loteSchema = z.object({
   productId: z.number().int().positive('Selecione um produto'),
   sectorId: z.number().int().positive('Selecione um setor'),
   initialQuantity: z.number().int().positive('Informe uma quantidade maior que zero'),
+  unit: z.enum(['UNIT', 'BOX'], { required_error: 'Selecione a unidade' }),
   movementDate: z.string().min(1, 'Informe a data de inclusao'),
   userId: z.number().int().positive('Selecione um usuario'),
   locationId: z.number().int().positive('Selecione um local'),

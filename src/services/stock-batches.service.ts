@@ -16,7 +16,7 @@ interface BackendLote {
   sectorId: number
   initialQuantity: number
   currentQuantity: number
-  value: number | string | null
+  unitCost: number | string | null
   movementDate: string
   expirationDate: string | null
   notes: string | null
@@ -37,7 +37,7 @@ function mapBackendLote(item: BackendLote): LoteEstoque {
     sectorId: item.sectorId,
     initialQuantity: item.initialQuantity,
     currentQuantity: item.currentQuantity,
-    value: item.value,
+    unitCost: item.unitCost,
     movementDate: item.movementDate,
     expirationDate: item.expirationDate,
     notes: item.notes,
