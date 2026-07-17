@@ -22,7 +22,7 @@ import { RegistrosTable } from '../components/RegistrosTable'
 import { getIsAdmin, getLoggedUser } from '../services/authStorage'
 import { listarRegistros } from '../services/registros.service'
 import { listarUsuarios } from '../services/users.service'
-import type { RegistroAtendimento, SimNao } from '../types/registro'
+import type { RegistroAtendimento, SimNao, TipoAtendimento } from '../types/registro'
 
 function getHojeLocalISO(): string {
   const agora = new Date()
@@ -74,6 +74,7 @@ export function RegistrosPage() {
   const [filtroDataFim, setFiltroDataFim] = useState(filtroDataPadrao)
   /** Valor inicial vazio; apos carregar usuarios da API alinhamos ao rotulo exato das opcoes (ex.: nome | ramal). */
   const [filtroAtendente, setFiltroAtendente] = useState('')
+  const [filtroAtendimento, setFiltroAtendimento] = useState<'' | TipoAtendimento>('')
   const [filtroPrimeiraVez, setFiltroPrimeiraVez] = useState<'' | SimNao>('')
   const [filtroAgendamento, setFiltroAgendamento] = useState<'' | SimNao>('')
   const [filtroEspecialidade, setFiltroEspecialidade] = useState('')
@@ -160,6 +161,7 @@ export function RegistrosPage() {
       const dataOkInicio = !filtroDataInicio || dataRegistro >= filtroDataInicio
       const dataOkFim = !filtroDataFim || dataRegistro <= filtroDataFim
       const atendenteOk = !isAdmin || !filtroAtendente || registro.atendente === filtroAtendente
+      const atendimentoOk = !filtroAtendimento || registro.atendimento === filtroAtendimento
       const primeiraVezOk = !filtroPrimeiraVez || registro.primeira_vez === filtroPrimeiraVez
       const agendamentoOk = !filtroAgendamento || registro.agendamento === filtroAgendamento
       const especialidadeOk =
@@ -168,6 +170,7 @@ export function RegistrosPage() {
         dataOkInicio &&
         dataOkFim &&
         atendenteOk &&
+        atendimentoOk &&
         primeiraVezOk &&
         agendamentoOk &&
         especialidadeOk
@@ -176,6 +179,7 @@ export function RegistrosPage() {
   }, [
     filtroAgendamento,
     filtroAtendente,
+    filtroAtendimento,
     filtroDataFim,
     filtroDataInicio,
     filtroEspecialidade,
@@ -290,6 +294,19 @@ export function RegistrosPage() {
             ))}
           </TextField>
         ) : null}
+        <TextField
+          select
+          size="small"
+          label="Atendimento"
+          value={filtroAtendimento}
+          onChange={(event) => setFiltroAtendimento(event.target.value as '' | TipoAtendimento)}
+          sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 160 } }}
+        >
+          <MenuItem value="">Todos</MenuItem>
+          <MenuItem value="whatsapp">WhatsApp</MenuItem>
+          <MenuItem value="telefone">Telefone</MenuItem>
+          <MenuItem value="outro">Outro</MenuItem>
+        </TextField>
         <TextField
           select
           size="small"
