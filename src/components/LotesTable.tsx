@@ -28,7 +28,7 @@ type ColunaOrdenacao =
   | 'sector'
   | 'initialQuantity'
   | 'currentQuantity'
-  | 'value'
+  | 'unitCost'
   | 'movementDate'
   | 'expirationDate'
   | 'user'
@@ -72,9 +72,9 @@ function compararLotes(
     case 'initialQuantity':
     case 'currentQuantity':
       return fator * (a[coluna] - b[coluna])
-    case 'value': {
-      const valorA = normalizarValorLote(a.value) ?? 0
-      const valorB = normalizarValorLote(b.value) ?? 0
+    case 'unitCost': {
+      const valorA = normalizarValorLote(a.unitCost) ?? 0
+      const valorB = normalizarValorLote(b.unitCost) ?? 0
       return fator * (valorA - valorB)
     }
     case 'movementDate':
@@ -196,21 +196,21 @@ export function LotesTable({ lotes, onEditar, onFechar, onChaveCopiada }: LotesT
             />
             <CabecalhoOrdenavel
               coluna="initialQuantity"
-              label="Qtd. inicial"
+              label="Qtd. inicial (un.)"
               colunaAtiva={colunaOrdenacao}
               direcao={direcaoOrdenacao}
               onOrdenar={alternarOrdenacao}
             />
             <CabecalhoOrdenavel
               coluna="currentQuantity"
-              label="Qtd. atual"
+              label="Qtd. atual (un.)"
               colunaAtiva={colunaOrdenacao}
               direcao={direcaoOrdenacao}
               onOrdenar={alternarOrdenacao}
             />
             <CabecalhoOrdenavel
-              coluna="value"
-              label="Valor"
+              coluna="unitCost"
+              label="Custo unit."
               colunaAtiva={colunaOrdenacao}
               direcao={direcaoOrdenacao}
               onOrdenar={alternarOrdenacao}
@@ -254,7 +254,7 @@ export function LotesTable({ lotes, onEditar, onFechar, onChaveCopiada }: LotesT
               <TableCell>{lote.sector?.name ?? '-'}</TableCell>
               <TableCell>{lote.initialQuantity}</TableCell>
               <TableCell>{lote.currentQuantity}</TableCell>
-              <TableCell>{formatarValor(lote.value)}</TableCell>
+              <TableCell>{formatarValor(lote.unitCost)}</TableCell>
               <TableCell>{formatarData(lote.movementDate)}</TableCell>
               <TableCell>{formatarData(lote.expirationDate)}</TableCell>
               <TableCell>{lote.user?.name ?? '-'}</TableCell>

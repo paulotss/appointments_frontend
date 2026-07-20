@@ -2,6 +2,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import EditIcon from '@mui/icons-material/Edit'
 import { IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material'
 import type { ProdutoConfig } from '../types/estoque'
+import { labelBaseUnit } from '../utils/stockUnit'
 
 interface ProdutosConfigTableProps {
   produtos: ProdutoConfig[]
@@ -24,6 +25,8 @@ export function ProdutosConfigTable({
             <TableCell>Nome</TableCell>
             <TableCell>SKU</TableCell>
             <TableCell>Categoria</TableCell>
+            <TableCell>Unidade base</TableCell>
+            <TableCell>Un./caixa</TableCell>
             <TableCell>Estoque mínimo</TableCell>
             <TableCell align="right">Ações</TableCell>
           </TableRow>
@@ -34,6 +37,8 @@ export function ProdutosConfigTable({
               <TableCell>{produto.nome}</TableCell>
               <TableCell>{produto.sku}</TableCell>
               <TableCell>{categoriasPorId[produto.categoryId] ?? produto.categoryId}</TableCell>
+              <TableCell>{labelBaseUnit(produto.baseUnit)}</TableCell>
+              <TableCell>{produto.unitsPerPackage}</TableCell>
               <TableCell>{produto.minimumStock}</TableCell>
               <TableCell align="right">
                 <IconButton

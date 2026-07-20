@@ -94,7 +94,10 @@ export function LotesPage() {
     let quantidadeTotal = 0
 
     for (const lote of lotesFiltrados) {
-      valorTotal += normalizarValorLote(lote.value) ?? 0
+      const unitCost = normalizarValorLote(lote.unitCost)
+      if (unitCost != null) {
+        valorTotal += unitCost * lote.currentQuantity
+      }
       quantidadeTotal += lote.currentQuantity
     }
 
@@ -225,7 +228,7 @@ export function LotesPage() {
               variant="outlined"
             />
             <Chip
-              label={`Quantidade total: ${resumoFiltrado.quantidadeTotal}`}
+              label={`Quantidade total (un.): ${resumoFiltrado.quantidadeTotal}`}
               size="small"
               color="default"
               variant="outlined"

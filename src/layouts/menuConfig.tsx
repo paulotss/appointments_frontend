@@ -65,6 +65,7 @@ const allMenuItems: MenuItem[] = [
     items: [
       { kind: 'divider', label: 'Geral' },
       { kind: 'link', label: 'Usuários', to: '/usuarios' },
+      { kind: 'link', label: 'Profissionais', to: '/profissionais' },
       { kind: 'link', label: 'Especialidades', to: '/especialidades' },
       { kind: 'divider', label: 'Estoque' },
       { kind: 'link', label: 'Categorias', to: '/configuracoes/estoque/categorias' },

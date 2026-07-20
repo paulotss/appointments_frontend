@@ -6,9 +6,16 @@ import {
   TextField,
 } from '@mui/material'
 import { useEffect, useState } from 'react'
-import { Controller, type Control, type FieldErrors, type UseFormRegister } from 'react-hook-form'
+import {
+  Controller,
+  useWatch,
+  type Control,
+  type FieldErrors,
+  type UseFormRegister,
+  type UseFormSetValue,
+} from 'react-hook-form'
 import type { LoteFormValues } from '../schemas/lote.schema'
-import type { LocalArmazenamento, ProdutoConfig, Setor } from '../types/estoque'
+import type { LocalArmazenamento, ProdutoConfig, Setor, StockUnit } from '../types/estoque'
 import type { SystemUser } from '../types/user'
 import {
   digitosParaNumeroMoedaBRL,
@@ -16,6 +23,7 @@ import {
   normalizarDigitosMoedaBRL,
   numeroParaDigitosMoedaBRL,
 } from '../utils/moedaBRL'
+import { labelUnidadePlural, podeUsarCaixa } from '../utils/stockUnit'
 
 interface CampoValorMoedaProps {
   value: number | undefined
@@ -24,6 +32,7 @@ interface CampoValorMoedaProps {
   inputRef: React.Ref<HTMLInputElement>
   error: boolean
   helperText?: string
+  label: string
 }
 
 function CampoValorMoeda({
@@ -33,6 +42,7 @@ function CampoValorMoeda({
   inputRef,
   error,
   helperText,
+  label,
 }: CampoValorMoedaProps) {
   const [digitos, setDigitos] = useState(() => numeroParaDigitosMoedaBRL(value))
 
@@ -42,7 +52,7 @@ function CampoValorMoeda({
 
   return (
     <TextField
-      label="Valor"
+      label={label}
       value={digitos === '' ? '' : formatarMoedaBRL(digitosParaNumeroMoedaBRL(digitos))}
       onChange={(event) => {
         const novosDigitos = normalizarDigitosMoedaBRL(digitos, event.target.value)
@@ -62,6 +72,7 @@ interface LoteFormProps {
   register: UseFormRegister<LoteFormValues>
   control: Control<LoteFormValues>
   errors: FieldErrors<LoteFormValues>
+  setValue: UseFormSetValue<LoteFormValues>
   produtos: ProdutoConfig[]
   setores: Setor[]
   locais: LocalArmazenamento[]
@@ -69,6 +80,7 @@ interface LoteFormProps {
   exibirUsuario?: boolean
   exibirQuantidadeInicial?: boolean
   exibirQuantidadeAtual?: boolean
+  exibirUnidade?: boolean
   exibirInclusao?: boolean
   loading: boolean
   submitLabel: string
@@ -78,6 +90,7 @@ export function LoteForm({
   register,
   control,
   errors,
+  setValue,
   produtos,
   setores,
   locais,
@@ -85,10 +98,31 @@ export function LoteForm({
   exibirUsuario = true,
   exibirQuantidadeInicial = true,
   exibirQuantidadeAtual = true,
+  exibirUnidade = true,
   exibirInclusao = true,
   loading,
   submitLabel,
 }: LoteFormProps) {
+  const productId = useWatch({ control, name: 'productId' })
+  const unit = useWatch({ control, name: 'unit' }) as StockUnit | undefined
+
+  const produtoSelecionado = produtos.find((produto) => produto.id === productId)
+  const permiteCaixa = podeUsarCaixa(produtoSelecionado?.unitsPerPackage)
+
+  useEffect(() => {
+    if (!permiteCaixa && unit === 'BOX') {
+      setValue('unit', 'UNIT')
+    }
+  }, [permiteCaixa, setValue, unit])
+
+  const unidadeEntrada = unit === 'BOX' ? 'BOX' : 'UNIT'
+  const labelQtd = labelUnidadePlural(unidadeEntrada)
+  const labelValor = exibirUnidade
+    ? unidadeEntrada === 'BOX'
+      ? 'Valor (por caixa)'
+      : 'Valor (por unidade)'
+    : 'Custo unitario (unidade base)'
+
   return (
     <Stack spacing={2} sx={{ maxWidth: 520 }}>
       <Controller
@@ -100,7 +134,12 @@ export function LoteForm({
             getOptionLabel={(produto) => produto.nome}
             isOptionEqualToValue={(option, selected) => option.id === selected.id}
             value={produtos.find((produto) => produto.id === value) ?? null}
-            onChange={(_, produto) => onChange(produto?.id)}
+            onChange={(_, produto) => {
+              onChange(produto?.id)
+              if (!podeUsarCaixa(produto?.unitsPerPackage)) {
+                setValue('unit', 'UNIT')
+              }
+            }}
             onBlur={onBlur}
             renderInput={(params) => (
               <TextField
@@ -187,9 +226,39 @@ export function LoteForm({
           )}
         />
       ) : null}
+      {exibirUnidade ? (
+        <Controller
+          name="unit"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              select
+              label="Unidade de entrada"
+              value={field.value ?? 'UNIT'}
+              onChange={(event) => field.onChange(event.target.value as StockUnit)}
+              error={Boolean(errors.unit)}
+              helperText={
+                errors.unit?.message ??
+                (permiteCaixa
+                  ? `Produto com ${produtoSelecionado?.unitsPerPackage} un./caixa`
+                  : 'Caixa disponivel apenas se o produto tiver mais de 1 un./caixa')
+              }
+            >
+              <MenuItem value="UNIT">Unidade</MenuItem>
+              <MenuItem value="BOX" disabled={!permiteCaixa}>
+                Caixa
+              </MenuItem>
+            </TextField>
+          )}
+        />
+      ) : null}
       {exibirQuantidadeInicial ? (
         <TextField
-          label={exibirQuantidadeAtual ? 'Qtd. inicial' : 'Quantidade'}
+          label={
+            exibirQuantidadeAtual
+              ? `Qtd. inicial (${labelQtd})`
+              : `Quantidade (${labelQtd})`
+          }
           type="number"
           inputProps={{ min: 1, step: 1 }}
           error={Boolean(errors.initialQuantity)}
@@ -199,7 +268,7 @@ export function LoteForm({
       ) : null}
       {exibirQuantidadeAtual ? (
         <TextField
-          label="Qtd. atual"
+          label={`Qtd. atual (${labelQtd})`}
           type="number"
           inputProps={{ min: 1, step: 1 }}
           error={Boolean(errors.currentQuantity)}
@@ -218,6 +287,7 @@ export function LoteForm({
             inputRef={ref}
             error={Boolean(errors.value)}
             helperText={errors.value?.message}
+            label={labelValor}
           />
         )}
       />

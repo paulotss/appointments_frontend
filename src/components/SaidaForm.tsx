@@ -10,18 +10,24 @@ import {
   Stepper,
   TextField,
 } from '@mui/material'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Controller,
   type Control,
   type FieldErrors,
   type UseFormRegister,
   type UseFormResetField,
+  type UseFormSetValue,
   type UseFormTrigger,
   type UseFormWatch,
 } from 'react-hook-form'
 import type { SaidaFormValues } from '../schemas/saida.schema'
-import type { LoteEstoque, ProdutoConfig } from '../types/estoque'
+import type { LoteEstoque, ProdutoConfig, StockUnit } from '../types/estoque'
+import type { HealthProfessional } from '../types/profissional'
+import {
+  labelUnidadePlural,
+  podeUsarCaixa,
+} from '../utils/stockUnit'
 
 interface SaidaFormProps {
   register: UseFormRegister<SaidaFormValues>
@@ -29,9 +35,11 @@ interface SaidaFormProps {
   errors: FieldErrors<SaidaFormValues>
   trigger: UseFormTrigger<SaidaFormValues>
   resetField: UseFormResetField<SaidaFormValues>
+  setValue: UseFormSetValue<SaidaFormValues>
   watch: UseFormWatch<SaidaFormValues>
   produtos: ProdutoConfig[]
   lotes: LoteEstoque[]
+  profissionais: HealthProfessional[]
   loading: boolean
   submitLabel: string
 }
@@ -64,7 +72,7 @@ function formatarData(value: string | null | undefined): string {
 }
 
 function formatarLabelLote(lote: LoteEstoque): string {
-  return `Lote #${lote.id} — saldo: ${lote.currentQuantity} — validade: ${formatarData(lote.expirationDate)}`
+  return `Lote #${lote.id} — saldo: ${lote.currentQuantity} un. — validade: ${formatarData(lote.expirationDate)}`
 }
 
 const PASSOS = ['Produto', 'Local', 'Lote', 'Quantidade'] as const
@@ -76,9 +84,11 @@ export function SaidaForm({
   errors,
   trigger,
   resetField,
+  setValue,
   watch,
   produtos,
   lotes,
+  profissionais,
   loading,
   submitLabel,
 }: SaidaFormProps) {
@@ -88,6 +98,25 @@ export function SaidaForm({
   const productId = watch('productId')
   const locationId = watch('locationId')
   const batchId = watch('batchId')
+  const unit = watch('unit')
+
+  const produtoSelecionado = useMemo(
+    () => (productId != null ? produtos.find((produto) => produto.id === productId) : undefined),
+    [produtos, productId],
+  )
+
+  const unitsPerPackage =
+    produtoSelecionado?.unitsPerPackage ??
+    lotes.find((lote) => lote.productId === productId)?.product?.unitsPerPackage ??
+    1
+
+  const permiteCaixa = podeUsarCaixa(unitsPerPackage)
+
+  useEffect(() => {
+    if (!permiteCaixa && unit === 'BOX') {
+      setValue('unit', 'UNIT')
+    }
+  }, [permiteCaixa, setValue, unit])
 
   const lotesDoProduto = useMemo(
     () => (productId != null ? lotes.filter((lote) => lote.productId === productId) : []),
@@ -112,9 +141,18 @@ export function SaidaForm({
     [lotes, batchId],
   )
 
+  const unidadeSaida: StockUnit = unit === 'BOX' ? 'BOX' : 'UNIT'
+  const saldoEmUnidadeEntrada =
+    loteSelecionado == null
+      ? undefined
+      : unidadeSaida === 'BOX'
+        ? Math.floor(loteSelecionado.currentQuantity / unitsPerPackage)
+        : loteSelecionado.currentQuantity
+
   function limparSelecoesDependentes() {
     resetField('locationId')
     resetField('batchId')
+    setValue('unit', 'UNIT')
     setSemLoteAtivo(false)
   }
 
@@ -282,19 +320,16 @@ export function SaidaForm({
       <Step>
         <StepLabel>{PASSOS[3]}</StepLabel>
         <StepContent sx={PASSO_CONTENT_SX}>
-          <TextField
-            fullWidth
-            label="Quantidade"
-            type="number"
-            inputProps={{ min: 1, step: 1, max: loteSelecionado?.currentQuantity }}
-            error={Boolean(errors.quantity)}
-            helperText={
-              errors.quantity?.message ??
-              (loteSelecionado != null
-                ? `Saldo disponivel: ${loteSelecionado.currentQuantity}`
-                : undefined)
-            }
-            {...register('quantity', { valueAsNumber: true })}
+          <StackCamposQuantidade
+            control={control}
+            errors={errors}
+            register={register}
+            permiteCaixa={permiteCaixa}
+            unitsPerPackage={unitsPerPackage}
+            unidadeSaida={unidadeSaida}
+            saldoEmUnidadeEntrada={saldoEmUnidadeEntrada}
+            loteSelecionado={loteSelecionado}
+            profissionais={profissionais}
           />
           <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
             <Button type="submit" variant="contained" disabled={loading}>
@@ -307,5 +342,102 @@ export function SaidaForm({
         </StepContent>
       </Step>
     </Stepper>
+  )
+}
+
+function StackCamposQuantidade({
+  control,
+  errors,
+  register,
+  permiteCaixa,
+  unitsPerPackage,
+  unidadeSaida,
+  saldoEmUnidadeEntrada,
+  loteSelecionado,
+  profissionais,
+}: {
+  control: Control<SaidaFormValues>
+  errors: FieldErrors<SaidaFormValues>
+  register: UseFormRegister<SaidaFormValues>
+  permiteCaixa: boolean
+  unitsPerPackage: number
+  unidadeSaida: StockUnit
+  saldoEmUnidadeEntrada: number | undefined
+  loteSelecionado: LoteEstoque | undefined
+  profissionais: HealthProfessional[]
+}) {
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Controller
+        name="unit"
+        control={control}
+        render={({ field }) => (
+          <TextField
+            select
+            fullWidth
+            label="Unidade de saida"
+            value={field.value ?? 'UNIT'}
+            onChange={(event) => field.onChange(event.target.value as StockUnit)}
+            error={Boolean(errors.unit)}
+            helperText={
+              errors.unit?.message ??
+              (permiteCaixa
+                ? `Produto com ${unitsPerPackage} un./caixa`
+                : 'Caixa disponivel apenas se o produto tiver mais de 1 un./caixa')
+            }
+          >
+            <MenuItem value="UNIT">Unidade</MenuItem>
+            <MenuItem value="BOX" disabled={!permiteCaixa}>
+              Caixa
+            </MenuItem>
+          </TextField>
+        )}
+      />
+      <TextField
+        fullWidth
+        label={`Quantidade (${labelUnidadePlural(unidadeSaida)})`}
+        type="number"
+        inputProps={{ min: 1, step: 1, max: saldoEmUnidadeEntrada }}
+        error={Boolean(errors.quantity)}
+        helperText={
+          errors.quantity?.message ??
+          (loteSelecionado != null
+            ? `Saldo disponivel: ${loteSelecionado.currentQuantity} un.${
+                unidadeSaida === 'BOX' && saldoEmUnidadeEntrada != null
+                  ? ` (${saldoEmUnidadeEntrada} caixas)`
+                  : ''
+              }`
+            : undefined)
+        }
+        {...register('quantity', { valueAsNumber: true })}
+      />
+      <Controller
+        name="healthProfessionalId"
+        control={control}
+        render={({ field: { onChange, value, ref, onBlur } }) => (
+          <Autocomplete
+            fullWidth
+            options={profissionais}
+            getOptionLabel={(profissional) => profissional.name}
+            isOptionEqualToValue={(option, selected) => option.id === selected.id}
+            value={profissionais.find((profissional) => profissional.id === value) ?? null}
+            onChange={(_, profissional) => {
+              onChange(profissional?.id ?? null)
+            }}
+            onBlur={onBlur}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                inputRef={ref}
+                label="Profissional (opcional)"
+                placeholder="Selecione um profissional"
+                error={Boolean(errors.healthProfessionalId)}
+                helperText={errors.healthProfessionalId?.message}
+              />
+            )}
+          />
+        )}
+      />
+    </Box>
   )
 }

@@ -27,16 +27,21 @@ export function consolidarEstoquePorLotes(
 
   const batchesWithStock = lotes.filter((batch) => !batch.isClosed && batch.currentQuantity > 0)
 
-  const totalQuantity = lotes.reduce((sum, batch) => sum + batch.currentQuantity, 0)
+  const totalQuantity = batchesWithStock.reduce((sum, batch) => sum + batch.currentQuantity, 0)
 
-  const recentWithValue = lotes
-    .filter((batch) => normalizarValorLote(batch.value) != null)
-    .slice(0, 3)
+  let residualValueSum = 0
+  let hasResidualValue = false
 
-  const averagePrice = recentWithValue.length
-    ? recentWithValue.reduce((sum, batch) => sum + (normalizarValorLote(batch.value) ?? 0), 0) /
-      recentWithValue.length
-    : 0
+  for (const batch of batchesWithStock) {
+    const unitCost = normalizarValorLote(batch.unitCost)
+    if (unitCost == null) continue
+    residualValueSum += batch.currentQuantity * unitCost
+    hasResidualValue = true
+  }
+
+  const totalValue = hasResidualValue ? residualValueSum : null
+  const averagePrice =
+    hasResidualValue && totalQuantity > 0 ? residualValueSum / totalQuantity : null
 
   let expiringBatchesCount = 0
   let expiredBatchesCount = 0
@@ -58,6 +63,7 @@ export function consolidarEstoquePorLotes(
   return {
     ...produto,
     totalQuantity,
+    totalValue,
     averagePrice,
     expiringBatchesCount,
     expiredBatchesCount,

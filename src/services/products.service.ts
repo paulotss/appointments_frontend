@@ -2,6 +2,7 @@ import type {
   CreateProductRequest,
   ProdutoConfig,
   ProdutoEstoqueConsolidado,
+  StockUnit,
   UpdateProductRequest,
 } from '../types/estoque'
 import { apiClient } from './apiClient'
@@ -12,6 +13,8 @@ interface BackendProduct {
   sku: string
   categoryId: number
   minimumStock: number
+  baseUnit: StockUnit
+  unitsPerPackage: number
   isActive: boolean
 }
 
@@ -22,6 +25,8 @@ function mapBackendProduct(item: BackendProduct): ProdutoConfig {
     sku: item.sku,
     categoryId: item.categoryId,
     minimumStock: item.minimumStock,
+    baseUnit: item.baseUnit ?? 'UNIT',
+    unitsPerPackage: item.unitsPerPackage ?? 1,
     isActive: item.isActive,
   }
 }

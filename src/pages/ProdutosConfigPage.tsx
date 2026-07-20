@@ -33,6 +33,7 @@ export function ProdutosConfigPage() {
   const [skuEdicao, setSkuEdicao] = useState('')
   const [categoryIdEdicao, setCategoryIdEdicao] = useState('')
   const [minimumStockEdicao, setMinimumStockEdicao] = useState('')
+  const [unitsPerPackageEdicao, setUnitsPerPackageEdicao] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
   const [buscaNome, setBuscaNome] = useState('')
 
@@ -54,6 +55,7 @@ export function ProdutosConfigPage() {
     setSkuEdicao(produto.sku)
     setCategoryIdEdicao(String(produto.categoryId))
     setMinimumStockEdicao(String(produto.minimumStock))
+    setUnitsPerPackageEdicao(String(produto.unitsPerPackage))
   }
 
   function fecharEdicao() {
@@ -62,6 +64,7 @@ export function ProdutosConfigPage() {
     setSkuEdicao('')
     setCategoryIdEdicao('')
     setMinimumStockEdicao('')
+    setUnitsPerPackageEdicao('')
   }
 
   async function salvarEdicao() {
@@ -75,6 +78,7 @@ export function ProdutosConfigPage() {
         sku: skuEdicao.trim(),
         categoryId: Number(categoryIdEdicao),
         minimumStock: Number(minimumStockEdicao),
+        unitsPerPackage: Number(unitsPerPackageEdicao),
       })
       setProdutos((prev) => prev.map((item) => (item.id === atualizado.id ? atualizado : item)))
       fecharEdicao()
@@ -93,6 +97,10 @@ export function ProdutosConfigPage() {
     minimumStockEdicao.trim() === '' ||
     !Number.isInteger(Number(minimumStockEdicao)) ||
     Number(minimumStockEdicao) < 0
+  const unitsPerPackageInvalido =
+    unitsPerPackageEdicao.trim() === '' ||
+    !Number.isInteger(Number(unitsPerPackageEdicao)) ||
+    Number(unitsPerPackageEdicao) < 1
 
   async function excluir(produto: ProdutoConfig) {
     const confirmou = window.confirm(`Confirma inativar o produto "${produto.nome}"?`)
@@ -220,7 +228,7 @@ export function ProdutosConfigPage() {
               ))}
             </TextField>
             <TextField
-              label="Estoque minimo"
+              label="Estoque minimo (unidades)"
               inputProps={{ inputMode: 'numeric' }}
               value={minimumStockEdicao}
               onChange={(event) => setMinimumStockEdicao(event.target.value)}
@@ -228,7 +236,19 @@ export function ProdutosConfigPage() {
               helperText={
                 Boolean(minimumStockEdicao) && estoqueInvalido
                   ? 'Informe um inteiro maior ou igual a zero'
-                  : ' '
+                  : 'Em unidade base'
+              }
+            />
+            <TextField
+              label="Unidades por caixa"
+              inputProps={{ inputMode: 'numeric' }}
+              value={unitsPerPackageEdicao}
+              onChange={(event) => setUnitsPerPackageEdicao(event.target.value)}
+              error={Boolean(unitsPerPackageEdicao) && unitsPerPackageInvalido}
+              helperText={
+                Boolean(unitsPerPackageEdicao) && unitsPerPackageInvalido
+                  ? 'Informe um inteiro maior ou igual a 1'
+                  : '1 = produto sem embalagem util'
               }
             />
           </Stack>
@@ -239,7 +259,12 @@ export function ProdutosConfigPage() {
             onClick={salvarEdicao}
             variant="contained"
             disabled={
-              savingEdit || nomeInvalido || skuInvalido || categoriaInvalida || estoqueInvalido
+              savingEdit ||
+              nomeInvalido ||
+              skuInvalido ||
+              categoriaInvalida ||
+              estoqueInvalido ||
+              unitsPerPackageInvalido
             }
           >
             Salvar

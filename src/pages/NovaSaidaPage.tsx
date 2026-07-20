@@ -7,11 +7,14 @@ import { useNavigate } from 'react-router-dom'
 import { SaidaForm } from '../components/SaidaForm'
 import { saidaSchema, type SaidaFormValues } from '../schemas/saida.schema'
 import { getLoggedUserId } from '../services/authStorage'
+import { listarProfissionais } from '../services/health-professionals.service'
 import { listarProdutos } from '../services/products.service'
 import { listarLotes } from '../services/stock-batches.service'
 import { criarSaida } from '../services/stock-exits.service'
 import type { LoteEstoque, ProdutoConfig } from '../types/estoque'
+import type { HealthProfessional } from '../types/profissional'
 import { toDataInputISO } from '../utils/loteForm'
+import { paraUnidadesBase } from '../utils/stockUnit'
 
 function dataHojeISO(): string {
   return toDataInputISO(new Date().toISOString())
@@ -25,6 +28,7 @@ export function NovaSaidaPage() {
   const [error, setError] = useState<string | null>(null)
   const [produtos, setProdutos] = useState<ProdutoConfig[]>([])
   const [lotes, setLotes] = useState<LoteEstoque[]>([])
+  const [profissionais, setProfissionais] = useState<HealthProfessional[]>([])
 
   const {
     register,
@@ -33,6 +37,7 @@ export function NovaSaidaPage() {
     control,
     trigger,
     resetField,
+    setValue,
     watch,
     formState: { errors },
   } = useForm<SaidaFormValues>({
@@ -42,6 +47,8 @@ export function NovaSaidaPage() {
       locationId: undefined,
       batchId: undefined,
       quantity: undefined,
+      unit: 'UNIT',
+      healthProfessionalId: null,
     },
   })
 
@@ -50,12 +57,14 @@ export function NovaSaidaPage() {
       setLoadingDados(true)
       setError(null)
       try {
-        const [produtosData, lotesData] = await Promise.all([
+        const [produtosData, lotesData, profissionaisData] = await Promise.all([
           listarProdutos(),
           listarLotes(),
+          listarProfissionais(),
         ])
         setProdutos(produtosData.filter((produto) => produto.isActive))
         setLotes(lotesData.filter((lote) => lote.currentQuantity > 0))
+        setProfissionais(profissionaisData.filter((profissional) => profissional.isActive))
       } catch {
         setError('Nao foi possivel carregar os dados do formulario.')
       } finally {
@@ -80,7 +89,12 @@ export function NovaSaidaPage() {
       return
     }
 
-    if (values.quantity > lote.currentQuantity) {
+    const produto = produtos.find((item) => item.id === values.productId)
+    const unitsPerPackage =
+      produto?.unitsPerPackage ?? lote.product?.unitsPerPackage ?? 1
+    const quantidadeBase = paraUnidadesBase(values.quantity, values.unit, unitsPerPackage)
+
+    if (quantidadeBase > lote.currentQuantity) {
       setError('Quantidade maior que o saldo disponivel.')
       return
     }
@@ -91,8 +105,12 @@ export function NovaSaidaPage() {
       await criarSaida({
         batchId: values.batchId,
         quantity: values.quantity,
+        unit: values.unit,
         userId: loggedUserId,
         exitDate: dataHojeISO(),
+        ...(values.healthProfessionalId != null
+          ? { healthProfessionalId: values.healthProfessionalId }
+          : {}),
       })
       reset()
       navigate('/estoque/saidas', { replace: true })
@@ -143,9 +161,11 @@ export function NovaSaidaPage() {
             errors={errors}
             trigger={trigger}
             resetField={resetField}
+            setValue={setValue}
             watch={watch}
             produtos={produtos}
             lotes={lotes}
+            profissionais={profissionais}
             loading={loading}
             submitLabel="Cadastrar saida"
           />
