@@ -12,7 +12,7 @@ export const profissionalSchema = z.object({
   name: z.string().min(3, 'Informe o nome'),
   specialtyId: z.number().int().positive('Selecione uma especialidade'),
   councilType: z.enum(['CRM', 'CRO', 'CRP', 'COREN', 'OTHER'], {
-    required_error: 'Selecione o tipo de conselho',
+    error: 'Selecione o tipo de conselho',
   }),
   councilNumber: z.string().min(1, 'Informe o numero do conselho'),
   cpf: z
