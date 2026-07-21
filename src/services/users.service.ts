@@ -5,6 +5,7 @@ interface BackendUser {
   id: number
   name: string
   usernameLogin: string
+  email?: string | null
   isAdmin?: boolean
   is_admin?: boolean
   extension?: number | null
@@ -17,6 +18,7 @@ function mapBackendUser(item: BackendUser): SystemUser {
     id: item.id,
     name: item.name,
     usernameLogin: item.usernameLogin,
+    email: item.email?.trim() ? item.email.trim() : null,
     isAdmin: item.isAdmin ?? item.is_admin ?? false,
     extension: raw != null && Number.isFinite(raw) ? Math.trunc(raw) : null,
   }

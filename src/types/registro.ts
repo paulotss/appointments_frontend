@@ -18,6 +18,8 @@ export interface RegistroAtendimento {
   atendente_id?: number | null
   /** Id da chamada vinculada, quando existir. */
   callId?: number | null
+  /** Id da mensagem WhatsApp vinculada, quando existir. */
+  messageId?: number | null
 }
 
 export interface CriarRegistroAtendimentoInput {
@@ -32,6 +34,8 @@ export interface CriarRegistroAtendimentoInput {
   atendente_id?: number | null
   /** Ao criar a partir de uma chamada, envia o vínculo para a API. */
   callId?: number | null
+  /** Ao criar a partir de uma mensagem WhatsApp, envia o vínculo para a API. */
+  messageId?: number | null
 }
 
 export interface Especialidade {
@@ -52,6 +56,7 @@ export interface BackendAppointment {
   notes: string
   attendantId: number
   callId?: number | null
+  messageId?: number | null
   specialty?: {
     id: number
     name: string
@@ -78,6 +83,7 @@ export interface CreateAppointmentRequest {
   notes?: string
   attendantId?: number | null
   callId?: number | null
+  messageId?: number | null
 }
 
 export interface CreateSpecialtyRequest {

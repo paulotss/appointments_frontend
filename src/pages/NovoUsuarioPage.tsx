@@ -23,6 +23,7 @@ export function NovoUsuarioPage() {
     defaultValues: {
       name: '',
       usernameLogin: '',
+      email: '',
       passwordHash: '',
       isAdmin: false,
       extension: '',
@@ -37,6 +38,7 @@ export function NovoUsuarioPage() {
         name: values.name,
         passwordHash: values.passwordHash,
         usernameLogin: values.usernameLogin,
+        email: values.email,
         isAdmin: values.isAdmin,
         ...(values.extension != null ? { extension: values.extension } : {}),
       })
@@ -69,6 +71,13 @@ export function NovoUsuarioPage() {
           error={Boolean(errors.usernameLogin)}
           helperText={errors.usernameLogin?.message}
           {...register('usernameLogin')}
+        />
+        <TextField
+          label="E-mail (opcional)"
+          type="email"
+          error={Boolean(errors.email)}
+          helperText={errors.email?.message}
+          {...register('email')}
         />
         <TextField
           label="Senha"

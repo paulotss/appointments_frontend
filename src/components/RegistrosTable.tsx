@@ -72,6 +72,15 @@ function RegistroRow({ registro, open, onOpenChange }: RegistroRowProps) {
             >
               {formatarAtendimento(registro.atendimento)}
             </Link>
+          ) : registro.messageId != null ? (
+            <Link
+              component={RouterLink}
+              to={`/mensagens/${registro.messageId}`}
+              underline="always"
+              color="primary"
+            >
+              {formatarAtendimento(registro.atendimento)}
+            </Link>
           ) : (
             formatarAtendimento(registro.atendimento)
           )}
