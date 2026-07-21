@@ -39,6 +39,7 @@ function mapAppointmentToRegistro(item: BackendAppointment): RegistroAtendimento
       : `ID ${item.attendantId}`,
     atendente_id: item.attendantId ?? item.attendant?.id ?? null,
     callId: item.callId ?? null,
+    messageId: item.messageId ?? null,
   }
 }
 
@@ -73,6 +74,9 @@ function mapCriarRegistroToAppointment(
   }
   if (payload.callId != null && Number.isFinite(payload.callId)) {
     body.callId = payload.callId
+  }
+  if (payload.messageId != null && Number.isFinite(payload.messageId)) {
+    body.messageId = payload.messageId
   }
   return body
 }

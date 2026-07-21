@@ -3,17 +3,28 @@ import { Button, Grid, MenuItem, Paper, TextField } from '@mui/material'
 import { useEffect, useMemo } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { registroSchema, type RegistroFormInput, type RegistroFormValues } from '../schemas/registro.schema'
-import type { Especialidade } from '../types/registro'
+import type { Especialidade, TipoAtendimento } from '../types/registro'
 
-export interface ContatoFixoChamada {
+export interface ContatoFixo {
   telefone: string
+  atendimento: Extract<TipoAtendimento, 'telefone' | 'whatsapp'>
 }
+
+/** @deprecated Use ContatoFixo */
+export type ContatoFixoChamada = ContatoFixo
 
 interface RegistroFormProps {
   especialidades: Especialidade[]
   onSubmit: (values: RegistroFormValues) => Promise<void>
   loading: boolean
-  contatoFixoChamada?: ContatoFixoChamada | null
+  contatoFixo?: ContatoFixo | null
+  /** @deprecated Use contatoFixo */
+  contatoFixoChamada?: ContatoFixo | null
+}
+
+const atendimentoLabel: Record<'telefone' | 'whatsapp', string> = {
+  telefone: 'Telefone',
+  whatsapp: 'WhatsApp',
 }
 
 const baseDefaultValues: Partial<RegistroFormInput> = {
@@ -28,18 +39,21 @@ export function RegistroForm({
   especialidades,
   onSubmit,
   loading,
+  contatoFixo,
   contatoFixoChamada,
 }: RegistroFormProps) {
+  const contato = contatoFixo ?? contatoFixoChamada ?? null
+
   const defaultValues = useMemo<Partial<RegistroFormInput>>(() => {
-    if (!contatoFixoChamada) {
+    if (!contato) {
       return { ...baseDefaultValues }
     }
     return {
       ...baseDefaultValues,
-      telefone: contatoFixoChamada.telefone,
-      atendimento: 'telefone',
+      telefone: contato.telefone,
+      atendimento: contato.atendimento,
     }
-  }, [contatoFixoChamada])
+  }, [contato])
 
   const {
     control,
@@ -89,21 +103,21 @@ export function RegistroForm({
             {...register('telefone')}
             slotProps={{
               input: {
-                readOnly: Boolean(contatoFixoChamada),
+                readOnly: Boolean(contato),
               },
             }}
           />
         </Grid>
 
         <Grid size={{ xs: 12, md: 6 }}>
-          {contatoFixoChamada ? (
+          {contato ? (
             <>
               <input type="hidden" {...register('atendimento')} />
               <TextField
                 label="Atendimento"
                 fullWidth
                 required
-                defaultValue="Telefone"
+                defaultValue={atendimentoLabel[contato.atendimento]}
                 slotProps={{ input: { readOnly: true } }}
               />
             </>

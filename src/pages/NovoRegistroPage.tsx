@@ -3,10 +3,11 @@ import { Alert, Button, CircularProgress, Stack, Typography } from '@mui/materia
 import { isAxiosError } from 'axios'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { RegistroForm } from '../components/RegistroForm'
+import { RegistroForm, type ContatoFixo } from '../components/RegistroForm'
 import type { RegistroFormValues } from '../schemas/registro.schema'
 import { atualizarChamada } from '../services/calls.service'
 import { listarEspecialidades } from '../services/especialidades.service'
+import { atualizarMensagem } from '../services/messages.service'
 import { criarRegistro } from '../services/registros.service'
 import type { Especialidade } from '../types/registro'
 
@@ -18,8 +19,16 @@ export function NovoRegistroPage() {
   const [loadingSubmit, setLoadingSubmit] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const { callIdParaPatch, contatoFixoChamada, formKey, voltarPath, voltarLabel } = useMemo(() => {
+  const {
+    callIdParaPatch,
+    messageIdParaPatch,
+    contatoFixo,
+    formKey,
+    voltarPath,
+    voltarLabel,
+  } = useMemo(() => {
     const callIdRaw = searchParams.get('callId')
+    const messageIdRaw = searchParams.get('messageId')
     const telefoneParam = searchParams.get('telefone')
     const origin = searchParams.get('origin')
     const telefone =
@@ -28,16 +37,41 @@ export function NovoRegistroPage() {
         : origin != null && origin !== ''
           ? origin
           : null
+
     const callIdNum =
       callIdRaw != null && callIdRaw !== '' ? Number.parseInt(callIdRaw, 10) : Number.NaN
+    const messageIdNum =
+      messageIdRaw != null && messageIdRaw !== ''
+        ? Number.parseInt(messageIdRaw, 10)
+        : Number.NaN
+
     const callIdOk = Number.isFinite(callIdNum)
+    const messageIdOk = Number.isFinite(messageIdNum)
     const fromCall = callIdOk && telefone != null && telefone !== ''
+    const fromMessage = !fromCall && messageIdOk && telefone != null && telefone !== ''
+
+    let contato: ContatoFixo | null = null
+    if (fromCall) {
+      contato = { telefone, atendimento: 'telefone' }
+    } else if (fromMessage) {
+      contato = { telefone, atendimento: 'whatsapp' }
+    }
+
     return {
       callIdParaPatch: fromCall ? callIdNum : null,
-      contatoFixoChamada: fromCall ? { telefone } : null,
-      formKey: fromCall ? `call-${callIdNum}` : 'sem-chamada',
-      voltarPath: fromCall ? '/chamadas' : '/registros',
-      voltarLabel: fromCall ? 'Voltar para chamadas' : 'Voltar para listagem',
+      messageIdParaPatch: fromMessage ? messageIdNum : null,
+      contatoFixo: contato,
+      formKey: fromCall
+        ? `call-${callIdNum}`
+        : fromMessage
+          ? `message-${messageIdNum}`
+          : 'sem-vinculo',
+      voltarPath: fromCall ? '/chamadas' : fromMessage ? '/mensagens' : '/registros',
+      voltarLabel: fromCall
+        ? 'Voltar para chamadas'
+        : fromMessage
+          ? 'Voltar para mensagens'
+          : 'Voltar para listagem',
     }
   }, [searchParams])
 
@@ -65,6 +99,7 @@ export function NovoRegistroPage() {
       await criarRegistro({
         ...values,
         ...(callIdParaPatch != null ? { callId: callIdParaPatch } : {}),
+        ...(messageIdParaPatch != null ? { messageId: messageIdParaPatch } : {}),
       })
       if (callIdParaPatch != null) {
         try {
@@ -72,6 +107,16 @@ export function NovoRegistroPage() {
         } catch {
           setError(
             'Registro criado, mas nao foi possivel atualizar o status da chamada. Atualize manualmente na lista de chamadas.',
+          )
+          return
+        }
+      }
+      if (messageIdParaPatch != null) {
+        try {
+          await atualizarMensagem(messageIdParaPatch, { recordStatus: 'registered' })
+        } catch {
+          setError(
+            'Registro criado, mas nao foi possivel atualizar o status da mensagem. Atualize manualmente na lista de mensagens.',
           )
           return
         }
@@ -123,7 +168,7 @@ export function NovoRegistroPage() {
           especialidades={especialidades}
           onSubmit={handleSubmit}
           loading={loadingSubmit}
-          contatoFixoChamada={contatoFixoChamada}
+          contatoFixo={contatoFixo}
         />
       ) : null}
     </Stack>

@@ -33,6 +33,18 @@ function parseRamalOpcional(raw: string): { ok: true; value: number | null } | {
   return { ok: true, value: n }
 }
 
+function parseEmailOpcional(raw: string): { ok: true; value: string | null } | { ok: false } {
+  const t = raw.trim()
+  if (t === '') {
+    return { ok: true, value: null }
+  }
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)
+  if (!emailOk) {
+    return { ok: false }
+  }
+  return { ok: true, value: t }
+}
+
 export function UsuariosPage() {
   const navigate = useNavigate()
   const [usuarios, setUsuarios] = useState<SystemUser[]>([])
@@ -42,6 +54,7 @@ export function UsuariosPage() {
   const [editando, setEditando] = useState<SystemUser | null>(null)
   const [nomeEdicao, setNomeEdicao] = useState('')
   const [loginEdicao, setLoginEdicao] = useState('')
+  const [emailEdicao, setEmailEdicao] = useState('')
   const [ramalEdicao, setRamalEdicao] = useState('')
   const [senhaEdicao, setSenhaEdicao] = useState('')
   const [isAdminEdicao, setIsAdminEdicao] = useState(false)
@@ -50,6 +63,7 @@ export function UsuariosPage() {
     setEditando(usuario)
     setNomeEdicao(usuario.name)
     setLoginEdicao(usuario.usernameLogin)
+    setEmailEdicao(usuario.email ?? '')
     setRamalEdicao(usuario.extension != null ? String(usuario.extension) : '')
     setSenhaEdicao('')
     setIsAdminEdicao(usuario.isAdmin)
@@ -59,6 +73,7 @@ export function UsuariosPage() {
     setEditando(null)
     setNomeEdicao('')
     setLoginEdicao('')
+    setEmailEdicao('')
     setRamalEdicao('')
     setSenhaEdicao('')
     setIsAdminEdicao(false)
@@ -71,6 +86,11 @@ export function UsuariosPage() {
       setError('Ramal invalido.')
       return
     }
+    const emailRes = parseEmailOpcional(emailEdicao)
+    if (!emailRes.ok) {
+      setError('E-mail invalido.')
+      return
+    }
     setSavingEdit(true)
     setError(null)
     setSuccess(null)
@@ -78,6 +98,7 @@ export function UsuariosPage() {
       const atualizado = await atualizarUsuario(editando.id, {
         name: nomeEdicao.trim(),
         usernameLogin: loginEdicao.trim(),
+        email: emailRes.value,
         isAdmin: isAdminEdicao,
         passwordHash: senhaEdicao.trim() || undefined,
         extension: ramalRes.value,
@@ -95,6 +116,7 @@ export function UsuariosPage() {
   const nomeInvalido = nomeEdicao.trim().length < 3
   const loginInvalido = loginEdicao.trim().length < 3
   const ramalInvalido = !parseRamalOpcional(ramalEdicao).ok
+  const emailInvalido = !parseEmailOpcional(emailEdicao).ok
 
   async function excluir(usuario: SystemUser) {
     const confirmou = window.confirm(`Confirma excluir o usuario "${usuario.name}"?`)
@@ -179,6 +201,16 @@ export function UsuariosPage() {
               helperText={Boolean(loginEdicao) && loginInvalido ? 'Minimo 3 caracteres' : ' '}
             />
             <TextField
+              label="E-mail (opcional)"
+              type="email"
+              value={emailEdicao}
+              onChange={(event) => setEmailEdicao(event.target.value)}
+              error={Boolean(emailEdicao.trim()) && emailInvalido}
+              helperText={
+                Boolean(emailEdicao.trim()) && emailInvalido ? 'Informe um e-mail valido' : ' '
+              }
+            />
+            <TextField
               label="Ramal (opcional)"
               inputProps={{ inputMode: 'numeric' }}
               value={ramalEdicao}
@@ -209,7 +241,7 @@ export function UsuariosPage() {
           <Button
             onClick={salvarEdicao}
             variant="contained"
-            disabled={savingEdit || nomeInvalido || loginInvalido || ramalInvalido}
+            disabled={savingEdit || nomeInvalido || loginInvalido || ramalInvalido || emailInvalido}
           >
             Salvar
           </Button>

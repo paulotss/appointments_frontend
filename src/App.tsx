@@ -19,6 +19,8 @@ import { NovoProdutoConfigPage } from './pages/NovoProdutoConfigPage'
 import { NovoSetorPage } from './pages/NovoSetorPage'
 import { ChamadaDetalhePage } from './pages/ChamadaDetalhePage'
 import { ChamadasPage } from './pages/ChamadasPage'
+import { MensagemDetalhePage } from './pages/MensagemDetalhePage'
+import { MensagensPage } from './pages/MensagensPage'
 import { NovoRegistroPage } from './pages/NovoRegistroPage'
 import { RegistrosPage } from './pages/RegistrosPage'
 import { NovoUsuarioPage } from './pages/NovoUsuarioPage'
@@ -48,6 +50,8 @@ function App() {
         <Route path="/registros/novo" element={<NovoRegistroPage />} />
         <Route path="/chamadas" element={<ChamadasPage />} />
         <Route path="/chamadas/:callId" element={<ChamadaDetalhePage />} />
+        <Route path="/mensagens" element={<MensagensPage />} />
+        <Route path="/mensagens/:messageId" element={<MensagemDetalhePage />} />
         <Route path="/relatorios/horarios" element={<HorariosPage />} />
         <Route path="/relatorios/atendimentos" element={<AtendimentosPage />} />
         <Route path="/relatorios/taxa-conversao" element={<TaxaConversaoPage />} />

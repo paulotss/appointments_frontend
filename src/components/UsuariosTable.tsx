@@ -16,6 +16,7 @@ export function UsuariosTable({ usuarios, onEditar, onExcluir }: UsuariosTablePr
         <TableHead>
           <TableRow>
             <TableCell>Nome</TableCell>
+            <TableCell>E-mail</TableCell>
             <TableCell>Ramal</TableCell>
             <TableCell>Login</TableCell>
             <TableCell>Perfil</TableCell>
@@ -26,6 +27,7 @@ export function UsuariosTable({ usuarios, onEditar, onExcluir }: UsuariosTablePr
           {usuarios.map((usuario) => (
             <TableRow key={usuario.id} hover>
               <TableCell>{usuario.name}</TableCell>
+              <TableCell>{usuario.email?.trim() || '—'}</TableCell>
               <TableCell>{usuario.extension != null ? usuario.extension : '—'}</TableCell>
               <TableCell>{usuario.usernameLogin}</TableCell>
               <TableCell>

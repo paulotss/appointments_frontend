@@ -25,6 +25,7 @@ const allMenuItems: MenuItem[] = [
     items: [
       { kind: 'link', label: 'Registros', to: '/registros' },
       { kind: 'link', label: 'Chamadas', to: '/chamadas' },
+      { kind: 'link', label: 'Mensagens', to: '/mensagens' },
     ],
   },
   {

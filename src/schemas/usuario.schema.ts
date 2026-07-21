@@ -17,9 +17,23 @@ const optionalRamal = z
     message: 'Ramal deve ser um numero inteiro positivo ou ficar em branco',
   })
 
+const optionalEmail = z
+  .union([z.string(), z.undefined()])
+  .transform((str) => {
+    if (str === undefined || str === null) {
+      return null
+    }
+    const t = String(str).trim()
+    return t === '' ? null : t
+  })
+  .refine((v) => v === null || z.string().email().safeParse(v).success, {
+    message: 'E-mail invalido',
+  })
+
 export const usuarioSchema = z.object({
   name: z.string().min(3, 'Informe o nome'),
   usernameLogin: z.string().min(3, 'Informe o usuario de login'),
+  email: optionalEmail,
   passwordHash: z.string().min(6, 'A senha deve ter no minimo 6 caracteres'),
   isAdmin: z.boolean(),
   extension: optionalRamal,
