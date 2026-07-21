@@ -16,6 +16,7 @@ export interface Message {
   id: number
   finishAt: string
   recipient: string
+  name: string
   userId: number | null
   note: string | null
   recordStatus: MessageRecordStatus

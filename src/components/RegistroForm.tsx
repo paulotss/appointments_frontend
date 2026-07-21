@@ -8,6 +8,7 @@ import type { Especialidade, TipoAtendimento } from '../types/registro'
 export interface ContatoFixo {
   telefone: string
   atendimento: Extract<TipoAtendimento, 'telefone' | 'whatsapp'>
+  nome?: string
 }
 
 /** @deprecated Use ContatoFixo */
@@ -50,6 +51,7 @@ export function RegistroForm({
     }
     return {
       ...baseDefaultValues,
+      ...(contato.nome?.trim() ? { nome: contato.nome.trim() } : {}),
       telefone: contato.telefone,
       atendimento: contato.atendimento,
     }

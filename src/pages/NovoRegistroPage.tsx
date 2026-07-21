@@ -30,6 +30,7 @@ export function NovoRegistroPage() {
     const callIdRaw = searchParams.get('callId')
     const messageIdRaw = searchParams.get('messageId')
     const telefoneParam = searchParams.get('telefone')
+    const nomeParam = searchParams.get('nome')
     const origin = searchParams.get('origin')
     const telefone =
       telefoneParam != null && telefoneParam !== ''
@@ -37,6 +38,7 @@ export function NovoRegistroPage() {
         : origin != null && origin !== ''
           ? origin
           : null
+    const nome = nomeParam != null && nomeParam.trim() !== '' ? nomeParam.trim() : null
 
     const callIdNum =
       callIdRaw != null && callIdRaw !== '' ? Number.parseInt(callIdRaw, 10) : Number.NaN
@@ -54,7 +56,11 @@ export function NovoRegistroPage() {
     if (fromCall) {
       contato = { telefone, atendimento: 'telefone' }
     } else if (fromMessage) {
-      contato = { telefone, atendimento: 'whatsapp' }
+      contato = {
+        telefone,
+        atendimento: 'whatsapp',
+        ...(nome ? { nome } : {}),
+      }
     }
 
     return {

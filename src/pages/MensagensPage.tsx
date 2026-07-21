@@ -232,7 +232,15 @@ export function MensagensPage() {
       messageId: String(mensagem.id),
       telefone: mensagem.recipient,
     })
+    const nome = mensagem.name?.trim()
+    if (nome) {
+      params.set('nome', nome)
+    }
     navigate(`/registros/novo?${params.toString()}`)
+  }
+
+  function handleAbrirDetalhe(mensagem: Message) {
+    navigate(`/mensagens/${mensagem.id}`)
   }
 
   return (
@@ -329,6 +337,7 @@ export function MensagensPage() {
               <TableHead>
                 <TableRow>
                   <TableCell>Finalizada em</TableCell>
+                  <TableCell>Paciente</TableCell>
                   <TableCell>Destinatário</TableCell>
                   <TableCell align="center">Registro</TableCell>
                   <TableCell>Usuário</TableCell>
@@ -338,7 +347,7 @@ export function MensagensPage() {
               <TableBody>
                 {mensagensFiltradas.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5}>
+                    <TableCell colSpan={6}>
                       <Typography color="text.secondary">Nenhuma mensagem encontrada.</Typography>
                     </TableCell>
                   </TableRow>
@@ -347,8 +356,14 @@ export function MensagensPage() {
                     const pendente = mensagem.recordStatus === 'pending'
                     const busy = actionId === mensagem.id
                     return (
-                      <TableRow key={mensagem.id} hover>
+                      <TableRow
+                        key={mensagem.id}
+                        hover
+                        onClick={() => handleAbrirDetalhe(mensagem)}
+                        sx={{ cursor: 'pointer' }}
+                      >
                         <TableCell>{formatarDataHora(mensagem.finishAt)}</TableCell>
+                        <TableCell>{mensagem.name?.trim() || '—'}</TableCell>
                         <TableCell>{mensagem.recipient}</TableCell>
                         <TableCell align="center">
                           <Tooltip title={recordStatusTooltip(mensagem)} arrow>
@@ -367,7 +382,10 @@ export function MensagensPage() {
                           </Tooltip>
                         </TableCell>
                         <TableCell>{mensagem.user?.name?.trim() || '—'}</TableCell>
-                        <TableCell align="right">
+                        <TableCell
+                          align="right"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <Stack direction="row" spacing={0.5} justifyContent="flex-end">
                             <Tooltip title="Registrar">
                               <span>
