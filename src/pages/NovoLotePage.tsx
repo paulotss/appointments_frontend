@@ -10,8 +10,9 @@ import { getLoggedUserId } from '../services/authStorage'
 import { listarLocais } from '../services/storage-locations.service'
 import { listarProdutos } from '../services/products.service'
 import { criarLote } from '../services/stock-batches.service'
+import { listarFornecedores } from '../services/suppliers.service'
 import { listarSetores } from '../services/sectors.service'
-import type { LocalArmazenamento, ProdutoConfig, Setor } from '../types/estoque'
+import type { Fornecedor, LocalArmazenamento, ProdutoConfig, Setor } from '../types/estoque'
 import { dataHojeISO, montarPayloadCriacao } from '../utils/loteForm'
 
 export function NovoLotePage() {
@@ -23,6 +24,7 @@ export function NovoLotePage() {
   const [produtos, setProdutos] = useState<ProdutoConfig[]>([])
   const [setores, setSetores] = useState<Setor[]>([])
   const [locais, setLocais] = useState<LocalArmazenamento[]>([])
+  const [fornecedores, setFornecedores] = useState<Fornecedor[]>([])
 
   const {
     register,
@@ -37,6 +39,7 @@ export function NovoLotePage() {
       productId: undefined,
       sectorId: undefined,
       locationId: undefined,
+      supplierId: undefined,
       userId: loggedUserId ?? undefined,
       initialQuantity: undefined,
       unit: 'UNIT',
@@ -53,14 +56,16 @@ export function NovoLotePage() {
       setLoadingDados(true)
       setError(null)
       try {
-        const [produtosData, setoresData, locaisData] = await Promise.all([
+        const [produtosData, setoresData, locaisData, fornecedoresData] = await Promise.all([
           listarProdutos(),
           listarSetores(),
           listarLocais(),
+          listarFornecedores(),
         ])
         setProdutos(produtosData)
         setSetores(setoresData)
         setLocais(locaisData)
+        setFornecedores(fornecedoresData)
       } catch {
         setError('Nao foi possivel carregar os dados do formulario.')
       } finally {
@@ -91,7 +96,11 @@ export function NovoLotePage() {
   }
 
   const formularioPronto =
-    loggedUserId != null && produtos.length > 0 && setores.length > 0 && locais.length > 0
+    loggedUserId != null &&
+    produtos.length > 0 &&
+    setores.length > 0 &&
+    locais.length > 0 &&
+    fornecedores.length > 0
 
   return (
     <Stack spacing={2}>
@@ -123,7 +132,7 @@ export function NovoLotePage() {
 
       {!loadingDados && loggedUserId != null && !formularioPronto ? (
         <Alert severity="warning">
-          Cadastre produtos, setores e locais antes de criar uma entrada.
+          Cadastre produtos, setores, locais e fornecedores antes de criar uma entrada.
         </Alert>
       ) : null}
 
@@ -137,6 +146,7 @@ export function NovoLotePage() {
             produtos={produtos}
             setores={setores}
             locais={locais}
+            fornecedores={fornecedores}
             exibirUsuario={false}
             exibirQuantidadeAtual={false}
             exibirInclusao={false}

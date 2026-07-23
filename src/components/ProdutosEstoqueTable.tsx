@@ -2,6 +2,7 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import {
   Box,
+  Button,
   Chip,
   Collapse,
   IconButton,
@@ -15,8 +16,9 @@ import {
   Typography,
 } from '@mui/material'
 import { Fragment, useMemo, useState } from 'react'
-import type { LoteEstoque, ProdutoEstoqueConsolidado } from '../types/estoque'
+import type { LoteEstoque, LoteEstoqueFornecedor, ProdutoEstoqueConsolidado } from '../types/estoque'
 import { normalizarValorLote } from '../services/stock-batches.service'
+import { FornecedorDetalheDialog } from './FornecedorDetalheDialog'
 
 interface ProdutosEstoqueTableProps {
   produtos: ProdutoEstoqueConsolidado[]
@@ -101,7 +103,13 @@ function QuantidadeTotal({ quantidade, estoqueMinimo }: { quantidade: number; es
   return <Chip size="small" label={quantidade} color="primary" />
 }
 
-function LotesCollapse({ lotes }: { lotes: LoteEstoque[] }) {
+function LotesCollapse({
+  lotes,
+  onAbrirFornecedor,
+}: {
+  lotes: LoteEstoque[]
+  onAbrirFornecedor: (fornecedor: LoteEstoqueFornecedor) => void
+}) {
   if (lotes.length === 0) {
     return (
       <Box sx={{ py: 2, px: 3, bgcolor: '#d6f4e8' }}>
@@ -124,6 +132,7 @@ function LotesCollapse({ lotes }: { lotes: LoteEstoque[] }) {
             <TableCell>Data de movimentação</TableCell>
             <TableCell>Data de validade</TableCell>
             <TableCell>Local</TableCell>
+            <TableCell>Fornecedor</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -136,6 +145,20 @@ function LotesCollapse({ lotes }: { lotes: LoteEstoque[] }) {
               <TableCell>{formatarData(lote.movementDate)}</TableCell>
               <TableCell>{formatarData(lote.expirationDate)}</TableCell>
               <TableCell>{lote.location?.name ?? '-'}</TableCell>
+              <TableCell>
+                {lote.supplier ? (
+                  <Button
+                    variant="text"
+                    size="small"
+                    onClick={() => onAbrirFornecedor(lote.supplier)}
+                    sx={{ p: 0, minWidth: 0, textTransform: 'none' }}
+                  >
+                    {lote.supplier.tradeName}
+                  </Button>
+                ) : (
+                  '-'
+                )}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -144,7 +167,13 @@ function LotesCollapse({ lotes }: { lotes: LoteEstoque[] }) {
   )
 }
 
-function ProdutoEstoqueRow({ produto }: { produto: ProdutoEstoqueConsolidado }) {
+function ProdutoEstoqueRow({
+  produto,
+  onAbrirFornecedor,
+}: {
+  produto: ProdutoEstoqueConsolidado
+  onAbrirFornecedor: (fornecedor: LoteEstoqueFornecedor) => void
+}) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -178,7 +207,7 @@ function ProdutoEstoqueRow({ produto }: { produto: ProdutoEstoqueConsolidado }) 
       <TableRow>
         <TableCell colSpan={8} sx={{ py: 0, px: 0 }}>
           <Collapse in={open} timeout="auto" unmountOnExit>
-            <LotesCollapse lotes={produto.stockBatches} />
+            <LotesCollapse lotes={produto.stockBatches} onAbrirFornecedor={onAbrirFornecedor} />
           </Collapse>
         </TableCell>
       </TableRow>
@@ -215,6 +244,7 @@ function CabecalhoOrdenavel({
 export function ProdutosEstoqueTable({ produtos }: ProdutosEstoqueTableProps) {
   const [colunaOrdenacao, setColunaOrdenacao] = useState<ColunaOrdenacao>('name')
   const [direcaoOrdenacao, setDirecaoOrdenacao] = useState<DirecaoOrdenacao>('asc')
+  const [fornecedorModal, setFornecedorModal] = useState<LoteEstoqueFornecedor | null>(null)
 
   const produtosOrdenados = useMemo(
     () =>
@@ -233,68 +263,80 @@ export function ProdutosEstoqueTable({ produtos }: ProdutosEstoqueTableProps) {
   }
 
   return (
-    <TableContainer>
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            <TableCell />
-            <CabecalhoOrdenavel
-              coluna="name"
-              label="Nome"
-              colunaAtiva={colunaOrdenacao}
-              direcao={direcaoOrdenacao}
-              onOrdenar={alternarOrdenacao}
-            />
-            <CabecalhoOrdenavel
-              coluna="sku"
-              label="SKU"
-              colunaAtiva={colunaOrdenacao}
-              direcao={direcaoOrdenacao}
-              onOrdenar={alternarOrdenacao}
-            />
-            <CabecalhoOrdenavel
-              coluna="totalQuantity"
-              label="Quantidade total (un.)"
-              colunaAtiva={colunaOrdenacao}
-              direcao={direcaoOrdenacao}
-              onOrdenar={alternarOrdenacao}
-            />
-            <CabecalhoOrdenavel
-              coluna="averagePrice"
-              label="Preço médio"
-              colunaAtiva={colunaOrdenacao}
-              direcao={direcaoOrdenacao}
-              onOrdenar={alternarOrdenacao}
-            />
-            <CabecalhoOrdenavel
-              coluna="expiringBatchesCount"
-              label="Lotes a vencer"
-              colunaAtiva={colunaOrdenacao}
-              direcao={direcaoOrdenacao}
-              onOrdenar={alternarOrdenacao}
-            />
-            <CabecalhoOrdenavel
-              coluna="expiredBatchesCount"
-              label="Lotes vencidos"
-              colunaAtiva={colunaOrdenacao}
-              direcao={direcaoOrdenacao}
-              onOrdenar={alternarOrdenacao}
-            />
-            <CabecalhoOrdenavel
-              coluna="minimumStock"
-              label="Estoque mínimo (un.)"
-              colunaAtiva={colunaOrdenacao}
-              direcao={direcaoOrdenacao}
-              onOrdenar={alternarOrdenacao}
-            />
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {produtosOrdenados.map((produto, index) => (
-            <ProdutoEstoqueRow key={`${produto.sku}-${index}`} produto={produto} />
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
+    <>
+      <TableContainer>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell />
+              <CabecalhoOrdenavel
+                coluna="name"
+                label="Nome"
+                colunaAtiva={colunaOrdenacao}
+                direcao={direcaoOrdenacao}
+                onOrdenar={alternarOrdenacao}
+              />
+              <CabecalhoOrdenavel
+                coluna="sku"
+                label="SKU"
+                colunaAtiva={colunaOrdenacao}
+                direcao={direcaoOrdenacao}
+                onOrdenar={alternarOrdenacao}
+              />
+              <CabecalhoOrdenavel
+                coluna="totalQuantity"
+                label="Quantidade total (un.)"
+                colunaAtiva={colunaOrdenacao}
+                direcao={direcaoOrdenacao}
+                onOrdenar={alternarOrdenacao}
+              />
+              <CabecalhoOrdenavel
+                coluna="averagePrice"
+                label="Preço médio"
+                colunaAtiva={colunaOrdenacao}
+                direcao={direcaoOrdenacao}
+                onOrdenar={alternarOrdenacao}
+              />
+              <CabecalhoOrdenavel
+                coluna="expiringBatchesCount"
+                label="Lotes a vencer"
+                colunaAtiva={colunaOrdenacao}
+                direcao={direcaoOrdenacao}
+                onOrdenar={alternarOrdenacao}
+              />
+              <CabecalhoOrdenavel
+                coluna="expiredBatchesCount"
+                label="Lotes vencidos"
+                colunaAtiva={colunaOrdenacao}
+                direcao={direcaoOrdenacao}
+                onOrdenar={alternarOrdenacao}
+              />
+              <CabecalhoOrdenavel
+                coluna="minimumStock"
+                label="Estoque mínimo (un.)"
+                colunaAtiva={colunaOrdenacao}
+                direcao={direcaoOrdenacao}
+                onOrdenar={alternarOrdenacao}
+              />
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {produtosOrdenados.map((produto, index) => (
+              <ProdutoEstoqueRow
+                key={`${produto.sku}-${index}`}
+                produto={produto}
+                onAbrirFornecedor={setFornecedorModal}
+              />
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      <FornecedorDetalheDialog
+        fornecedor={fornecedorModal}
+        open={Boolean(fornecedorModal)}
+        onClose={() => setFornecedorModal(null)}
+      />
+    </>
   )
 }

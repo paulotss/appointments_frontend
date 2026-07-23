@@ -15,7 +15,7 @@ import {
   type UseFormSetValue,
 } from 'react-hook-form'
 import type { LoteFormValues } from '../schemas/lote.schema'
-import type { LocalArmazenamento, ProdutoConfig, Setor, StockUnit } from '../types/estoque'
+import type { Fornecedor, LocalArmazenamento, ProdutoConfig, Setor, StockUnit } from '../types/estoque'
 import type { SystemUser } from '../types/user'
 import {
   digitosParaNumeroMoedaBRL,
@@ -76,6 +76,7 @@ interface LoteFormProps {
   produtos: ProdutoConfig[]
   setores: Setor[]
   locais: LocalArmazenamento[]
+  fornecedores: Fornecedor[]
   usuarios?: SystemUser[]
   exibirUsuario?: boolean
   exibirQuantidadeInicial?: boolean
@@ -94,6 +95,7 @@ export function LoteForm({
   produtos,
   setores,
   locais,
+  fornecedores,
   usuarios = [],
   exibirUsuario = true,
   exibirQuantidadeInicial = true,
@@ -199,6 +201,30 @@ export function LoteForm({
               </MenuItem>
             ))}
           </TextField>
+        )}
+      />
+      <Controller
+        name="supplierId"
+        control={control}
+        render={({ field: { onChange, value, ref, onBlur } }) => (
+          <Autocomplete
+            options={fornecedores}
+            getOptionLabel={(fornecedor) => fornecedor.tradeName}
+            isOptionEqualToValue={(option, selected) => option.id === selected.id}
+            value={fornecedores.find((fornecedor) => fornecedor.id === value) ?? null}
+            onChange={(_, fornecedor) => onChange(fornecedor?.id)}
+            onBlur={onBlur}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                inputRef={ref}
+                label="Fornecedor"
+                placeholder="Selecione um fornecedor"
+                error={Boolean(errors.supplierId)}
+                helperText={errors.supplierId?.message}
+              />
+            )}
+          />
         )}
       />
       {exibirUsuario ? (

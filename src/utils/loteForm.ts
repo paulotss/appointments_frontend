@@ -30,6 +30,7 @@ export function montarPayloadCriacao(values: LoteFormValues): CreateStockBatchRe
   return {
     productId: values.productId,
     sectorId: values.sectorId,
+    supplierId: values.supplierId,
     initialQuantity: values.initialQuantity,
     unit: values.unit,
     movementDate: dataHojeISO(),
@@ -47,6 +48,7 @@ export function montarPayloadAtualizacao(values: LoteFormValues): UpdateStockBat
   return {
     productId: values.productId,
     sectorId: values.sectorId,
+    supplierId: values.supplierId,
     ...(opcionais.value != null ? { unitCost: opcionais.value } : {}),
     expirationDate: opcionais.expirationDate,
     notes: opcionais.notes,

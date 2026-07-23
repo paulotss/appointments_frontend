@@ -1,6 +1,7 @@
 import type {
   CreateStockBatchRequest,
   LoteEstoque,
+  LoteEstoqueFornecedor,
   LoteEstoqueLocal,
   LoteEstoqueProduto,
   LoteEstoqueSetor,
@@ -14,6 +15,7 @@ interface BackendLote {
   id: number
   productId: number
   sectorId: number
+  supplierId: number
   initialQuantity: number
   currentQuantity: number
   unitCost: number | string | null
@@ -26,6 +28,7 @@ interface BackendLote {
   isClosed: boolean
   sector: LoteEstoqueSetor
   location: LoteEstoqueLocal
+  supplier: LoteEstoqueFornecedor
   product?: LoteEstoqueProduto
   user?: LoteEstoqueUsuario
 }
@@ -35,6 +38,7 @@ function mapBackendLote(item: BackendLote): LoteEstoque {
     id: item.id,
     productId: item.productId,
     sectorId: item.sectorId,
+    supplierId: item.supplierId,
     initialQuantity: item.initialQuantity,
     currentQuantity: item.currentQuantity,
     unitCost: item.unitCost,
@@ -47,6 +51,7 @@ function mapBackendLote(item: BackendLote): LoteEstoque {
     isClosed: item.isClosed,
     sector: item.sector,
     location: item.location,
+    supplier: item.supplier,
     product: item.product,
     user: item.user,
   }

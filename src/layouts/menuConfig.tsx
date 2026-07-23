@@ -71,6 +71,7 @@ const allMenuItems: MenuItem[] = [
       { kind: 'divider', label: 'Estoque' },
       { kind: 'link', label: 'Categorias', to: '/configuracoes/estoque/categorias' },
       { kind: 'link', label: 'Produtos', to: '/configuracoes/estoque/produtos' },
+      { kind: 'link', label: 'Fornecedores', to: '/configuracoes/estoque/fornecedores' },
       { kind: 'link', label: 'Setores', to: '/configuracoes/estoque/setores' },
       { kind: 'link', label: 'Locais', to: '/configuracoes/estoque/locais' },
     ],
