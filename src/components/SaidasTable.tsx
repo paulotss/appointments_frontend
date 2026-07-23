@@ -1,4 +1,9 @@
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import {
+  Box,
+  Collapse,
+  IconButton,
   Table,
   TableBody,
   TableCell,
@@ -7,7 +12,7 @@ import {
   TableRow,
   TableSortLabel,
 } from '@mui/material'
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import type { SaidaEstoque } from '../types/estoque'
 
 interface SaidasTableProps {
@@ -16,14 +21,7 @@ interface SaidasTableProps {
   locaisPorId: Record<number, string>
 }
 
-type ColunaOrdenacao =
-  | 'batchId'
-  | 'product'
-  | 'location'
-  | 'quantity'
-  | 'user'
-  | 'professional'
-  | 'exitDate'
+type ColunaOrdenacao = 'product' | 'location' | 'quantity' | 'professional' | 'exitDate'
 
 type DirecaoOrdenacao = 'asc' | 'desc'
 
@@ -61,9 +59,8 @@ function compararSaidas(
   const fator = direcao === 'asc' ? 1 : -1
 
   switch (coluna) {
-    case 'batchId':
     case 'quantity':
-      return fator * (a[coluna] - b[coluna])
+      return fator * (a.quantity - b.quantity)
     case 'exitDate': {
       const dataA = a.exitDate ? new Date(a.exitDate).getTime() : 0
       const dataB = b.exitDate ? new Date(b.exitDate).getTime() : 0
@@ -82,13 +79,6 @@ function compararSaidas(
       return (
         fator *
         obterNomeLocal(a, locaisPorId).localeCompare(obterNomeLocal(b, locaisPorId), 'pt-BR', {
-          sensitivity: 'base',
-        })
-      )
-    case 'user':
-      return (
-        fator *
-        (a.user?.name ?? '').localeCompare(b.user?.name ?? '', 'pt-BR', {
           sensitivity: 'base',
         })
       )
@@ -132,6 +122,61 @@ function CabecalhoOrdenavel({
   )
 }
 
+function SaidaRow({
+  saida,
+  produtosPorId,
+  locaisPorId,
+}: {
+  saida: SaidaEstoque
+  produtosPorId: Record<number, string>
+  locaisPorId: Record<number, string>
+}) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Fragment>
+      <TableRow hover sx={{ '& > *': { borderBottom: 'unset' } }}>
+        <TableCell>
+          <IconButton
+            size="small"
+            aria-label={open ? 'Recolher detalhes' : 'Expandir detalhes'}
+            onClick={() => setOpen((prev) => !prev)}
+          >
+            {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+          </IconButton>
+        </TableCell>
+        <TableCell>{obterNomeProduto(saida, produtosPorId)}</TableCell>
+        <TableCell>{obterNomeLocal(saida, locaisPorId)}</TableCell>
+        <TableCell>{saida.quantity}</TableCell>
+        <TableCell>{saida.healthProfessional?.name ?? '—'}</TableCell>
+        <TableCell>{formatarData(saida.exitDate)}</TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell colSpan={6} sx={{ py: 0, px: 0 }}>
+          <Collapse in={open} timeout="auto" unmountOnExit>
+            <Box sx={{ py: 1.5, px: 2, bgcolor: '#d6f4e8' }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Lote</TableCell>
+                    <TableCell>Usuário</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  <TableRow>
+                    <TableCell>{saida.batchId}</TableCell>
+                    <TableCell>{saida.user?.name ?? '-'}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </Box>
+          </Collapse>
+        </TableCell>
+      </TableRow>
+    </Fragment>
+  )
+}
+
 export function SaidasTable({ saidas, produtosPorId, locaisPorId }: SaidasTableProps) {
   const [colunaOrdenacao, setColunaOrdenacao] = useState<ColunaOrdenacao>('exitDate')
   const [direcaoOrdenacao, setDirecaoOrdenacao] = useState<DirecaoOrdenacao>('desc')
@@ -159,13 +204,7 @@ export function SaidasTable({ saidas, produtosPorId, locaisPorId }: SaidasTableP
       <Table size="small">
         <TableHead>
           <TableRow>
-            <CabecalhoOrdenavel
-              coluna="batchId"
-              label="Lote"
-              colunaAtiva={colunaOrdenacao}
-              direcao={direcaoOrdenacao}
-              onOrdenar={alternarOrdenacao}
-            />
+            <TableCell />
             <CabecalhoOrdenavel
               coluna="product"
               label="Produto"
@@ -188,13 +227,6 @@ export function SaidasTable({ saidas, produtosPorId, locaisPorId }: SaidasTableP
               onOrdenar={alternarOrdenacao}
             />
             <CabecalhoOrdenavel
-              coluna="user"
-              label="Usuário"
-              colunaAtiva={colunaOrdenacao}
-              direcao={direcaoOrdenacao}
-              onOrdenar={alternarOrdenacao}
-            />
-            <CabecalhoOrdenavel
               coluna="professional"
               label="Profissional"
               colunaAtiva={colunaOrdenacao}
@@ -203,7 +235,7 @@ export function SaidasTable({ saidas, produtosPorId, locaisPorId }: SaidasTableP
             />
             <CabecalhoOrdenavel
               coluna="exitDate"
-              label="Data Saída"
+              label="Data da saída"
               colunaAtiva={colunaOrdenacao}
               direcao={direcaoOrdenacao}
               onOrdenar={alternarOrdenacao}
@@ -212,15 +244,12 @@ export function SaidasTable({ saidas, produtosPorId, locaisPorId }: SaidasTableP
         </TableHead>
         <TableBody>
           {saidasOrdenadas.map((saida) => (
-            <TableRow key={saida.id} hover>
-              <TableCell>{saida.batchId}</TableCell>
-              <TableCell>{obterNomeProduto(saida, produtosPorId)}</TableCell>
-              <TableCell>{obterNomeLocal(saida, locaisPorId)}</TableCell>
-              <TableCell>{saida.quantity}</TableCell>
-              <TableCell>{saida.user?.name ?? '-'}</TableCell>
-              <TableCell>{saida.healthProfessional?.name ?? '—'}</TableCell>
-              <TableCell>{formatarData(saida.exitDate)}</TableCell>
-            </TableRow>
+            <SaidaRow
+              key={saida.id}
+              saida={saida}
+              produtosPorId={produtosPorId}
+              locaisPorId={locaisPorId}
+            />
           ))}
         </TableBody>
       </Table>

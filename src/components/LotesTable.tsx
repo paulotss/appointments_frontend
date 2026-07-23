@@ -1,7 +1,12 @@
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import EditIcon from '@mui/icons-material/Edit'
 import {
+  Box,
+  Button,
+  Collapse,
   IconButton,
   Table,
   TableBody,
@@ -10,10 +15,12 @@ import {
   TableHead,
   TableRow,
   TableSortLabel,
+  Typography,
 } from '@mui/material'
-import { useMemo, useState } from 'react'
-import type { LoteEstoque } from '../types/estoque'
+import { Fragment, useMemo, useState } from 'react'
+import type { LoteEstoque, LoteEstoqueFornecedor } from '../types/estoque'
 import { normalizarValorLote } from '../services/stock-batches.service'
+import { FornecedorDetalheDialog } from './FornecedorDetalheDialog'
 
 interface LotesTableProps {
   lotes: LoteEstoque[]
@@ -22,17 +29,7 @@ interface LotesTableProps {
   onChaveCopiada?: () => void
 }
 
-type ColunaOrdenacao =
-  | 'id'
-  | 'product'
-  | 'sector'
-  | 'initialQuantity'
-  | 'currentQuantity'
-  | 'unitCost'
-  | 'movementDate'
-  | 'expirationDate'
-  | 'user'
-  | 'location'
+type ColunaOrdenacao = 'product' | 'currentQuantity' | 'location'
 
 type DirecaoOrdenacao = 'asc' | 'desc'
 
@@ -68,39 +65,12 @@ function compararLotes(
   const fator = direcao === 'asc' ? 1 : -1
 
   switch (coluna) {
-    case 'id':
-    case 'initialQuantity':
     case 'currentQuantity':
-      return fator * (a[coluna] - b[coluna])
-    case 'unitCost': {
-      const valorA = normalizarValorLote(a.unitCost) ?? 0
-      const valorB = normalizarValorLote(b.unitCost) ?? 0
-      return fator * (valorA - valorB)
-    }
-    case 'movementDate':
-    case 'expirationDate': {
-      const dataA = a[coluna] ? new Date(a[coluna]).getTime() : 0
-      const dataB = b[coluna] ? new Date(b[coluna]!).getTime() : 0
-      return fator * (dataA - dataB)
-    }
+      return fator * (a.currentQuantity - b.currentQuantity)
     case 'product':
       return (
         fator *
         (a.product?.name ?? '').localeCompare(b.product?.name ?? '', 'pt-BR', {
-          sensitivity: 'base',
-        })
-      )
-    case 'sector':
-      return (
-        fator *
-        (a.sector?.name ?? '').localeCompare(b.sector?.name ?? '', 'pt-BR', {
-          sensitivity: 'base',
-        })
-      )
-    case 'user':
-      return (
-        fator *
-        (a.user?.name ?? '').localeCompare(b.user?.name ?? '', 'pt-BR', {
           sensitivity: 'base',
         })
       )
@@ -122,17 +92,15 @@ function CabecalhoOrdenavel({
   colunaAtiva,
   direcao,
   onOrdenar,
-  align,
 }: {
   coluna: ColunaOrdenacao
   label: string
   colunaAtiva: ColunaOrdenacao
   direcao: DirecaoOrdenacao
   onOrdenar: (coluna: ColunaOrdenacao) => void
-  align?: 'left' | 'right'
 }) {
   return (
-    <TableCell align={align} sortDirection={colunaAtiva === coluna ? direcao : false}>
+    <TableCell sortDirection={colunaAtiva === coluna ? direcao : false}>
       <TableSortLabel
         active={colunaAtiva === coluna}
         direction={colunaAtiva === coluna ? direcao : 'asc'}
@@ -144,9 +112,123 @@ function CabecalhoOrdenavel({
   )
 }
 
+function LoteRow({
+  lote,
+  onEditar,
+  onFechar,
+  onChaveCopiada,
+  onAbrirFornecedor,
+}: {
+  lote: LoteEstoque
+  onEditar: (lote: LoteEstoque) => void
+  onFechar: (lote: LoteEstoque) => void
+  onChaveCopiada?: () => void
+  onAbrirFornecedor: (fornecedor: LoteEstoqueFornecedor) => void
+}) {
+  const [open, setOpen] = useState(false)
+
+  async function copiarChaveNfe(chave: string | number) {
+    await navigator.clipboard.writeText(String(chave))
+    onChaveCopiada?.()
+  }
+
+  return (
+    <Fragment>
+      <TableRow hover sx={{ '& > *': { borderBottom: 'unset' } }}>
+        <TableCell>
+          <IconButton
+            size="small"
+            aria-label={open ? 'Recolher detalhes' : 'Expandir detalhes'}
+            onClick={() => setOpen((prev) => !prev)}
+          >
+            {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+          </IconButton>
+        </TableCell>
+        <TableCell>{lote.product?.name ?? '-'}</TableCell>
+        <TableCell>{lote.currentQuantity}</TableCell>
+        <TableCell>{lote.location?.name ?? '-'}</TableCell>
+        <TableCell align="right">
+          <IconButton
+            size="small"
+            aria-label="Copiar chave NF-e"
+            disabled={!lote.invoiceAccessKey}
+            onClick={() => void copiarChaveNfe(lote.invoiceAccessKey!)}
+          >
+            <ContentCopyIcon fontSize="small" />
+          </IconButton>
+          <IconButton size="small" aria-label="Editar lote" onClick={() => onEditar(lote)}>
+            <EditIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            aria-label="Fechar lote"
+            disabled={lote.isClosed}
+            onClick={() => onFechar(lote)}
+          >
+            <LockOutlinedIcon fontSize="small" />
+          </IconButton>
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell colSpan={5} sx={{ py: 0, px: 0 }}>
+          <Collapse in={open} timeout="auto" unmountOnExit>
+            <Box sx={{ py: 1.5, px: 2, bgcolor: '#d6f4e8' }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Lote</TableCell>
+                    <TableCell>Setor</TableCell>
+                    <TableCell>Qtd. inicial (un.)</TableCell>
+                    <TableCell>Custo unit.</TableCell>
+                    <TableCell>Inclusão</TableCell>
+                    <TableCell>Validade</TableCell>
+                    <TableCell>Usuário</TableCell>
+                    <TableCell>Fornecedor</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  <TableRow>
+                    <TableCell>{lote.id}</TableCell>
+                    <TableCell>{lote.sector?.name ?? '-'}</TableCell>
+                    <TableCell>{lote.initialQuantity}</TableCell>
+                    <TableCell>{formatarValor(lote.unitCost)}</TableCell>
+                    <TableCell>{formatarData(lote.movementDate)}</TableCell>
+                    <TableCell>{formatarData(lote.expirationDate)}</TableCell>
+                    <TableCell>{lote.user?.name ?? '-'}</TableCell>
+                    <TableCell>
+                      {lote.supplier ? (
+                        <Button
+                          variant="text"
+                          size="small"
+                          onClick={() => onAbrirFornecedor(lote.supplier)}
+                          sx={{ p: 0, minWidth: 0, textTransform: 'none' }}
+                        >
+                          {lote.supplier.tradeName}
+                        </Button>
+                      ) : (
+                        '-'
+                      )}
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+              {lote.notes ? (
+                <Typography variant="body2" sx={{ mt: 1 }} color="text.secondary">
+                  Observações: {lote.notes}
+                </Typography>
+              ) : null}
+            </Box>
+          </Collapse>
+        </TableCell>
+      </TableRow>
+    </Fragment>
+  )
+}
+
 export function LotesTable({ lotes, onEditar, onFechar, onChaveCopiada }: LotesTableProps) {
-  const [colunaOrdenacao, setColunaOrdenacao] = useState<ColunaOrdenacao>('id')
-  const [direcaoOrdenacao, setDirecaoOrdenacao] = useState<DirecaoOrdenacao>('desc')
+  const [colunaOrdenacao, setColunaOrdenacao] = useState<ColunaOrdenacao>('product')
+  const [direcaoOrdenacao, setDirecaoOrdenacao] = useState<DirecaoOrdenacao>('asc')
+  const [fornecedorModal, setFornecedorModal] = useState<LoteEstoqueFornecedor | null>(null)
 
   const lotesOrdenados = useMemo(
     () => [...lotes].sort((a, b) => compararLotes(a, b, colunaOrdenacao, direcaoOrdenacao)),
@@ -163,131 +245,57 @@ export function LotesTable({ lotes, onEditar, onFechar, onChaveCopiada }: LotesT
     setDirecaoOrdenacao('asc')
   }
 
-  async function copiarChaveNfe(chave: string | number) {
-    await navigator.clipboard.writeText(String(chave))
-    onChaveCopiada?.()
-  }
-
   return (
-    <TableContainer sx={{ overflowX: 'auto' }}>
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            <CabecalhoOrdenavel
-              coluna="id"
-              label="Lote"
-              colunaAtiva={colunaOrdenacao}
-              direcao={direcaoOrdenacao}
-              onOrdenar={alternarOrdenacao}
-            />
-            <CabecalhoOrdenavel
-              coluna="product"
-              label="Produto"
-              colunaAtiva={colunaOrdenacao}
-              direcao={direcaoOrdenacao}
-              onOrdenar={alternarOrdenacao}
-            />
-            <CabecalhoOrdenavel
-              coluna="sector"
-              label="Setor"
-              colunaAtiva={colunaOrdenacao}
-              direcao={direcaoOrdenacao}
-              onOrdenar={alternarOrdenacao}
-            />
-            <CabecalhoOrdenavel
-              coluna="initialQuantity"
-              label="Qtd. inicial (un.)"
-              colunaAtiva={colunaOrdenacao}
-              direcao={direcaoOrdenacao}
-              onOrdenar={alternarOrdenacao}
-            />
-            <CabecalhoOrdenavel
-              coluna="currentQuantity"
-              label="Qtd. atual (un.)"
-              colunaAtiva={colunaOrdenacao}
-              direcao={direcaoOrdenacao}
-              onOrdenar={alternarOrdenacao}
-            />
-            <CabecalhoOrdenavel
-              coluna="unitCost"
-              label="Custo unit."
-              colunaAtiva={colunaOrdenacao}
-              direcao={direcaoOrdenacao}
-              onOrdenar={alternarOrdenacao}
-            />
-            <CabecalhoOrdenavel
-              coluna="movementDate"
-              label="Inclusão"
-              colunaAtiva={colunaOrdenacao}
-              direcao={direcaoOrdenacao}
-              onOrdenar={alternarOrdenacao}
-            />
-            <CabecalhoOrdenavel
-              coluna="expirationDate"
-              label="Validade"
-              colunaAtiva={colunaOrdenacao}
-              direcao={direcaoOrdenacao}
-              onOrdenar={alternarOrdenacao}
-            />
-            <CabecalhoOrdenavel
-              coluna="user"
-              label="Usuário"
-              colunaAtiva={colunaOrdenacao}
-              direcao={direcaoOrdenacao}
-              onOrdenar={alternarOrdenacao}
-            />
-            <CabecalhoOrdenavel
-              coluna="location"
-              label="Local"
-              colunaAtiva={colunaOrdenacao}
-              direcao={direcaoOrdenacao}
-              onOrdenar={alternarOrdenacao}
-            />
-            <TableCell align="right">Ações</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {lotesOrdenados.map((lote) => (
-            <TableRow key={lote.id} hover>
-              <TableCell>{lote.id}</TableCell>
-              <TableCell>{lote.product?.name ?? '-'}</TableCell>
-              <TableCell>{lote.sector?.name ?? '-'}</TableCell>
-              <TableCell>{lote.initialQuantity}</TableCell>
-              <TableCell>{lote.currentQuantity}</TableCell>
-              <TableCell>{formatarValor(lote.unitCost)}</TableCell>
-              <TableCell>{formatarData(lote.movementDate)}</TableCell>
-              <TableCell>{formatarData(lote.expirationDate)}</TableCell>
-              <TableCell>{lote.user?.name ?? '-'}</TableCell>
-              <TableCell>{lote.location?.name ?? '-'}</TableCell>
-              <TableCell align="right">
-                <IconButton
-                  size="small"
-                  aria-label="Copiar chave NF-e"
-                  disabled={!lote.invoiceAccessKey}
-                  onClick={() => void copiarChaveNfe(lote.invoiceAccessKey!)}
-                >
-                  <ContentCopyIcon fontSize="small" />
-                </IconButton>
-                <IconButton
-                  size="small"
-                  aria-label="Editar lote"
-                  onClick={() => onEditar(lote)}
-                >
-                  <EditIcon fontSize="small" />
-                </IconButton>
-                <IconButton
-                  size="small"
-                  aria-label="Fechar lote"
-                  disabled={lote.isClosed}
-                  onClick={() => onFechar(lote)}
-                >
-                  <LockOutlinedIcon fontSize="small" />
-                </IconButton>
-              </TableCell>
+    <>
+      <TableContainer sx={{ overflowX: 'auto' }}>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell />
+              <CabecalhoOrdenavel
+                coluna="product"
+                label="Produto"
+                colunaAtiva={colunaOrdenacao}
+                direcao={direcaoOrdenacao}
+                onOrdenar={alternarOrdenacao}
+              />
+              <CabecalhoOrdenavel
+                coluna="currentQuantity"
+                label="Quantidade atual (un.)"
+                colunaAtiva={colunaOrdenacao}
+                direcao={direcaoOrdenacao}
+                onOrdenar={alternarOrdenacao}
+              />
+              <CabecalhoOrdenavel
+                coluna="location"
+                label="Local"
+                colunaAtiva={colunaOrdenacao}
+                direcao={direcaoOrdenacao}
+                onOrdenar={alternarOrdenacao}
+              />
+              <TableCell align="right">Ações</TableCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
+          </TableHead>
+          <TableBody>
+            {lotesOrdenados.map((lote) => (
+              <LoteRow
+                key={lote.id}
+                lote={lote}
+                onEditar={onEditar}
+                onFechar={onFechar}
+                onChaveCopiada={onChaveCopiada}
+                onAbrirFornecedor={setFornecedorModal}
+              />
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      <FornecedorDetalheDialog
+        fornecedor={fornecedorModal}
+        open={Boolean(fornecedorModal)}
+        onClose={() => setFornecedorModal(null)}
+      />
+    </>
   )
 }

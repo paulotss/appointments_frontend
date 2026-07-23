@@ -4,6 +4,7 @@ import { CategoriasPage } from './pages/CategoriasPage'
 import { EspecialidadesPage } from './pages/EspecialidadesPage'
 import { EditarLotePage } from './pages/EditarLotePage'
 import { EspecialidadesAtendidasPage } from './pages/EspecialidadesAtendidasPage'
+import { FornecedoresPage } from './pages/FornecedoresPage'
 import { LocaisPage } from './pages/LocaisPage'
 import { LotesPage } from './pages/LotesPage'
 import { LoginPage } from './pages/LoginPage'
@@ -14,6 +15,7 @@ import { NovaCategoriaPage } from './pages/NovaCategoriaPage'
 import { NovaEspecialidadePage } from './pages/NovaEspecialidadePage'
 import { NovoLocalPage } from './pages/NovoLocalPage'
 import { NovaSaidaPage } from './pages/NovaSaidaPage'
+import { NovoFornecedorPage } from './pages/NovoFornecedorPage'
 import { NovoLotePage } from './pages/NovoLotePage'
 import { NovoProdutoConfigPage } from './pages/NovoProdutoConfigPage'
 import { NovoSetorPage } from './pages/NovoSetorPage'
@@ -165,6 +167,22 @@ function App() {
           element={
             <AdminRoute>
               <NovoLocalPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/configuracoes/estoque/fornecedores"
+          element={
+            <AdminRoute>
+              <FornecedoresPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/configuracoes/estoque/fornecedores/novo"
+          element={
+            <AdminRoute>
+              <NovoFornecedorPage />
             </AdminRoute>
           }
         />

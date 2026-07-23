@@ -9,8 +9,9 @@ import { loteSchema, type LoteFormValues } from '../schemas/lote.schema'
 import { listarLocais } from '../services/storage-locations.service'
 import { listarProdutos } from '../services/products.service'
 import { atualizarLote, buscarLote, normalizarValorLote } from '../services/stock-batches.service'
+import { listarFornecedores } from '../services/suppliers.service'
 import { listarSetores } from '../services/sectors.service'
-import type { LocalArmazenamento, ProdutoConfig, Setor } from '../types/estoque'
+import type { Fornecedor, LocalArmazenamento, ProdutoConfig, Setor } from '../types/estoque'
 import { montarPayloadAtualizacao, toDataInputISO } from '../utils/loteForm'
 
 export function EditarLotePage() {
@@ -24,6 +25,7 @@ export function EditarLotePage() {
   const [produtos, setProdutos] = useState<ProdutoConfig[]>([])
   const [setores, setSetores] = useState<Setor[]>([])
   const [locais, setLocais] = useState<LocalArmazenamento[]>([])
+  const [fornecedores, setFornecedores] = useState<Fornecedor[]>([])
 
   const {
     register,
@@ -38,6 +40,7 @@ export function EditarLotePage() {
       productId: undefined,
       sectorId: undefined,
       locationId: undefined,
+      supplierId: undefined,
       userId: undefined,
       initialQuantity: undefined,
       currentQuantity: undefined,
@@ -61,21 +64,24 @@ export function EditarLotePage() {
       setLoadingDados(true)
       setError(null)
       try {
-        const [lote, produtosData, setoresData, locaisData] = await Promise.all([
+        const [lote, produtosData, setoresData, locaisData, fornecedoresData] = await Promise.all([
           buscarLote(loteId),
           listarProdutos(),
           listarSetores(),
           listarLocais(),
+          listarFornecedores(),
         ])
 
         setProdutos(produtosData)
         setSetores(setoresData)
         setLocais(locaisData)
+        setFornecedores(fornecedoresData)
 
         reset({
           productId: lote.productId,
           sectorId: lote.sectorId,
           locationId: lote.locationId,
+          supplierId: lote.supplierId,
           userId: lote.userId,
           initialQuantity: lote.initialQuantity,
           currentQuantity: lote.currentQuantity,
@@ -111,7 +117,8 @@ export function EditarLotePage() {
     }
   }
 
-  const formularioPronto = produtos.length > 0 && setores.length > 0 && locais.length > 0
+  const formularioPronto =
+    produtos.length > 0 && setores.length > 0 && locais.length > 0 && fornecedores.length > 0
 
   return (
     <Stack spacing={2}>
@@ -147,6 +154,7 @@ export function EditarLotePage() {
             produtos={produtos}
             setores={setores}
             locais={locais}
+            fornecedores={fornecedores}
             exibirUsuario={false}
             exibirQuantidadeInicial={false}
             exibirQuantidadeAtual={false}

@@ -71,6 +71,44 @@ export interface UpdateStorageLocationRequest {
   name?: string
 }
 
+export interface Fornecedor {
+  id: number
+  legalName: string
+  tradeName: string
+  cnpj: string
+  phone: string
+  email: string
+  website: string | null
+}
+
+export interface CreateSupplierRequest {
+  legalName: string
+  tradeName: string
+  cnpj: string
+  phone: string
+  email: string
+  website?: string
+}
+
+export interface UpdateSupplierRequest {
+  legalName?: string
+  tradeName?: string
+  cnpj?: string
+  phone?: string
+  email?: string
+  website?: string | null
+}
+
+export interface LoteEstoqueFornecedor {
+  id: number
+  legalName: string
+  tradeName: string
+  cnpj: string
+  phone: string
+  email: string
+  website?: string | null
+}
+
 export interface LoteEstoqueSetor {
   id: number
   name: string
@@ -106,6 +144,7 @@ export interface LoteEstoque {
   id: number
   productId: number
   sectorId: number
+  supplierId: number
   initialQuantity: number
   currentQuantity: number
   unitCost: number | string | null
@@ -118,6 +157,7 @@ export interface LoteEstoque {
   isClosed: boolean
   sector: LoteEstoqueSetor
   location: LoteEstoqueLocal
+  supplier: LoteEstoqueFornecedor
   product?: LoteEstoqueProduto
   user?: LoteEstoqueUsuario
 }
@@ -125,6 +165,7 @@ export interface LoteEstoque {
 export interface CreateStockBatchRequest {
   productId: number
   sectorId: number
+  supplierId: number
   initialQuantity: number
   unit: StockUnit
   movementDate: string
@@ -141,6 +182,7 @@ export interface CreateStockBatchRequest {
 export interface UpdateStockBatchRequest {
   productId?: number
   sectorId?: number
+  supplierId?: number
   initialQuantity?: number
   currentQuantity?: number
   unit?: StockUnit
