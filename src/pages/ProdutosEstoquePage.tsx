@@ -1,6 +1,9 @@
+import DownloadIcon from '@mui/icons-material/Download'
 import {
   Alert,
+  Button,
   Checkbox,
+  Chip,
   CircularProgress,
   FormControlLabel,
   MenuItem,
@@ -15,6 +18,24 @@ import { listarEstoqueConsolidado } from '../services/products.service'
 import { listarLocais } from '../services/storage-locations.service'
 import type { LocalArmazenamento, ProdutoEstoqueConsolidado } from '../types/estoque'
 import { filtrarProdutoPorLocal } from '../utils/estoqueConsolidado'
+
+const formatadorMoeda = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+})
+
+function escaparCampoCSV(valor: string | number | null | undefined): string {
+  const texto = String(valor ?? '').replace(/"/g, '""')
+  return `"${texto}"`
+}
+
+function getHojeLocalISO(): string {
+  const agora = new Date()
+  const ano = agora.getFullYear()
+  const mes = String(agora.getMonth() + 1).padStart(2, '0')
+  const dia = String(agora.getDate()).padStart(2, '0')
+  return `${ano}-${mes}-${dia}`
+}
 
 export function ProdutosEstoquePage() {
   const [produtos, setProdutos] = useState<ProdutoEstoqueConsolidado[]>([])
@@ -50,6 +71,10 @@ export function ProdutosEstoquePage() {
       })
   }, [buscaNome, localFiltro, mostrarEstoqueZerado, produtos])
 
+  const valorTotalEstoque = useMemo(() => {
+    return produtosFiltrados.reduce((total, produto) => total + (produto.totalValue ?? 0), 0)
+  }, [produtosFiltrados])
+
   useEffect(() => {
     async function carregarDados() {
       setLoading(true)
@@ -70,6 +95,42 @@ export function ProdutosEstoquePage() {
 
     void carregarDados()
   }, [])
+
+  const exportarCSV = () => {
+    const cabecalho = [
+      'Nome',
+      'SKU',
+      'Quantidade total (un.)',
+      'Preço médio',
+      'Lotes a vencer',
+      'Lotes vencidos',
+      'Estoque mínimo (un.)',
+    ]
+
+    const linhas = produtosFiltrados.map((produto) =>
+      [
+        produto.name,
+        produto.sku,
+        produto.totalQuantity,
+        produto.averagePrice != null ? formatadorMoeda.format(produto.averagePrice) : '-',
+        produto.expiringBatchesCount,
+        produto.expiredBatchesCount,
+        produto.minimumStock,
+      ]
+        .map((campo) => escaparCampoCSV(campo))
+        .join(';'),
+    )
+
+    const csv = [cabecalho.map((campo) => escaparCampoCSV(campo)).join(';'), ...linhas].join('\r\n')
+    const csvComBOM = `\uFEFF${csv}`
+    const blob = new Blob([csvComBOM], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `produtos-estoque-${getHojeLocalISO()}.csv`)
+    link.click()
+    URL.revokeObjectURL(url)
+  }
 
   return (
     <Stack spacing={2}>
@@ -125,6 +186,25 @@ export function ProdutosEstoquePage() {
                 />
               }
               label="Produtos com estoque zerado"
+            />
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<DownloadIcon />}
+              onClick={exportarCSV}
+              disabled={produtosFiltrados.length === 0}
+              sx={{ width: { xs: '100%', md: 'auto' }, flexShrink: 0 }}
+            >
+              Exportar CSV
+            </Button>
+          </Stack>
+
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Chip
+              label={`Valor total: ${formatadorMoeda.format(valorTotalEstoque)}`}
+              size="small"
+              color="default"
+              variant="outlined"
             />
           </Stack>
 
