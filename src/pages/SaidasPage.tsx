@@ -3,6 +3,7 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   Paper,
   Stack,
@@ -13,9 +14,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { SaidasTable } from '../components/SaidasTable'
 import { listarProdutos } from '../services/products.service'
+import { listarLotes, normalizarValorLote } from '../services/stock-batches.service'
 import { listarSaidas } from '../services/stock-exits.service'
 import { listarLocais } from '../services/storage-locations.service'
 import type { SaidaEstoque } from '../types/estoque'
+
+const formatadorMoeda = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+})
 
 function extrairDataISO(value: string): string {
   return value.includes('T') ? value.split('T')[0] : value.split(' ')[0]
@@ -33,6 +40,7 @@ export function SaidasPage() {
   const [saidas, setSaidas] = useState<SaidaEstoque[]>([])
   const [produtosPorId, setProdutosPorId] = useState<Record<number, string>>({})
   const [locaisPorId, setLocaisPorId] = useState<Record<number, string>>({})
+  const [custoPorLoteId, setCustoPorLoteId] = useState<Record<number, number>>({})
   const [buscaNome, setBuscaNome] = useState('')
   const [dataInicio, setDataInicio] = useState('')
   const [dataFim, setDataFim] = useState('')
@@ -44,16 +52,25 @@ export function SaidasPage() {
       setLoading(true)
       setError(null)
       try {
-        const [saidasData, produtosData, locaisData] = await Promise.all([
+        const [saidasData, produtosData, locaisData, lotesData] = await Promise.all([
           listarSaidas(),
           listarProdutos(),
           listarLocais(),
+          listarLotes('all'),
         ])
         setSaidas(saidasData)
         setProdutosPorId(
           Object.fromEntries(produtosData.map((produto) => [produto.id, produto.nome])),
         )
         setLocaisPorId(Object.fromEntries(locaisData.map((local) => [local.id, local.nome])))
+        setCustoPorLoteId(
+          Object.fromEntries(
+            lotesData.flatMap((lote) => {
+              const unitCost = normalizarValorLote(lote.unitCost)
+              return unitCost == null ? [] : [[lote.id, unitCost]]
+            }),
+          ),
+        )
       } catch {
         setError('Nao foi possivel carregar as saidas.')
       } finally {
@@ -84,6 +101,14 @@ export function SaidasPage() {
       return true
     })
   }, [buscaNome, dataFim, dataInicio, produtosPorId, saidas])
+
+  const valorTotalSaidas = useMemo(() => {
+    return saidasFiltradas.reduce((total, saida) => {
+      const unitCost = custoPorLoteId[saida.batchId] ?? custoPorLoteId[saida.batch.id]
+      if (unitCost == null) return total
+      return total + unitCost * saida.quantity
+    }, 0)
+  }, [custoPorLoteId, saidasFiltradas])
 
   return (
     <Stack spacing={2}>
@@ -142,6 +167,15 @@ export function SaidasPage() {
               inputProps={{ min: dataInicio || undefined }}
               sx={{ minWidth: { xs: '100%', md: 180 } }}
               InputLabelProps={{ shrink: true }}
+            />
+          </Stack>
+
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Chip
+              label={`Valor total: ${formatadorMoeda.format(valorTotalSaidas)}`}
+              size="small"
+              color="default"
+              variant="outlined"
             />
           </Stack>
 
