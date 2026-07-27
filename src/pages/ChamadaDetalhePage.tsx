@@ -1,16 +1,23 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import BlockIcon from '@mui/icons-material/Block'
+import NoteAddIcon from '@mui/icons-material/NoteAdd'
 import {
   Alert,
   Button,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   Paper,
   Stack,
+  TextField,
   Typography,
 } from '@mui/material'
 import { useEffect, useState } from 'react'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
-import { buscarChamadaPorId } from '../services/calls.service'
+import { atualizarChamada, buscarChamadaPorId } from '../services/calls.service'
 import type { Call, CallRecordStatus, CallStatus } from '../types/call'
 
 function formatarDataHora(value: string): string {
@@ -53,6 +60,10 @@ export function ChamadaDetalhePage() {
   const [chamada, setChamada] = useState<Call | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
+  const [cancelNote, setCancelNote] = useState('')
+  const [cancelNoteError, setCancelNoteError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!Number.isFinite(callIdNum)) {
@@ -91,19 +102,99 @@ export function ChamadaDetalhePage() {
     }
   }, [callIdNum])
 
+  function handleRegistrar(call: Call) {
+    if (call.recordStatus !== 'pending') {
+      return
+    }
+    const telefone =
+      call.status === 'REALIZADO'
+        ? call.destination?.trim() || call.origin
+        : call.origin
+    const params = new URLSearchParams({
+      callId: String(call.id),
+      telefone,
+    })
+    navigate(`/registros/novo?${params.toString()}`)
+  }
+
+  function abrirCancelar() {
+    if (!chamada || chamada.recordStatus !== 'pending') {
+      return
+    }
+    setCancelNote('')
+    setCancelNoteError(null)
+    setCancelDialogOpen(true)
+  }
+
+  function fecharCancelar() {
+    setCancelDialogOpen(false)
+    setCancelNote('')
+    setCancelNoteError(null)
+  }
+
+  async function confirmarCancelar() {
+    if (!chamada) {
+      return
+    }
+    const trimmed = cancelNote.trim()
+    if (!trimmed) {
+      setCancelNoteError('Informe uma descrição.')
+      return
+    }
+    setCancelNoteError(null)
+    setCancelling(true)
+    try {
+      await atualizarChamada(chamada.id, {
+        recordStatus: 'cancelled',
+        note: trimmed,
+      })
+      setChamada({ ...chamada, recordStatus: 'cancelled', note: trimmed })
+      fecharCancelar()
+    } catch {
+      setError('Nao foi possivel cancelar o registro da chamada.')
+    } finally {
+      setCancelling(false)
+    }
+  }
+
+  const podeAgir = chamada?.recordStatus === 'pending' && !cancelling
+
   return (
     <Stack spacing={2}>
       <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} flexWrap="wrap">
         <Typography variant="h5" fontWeight={700}>
           {Number.isFinite(callIdNum) ? `Chamada #${callIdNum}` : 'Chamada'}
         </Typography>
-        <Button
-          variant="outlined"
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/chamadas')}
-        >
-          Voltar para chamadas
-        </Button>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Button
+            variant="contained"
+            startIcon={<NoteAddIcon />}
+            disabled={!podeAgir}
+            onClick={() => {
+              if (chamada) {
+                handleRegistrar(chamada)
+              }
+            }}
+          >
+            Registrar
+          </Button>
+          <Button
+            variant="outlined"
+            color="error"
+            startIcon={cancelling ? <CircularProgress color="inherit" size={18} /> : <BlockIcon />}
+            disabled={!podeAgir}
+            onClick={abrirCancelar}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<ArrowBackIcon />}
+            onClick={() => navigate('/chamadas')}
+          >
+            Voltar para chamadas
+          </Button>
+        </Stack>
       </Stack>
 
       {loading ? (
@@ -157,6 +248,56 @@ export function ChamadaDetalhePage() {
           </Stack>
         </Paper>
       ) : null}
+
+      <Dialog
+        open={cancelDialogOpen}
+        onClose={() => {
+          if (cancelling) {
+            return
+          }
+          fecharCancelar()
+        }}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Cancelar registro da chamada</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              Descreva o motivo do cancelamento. A descrição será salva na chamada.
+            </Typography>
+            <TextField
+              label="Descrição"
+              required
+              fullWidth
+              multiline
+              minRows={3}
+              value={cancelNote}
+              onChange={(e) => {
+                setCancelNote(e.target.value)
+                if (cancelNoteError) {
+                  setCancelNoteError(null)
+                }
+              }}
+              error={Boolean(cancelNoteError)}
+              helperText={cancelNoteError ?? undefined}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={fecharCancelar} disabled={cancelling}>
+            Voltar
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            disabled={cancelling}
+            onClick={() => void confirmarCancelar()}
+          >
+            {cancelling ? 'Salvando...' : 'Confirmar cancelamento'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   )
 }

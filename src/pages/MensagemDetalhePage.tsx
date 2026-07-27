@@ -1,17 +1,24 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import BlockIcon from '@mui/icons-material/Block'
+import NoteAddIcon from '@mui/icons-material/NoteAdd'
 import {
   Alert,
   Box,
   Button,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   Paper,
   Stack,
+  TextField,
   Typography,
 } from '@mui/material'
 import { useEffect, useState } from 'react'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
-import { buscarMensagemPorId } from '../services/messages.service'
+import { atualizarMensagem, buscarMensagemPorId } from '../services/messages.service'
 import type { Message, MessageRecordStatus } from '../types/message'
 
 interface ChatMessageItem {
@@ -99,6 +106,10 @@ export function MensagemDetalhePage() {
   const [mensagem, setMensagem] = useState<Message | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
+  const [cancelNote, setCancelNote] = useState('')
+  const [cancelNoteError, setCancelNoteError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!Number.isFinite(messageIdNum)) {
@@ -137,6 +148,62 @@ export function MensagemDetalhePage() {
     }
   }, [messageIdNum])
 
+  function handleRegistrar(msg: Message) {
+    if (msg.recordStatus !== 'pending') {
+      return
+    }
+    const params = new URLSearchParams({
+      messageId: String(msg.id),
+      telefone: msg.recipient,
+    })
+    const nome = msg.name?.trim()
+    if (nome) {
+      params.set('nome', nome)
+    }
+    navigate(`/registros/novo?${params.toString()}`)
+  }
+
+  function abrirCancelar() {
+    if (!mensagem || mensagem.recordStatus !== 'pending') {
+      return
+    }
+    setCancelNote('')
+    setCancelNoteError(null)
+    setCancelDialogOpen(true)
+  }
+
+  function fecharCancelar() {
+    setCancelDialogOpen(false)
+    setCancelNote('')
+    setCancelNoteError(null)
+  }
+
+  async function confirmarCancelar() {
+    if (!mensagem) {
+      return
+    }
+    const trimmed = cancelNote.trim()
+    if (!trimmed) {
+      setCancelNoteError('Informe uma descrição.')
+      return
+    }
+    setCancelNoteError(null)
+    setCancelling(true)
+    try {
+      await atualizarMensagem(mensagem.id, {
+        recordStatus: 'cancelled',
+        note: trimmed,
+      })
+      setMensagem({ ...mensagem, recordStatus: 'cancelled', note: trimmed })
+      fecharCancelar()
+    } catch {
+      setError('Nao foi possivel cancelar o registro da mensagem.')
+    } finally {
+      setCancelling(false)
+    }
+  }
+
+  const podeAgir = mensagem?.recordStatus === 'pending' && !cancelling
   const chatMessages = mensagem ? parseChatMessages(mensagem.content) : null
 
   return (
@@ -145,13 +212,36 @@ export function MensagemDetalhePage() {
         <Typography variant="h5" fontWeight={700}>
           {Number.isFinite(messageIdNum) ? `Mensagem #${messageIdNum}` : 'Mensagem'}
         </Typography>
-        <Button
-          variant="outlined"
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/mensagens')}
-        >
-          Voltar para mensagens
-        </Button>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Button
+            variant="contained"
+            startIcon={<NoteAddIcon />}
+            disabled={!podeAgir}
+            onClick={() => {
+              if (mensagem) {
+                handleRegistrar(mensagem)
+              }
+            }}
+          >
+            Registrar
+          </Button>
+          <Button
+            variant="outlined"
+            color="error"
+            startIcon={cancelling ? <CircularProgress color="inherit" size={18} /> : <BlockIcon />}
+            disabled={!podeAgir}
+            onClick={abrirCancelar}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<ArrowBackIcon />}
+            onClick={() => navigate('/mensagens')}
+          >
+            Voltar para mensagens
+          </Button>
+        </Stack>
       </Stack>
 
       {loading ? (
@@ -259,6 +349,56 @@ export function MensagemDetalhePage() {
           </Paper>
         </Stack>
       ) : null}
+
+      <Dialog
+        open={cancelDialogOpen}
+        onClose={() => {
+          if (cancelling) {
+            return
+          }
+          fecharCancelar()
+        }}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Cancelar registro da mensagem</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              Descreva o motivo do cancelamento. A descrição será salva na mensagem.
+            </Typography>
+            <TextField
+              label="Descrição"
+              required
+              fullWidth
+              multiline
+              minRows={3}
+              value={cancelNote}
+              onChange={(e) => {
+                setCancelNote(e.target.value)
+                if (cancelNoteError) {
+                  setCancelNoteError(null)
+                }
+              }}
+              error={Boolean(cancelNoteError)}
+              helperText={cancelNoteError ?? undefined}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={fecharCancelar} disabled={cancelling}>
+            Voltar
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            disabled={cancelling}
+            onClick={() => void confirmarCancelar()}
+          >
+            {cancelling ? 'Salvando...' : 'Confirmar cancelamento'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   )
 }
