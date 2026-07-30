@@ -37,7 +37,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { atualizarChamada, listarChamadas } from '../services/calls.service'
 import { getIsAdmin, getLoggedUserId } from '../services/authStorage'
+import { listarUsuarios } from '../services/users.service'
 import type { Call, CallRecordStatus, CallStatus } from '../types/call'
+import { formatAtendenteExibicao } from '../utils/formatAtendente'
 
 type FiltroRegistro = CallRecordStatus | 'all'
 
@@ -129,6 +131,9 @@ export function ChamadasPage() {
   const [mostrarNaoAtendidos, setMostrarNaoAtendidos] = useState(false)
   const [mostrarRealizados, setMostrarRealizados] = useState(false)
   const [filtroRegistro, setFiltroRegistro] = useState<FiltroRegistro>('pending')
+  /** Vazio = todos; somente usado por administradores. */
+  const [filtroAtendenteId, setFiltroAtendenteId] = useState('')
+  const [atendentes, setAtendentes] = useState<{ id: number; label: string }[]>([])
 
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [cancelTarget, setCancelTarget] = useState<Call | null>(null)
@@ -139,14 +144,30 @@ export function ChamadasPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await listarChamadas()
-      setChamadas(data)
+      if (isAdmin) {
+        const [data, usuariosData] = await Promise.all([listarChamadas(), listarUsuarios()])
+        setChamadas(data)
+        setAtendentes(
+          usuariosData
+            .map((usuario) => ({
+              id: usuario.id,
+              label: formatAtendenteExibicao(usuario.name.trim(), usuario.extension),
+            }))
+            .filter((item) => item.label.length > 0)
+            .sort((a, b) => a.label.localeCompare(b.label)),
+        )
+      } else {
+        const data = await listarChamadas()
+        setChamadas(data)
+        setAtendentes([])
+        setFiltroAtendenteId('')
+      }
     } catch {
       setError('Nao foi possivel carregar as chamadas.')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [isAdmin])
 
   useEffect(() => {
     void carregar()
@@ -155,6 +176,7 @@ export function ChamadasPage() {
   const chamadasPorFiltrosGerais = useMemo(() => {
     const ini = dataInicio <= dataFim ? dataInicio : dataFim
     const fim = dataFim >= dataInicio ? dataFim : dataInicio
+    const atendenteIdSelecionado = filtroAtendenteId ? Number(filtroAtendenteId) : null
 
     const statusPermitidos = new Set<CallStatus>(['ATENDIDO'])
     if (mostrarNaoAtendidos) {
@@ -176,6 +198,8 @@ export function ChamadasPage() {
         if (!visivelParaTodos && c.userId !== loggedUserId) {
           return false
         }
+      } else if (atendenteIdSelecionado != null && c.userId !== atendenteIdSelecionado) {
+        return false
       }
       const dataRecebida = toDataLocalISO(c.receivedAt)
       return dataRecebida >= ini && dataRecebida <= fim
@@ -184,6 +208,7 @@ export function ChamadasPage() {
     chamadas,
     dataInicio,
     dataFim,
+    filtroAtendenteId,
     isAdmin,
     loggedUserId,
     mostrarNaoAtendidos,
@@ -335,6 +360,23 @@ export function ChamadasPage() {
             <MenuItem value="cancelled">Cancelados</MenuItem>
           </Select>
         </FormControl>
+        {isAdmin ? (
+          <TextField
+            select
+            size="small"
+            label="Atendente"
+            value={filtroAtendenteId}
+            onChange={(e) => setFiltroAtendenteId(e.target.value)}
+            sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
+          >
+            <MenuItem value="">Todos</MenuItem>
+            {atendentes.map((atendente) => (
+              <MenuItem key={atendente.id} value={String(atendente.id)}>
+                {atendente.label}
+              </MenuItem>
+            ))}
+          </TextField>
+        ) : null}
         <FormControlLabel
           sx={{ width: { xs: '100%', sm: 'auto' }, m: 0 }}
           control={
