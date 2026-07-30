@@ -33,18 +33,12 @@ import { useNavigate } from 'react-router-dom'
 import { getIsAdmin, getLoggedUserId } from '../services/authStorage'
 import { atualizarMensagem, listarMensagens } from '../services/messages.service'
 import { listarUsuarios } from '../services/users.service'
+import {
+  type FiltroRegistroMensagem,
+  useMensagensFiltros,
+} from '../stores/pageFiltersStore'
 import type { Message, MessageRecordStatus } from '../types/message'
 import { formatAtendenteExibicao } from '../utils/formatAtendente'
-
-type FiltroRegistro = MessageRecordStatus | 'all'
-
-function getHojeLocalISO(): string {
-  const agora = new Date()
-  const ano = agora.getFullYear()
-  const mes = String(agora.getMonth() + 1).padStart(2, '0')
-  const dia = String(agora.getDate()).padStart(2, '0')
-  return `${ano}-${mes}-${dia}`
-}
 
 function toDataLocalISO(value: string | Date): string {
   const date = value instanceof Date ? value : new Date(value)
@@ -106,11 +100,8 @@ export function MensagensPage() {
   const [error, setError] = useState<string | null>(null)
   const [actionId, setActionId] = useState<number | null>(null)
 
-  const [dataInicio, setDataInicio] = useState(getHojeLocalISO())
-  const [dataFim, setDataFim] = useState(getHojeLocalISO())
-  const [filtroRegistro, setFiltroRegistro] = useState<FiltroRegistro>('pending')
-  /** Vazio = todos; somente usado por administradores. */
-  const [filtroAtendenteId, setFiltroAtendenteId] = useState('')
+  const [filtros, setFiltros] = useMensagensFiltros()
+  const { dataInicio, dataFim, filtroRegistro, filtroAtendenteId } = filtros
   const [atendentes, setAtendentes] = useState<{ id: number; label: string }[]>([])
 
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
@@ -138,14 +129,14 @@ export function MensagensPage() {
         const data = await listarMensagens()
         setMensagens(data)
         setAtendentes([])
-        setFiltroAtendenteId('')
+        setFiltros({ filtroAtendenteId: '' })
       }
     } catch {
       setError('Nao foi possivel carregar as mensagens.')
     } finally {
       setLoading(false)
     }
-  }, [isAdmin])
+  }, [isAdmin, setFiltros])
 
   useEffect(() => {
     void carregar()
@@ -294,7 +285,7 @@ export function MensagensPage() {
           type="date"
           size="small"
           value={dataInicio}
-          onChange={(e) => setDataInicio(e.target.value)}
+          onChange={(e) => setFiltros({ dataInicio: e.target.value })}
           InputLabelProps={{ shrink: true }}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
         />
@@ -303,7 +294,7 @@ export function MensagensPage() {
           type="date"
           size="small"
           value={dataFim}
-          onChange={(e) => setDataFim(e.target.value)}
+          onChange={(e) => setFiltros({ dataFim: e.target.value })}
           InputLabelProps={{ shrink: true }}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
         />
@@ -313,7 +304,7 @@ export function MensagensPage() {
             labelId="filtro-registro-mensagem-label"
             label="Registro"
             value={filtroRegistro}
-            onChange={(e) => setFiltroRegistro(e.target.value as FiltroRegistro)}
+            onChange={(e) => setFiltros({ filtroRegistro: e.target.value as FiltroRegistroMensagem })}
           >
             <MenuItem value="all">Todos</MenuItem>
             <MenuItem value="pending">Pendente</MenuItem>
@@ -327,7 +318,7 @@ export function MensagensPage() {
             size="small"
             label="Atendente"
             value={filtroAtendenteId}
-            onChange={(e) => setFiltroAtendenteId(e.target.value)}
+            onChange={(e) => setFiltros({ filtroAtendenteId: e.target.value })}
             sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
           >
             <MenuItem value="">Todos</MenuItem>
