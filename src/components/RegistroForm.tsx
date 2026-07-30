@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Button, Grid, MenuItem, Paper, TextField } from '@mui/material'
+import { Autocomplete, Button, Grid, MenuItem, Paper, TextField } from '@mui/material'
 import { useEffect, useMemo } from 'react'
-import { useForm, useWatch } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { registroSchema, type RegistroFormInput, type RegistroFormValues } from '../schemas/registro.schema'
 import type { Especialidade, TipoAtendimento } from '../types/registro'
 
@@ -190,25 +190,31 @@ export function RegistroForm({
         ) : null}
 
         <Grid size={{ xs: 12, md: 6 }}>
-          <TextField
-            select
-            label="Especialidade"
-            fullWidth
-            required
-            defaultValue=""
-            error={Boolean(errors.especialidade_id)}
-            helperText={errors.especialidade_id?.message}
-            {...register('especialidade_id', {
-              setValueAs: (value: string) => (value ? Number(value) : undefined),
-            })}
-          >
-            <MenuItem value="">Selecione...</MenuItem>
-            {especialidades.map((especialidade) => (
-              <MenuItem key={especialidade.id} value={especialidade.id}>
-                {especialidade.nome}
-              </MenuItem>
-            ))}
-          </TextField>
+          <Controller
+            name="especialidade_id"
+            control={control}
+            render={({ field: { onChange, value, ref, onBlur } }) => (
+              <Autocomplete
+                options={especialidades}
+                getOptionLabel={(especialidade) => especialidade.nome}
+                isOptionEqualToValue={(option, selected) => option.id === selected.id}
+                value={especialidades.find((especialidade) => especialidade.id === value) ?? null}
+                onChange={(_, especialidade) => onChange(especialidade?.id)}
+                onBlur={onBlur}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    inputRef={ref}
+                    label="Especialidade"
+                    placeholder="Selecione uma especialidade"
+                    required
+                    error={Boolean(errors.especialidade_id)}
+                    helperText={errors.especialidade_id?.message}
+                  />
+                )}
+              />
+            )}
+          />
         </Grid>
 
         <Grid size={12}>
