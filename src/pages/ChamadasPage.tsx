@@ -37,17 +37,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { atualizarChamada, listarChamadas } from '../services/calls.service'
 import { getIsAdmin, getLoggedUserId } from '../services/authStorage'
+import { listarUsuarios } from '../services/users.service'
+import {
+  type FiltroRegistroChamada,
+  useChamadasFiltros,
+} from '../stores/pageFiltersStore'
 import type { Call, CallRecordStatus, CallStatus } from '../types/call'
-
-type FiltroRegistro = CallRecordStatus | 'all'
-
-function getHojeLocalISO(): string {
-  const agora = new Date()
-  const ano = agora.getFullYear()
-  const mes = String(agora.getMonth() + 1).padStart(2, '0')
-  const dia = String(agora.getDate()).padStart(2, '0')
-  return `${ano}-${mes}-${dia}`
-}
+import { formatAtendenteExibicao } from '../utils/formatAtendente'
 
 function toDataLocalISO(value: string | Date): string {
   const date = value instanceof Date ? value : new Date(value)
@@ -123,12 +119,16 @@ export function ChamadasPage() {
   const [error, setError] = useState<string | null>(null)
   const [actionId, setActionId] = useState<number | null>(null)
 
-  const [dataInicio, setDataInicio] = useState(getHojeLocalISO())
-  const [dataFim, setDataFim] = useState(getHojeLocalISO())
-
-  const [mostrarNaoAtendidos, setMostrarNaoAtendidos] = useState(false)
-  const [mostrarRealizados, setMostrarRealizados] = useState(false)
-  const [filtroRegistro, setFiltroRegistro] = useState<FiltroRegistro>('pending')
+  const [filtros, setFiltros] = useChamadasFiltros()
+  const {
+    dataInicio,
+    dataFim,
+    filtroRegistro,
+    filtroAtendenteId,
+    mostrarNaoAtendidos,
+    mostrarRealizados,
+  } = filtros
+  const [atendentes, setAtendentes] = useState<{ id: number; label: string }[]>([])
 
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [cancelTarget, setCancelTarget] = useState<Call | null>(null)
@@ -139,14 +139,30 @@ export function ChamadasPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await listarChamadas()
-      setChamadas(data)
+      if (isAdmin) {
+        const [data, usuariosData] = await Promise.all([listarChamadas(), listarUsuarios()])
+        setChamadas(data)
+        setAtendentes(
+          usuariosData
+            .map((usuario) => ({
+              id: usuario.id,
+              label: formatAtendenteExibicao(usuario.name.trim(), usuario.extension),
+            }))
+            .filter((item) => item.label.length > 0)
+            .sort((a, b) => a.label.localeCompare(b.label)),
+        )
+      } else {
+        const data = await listarChamadas()
+        setChamadas(data)
+        setAtendentes([])
+        setFiltros({ filtroAtendenteId: '' })
+      }
     } catch {
       setError('Nao foi possivel carregar as chamadas.')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [isAdmin, setFiltros])
 
   useEffect(() => {
     void carregar()
@@ -155,6 +171,7 @@ export function ChamadasPage() {
   const chamadasPorFiltrosGerais = useMemo(() => {
     const ini = dataInicio <= dataFim ? dataInicio : dataFim
     const fim = dataFim >= dataInicio ? dataFim : dataInicio
+    const atendenteIdSelecionado = filtroAtendenteId ? Number(filtroAtendenteId) : null
 
     const statusPermitidos = new Set<CallStatus>(['ATENDIDO'])
     if (mostrarNaoAtendidos) {
@@ -176,6 +193,8 @@ export function ChamadasPage() {
         if (!visivelParaTodos && c.userId !== loggedUserId) {
           return false
         }
+      } else if (atendenteIdSelecionado != null && c.userId !== atendenteIdSelecionado) {
+        return false
       }
       const dataRecebida = toDataLocalISO(c.receivedAt)
       return dataRecebida >= ini && dataRecebida <= fim
@@ -184,6 +203,7 @@ export function ChamadasPage() {
     chamadas,
     dataInicio,
     dataFim,
+    filtroAtendenteId,
     isAdmin,
     loggedUserId,
     mostrarNaoAtendidos,
@@ -308,7 +328,7 @@ export function ChamadasPage() {
           type="date"
           size="small"
           value={dataInicio}
-          onChange={(e) => setDataInicio(e.target.value)}
+          onChange={(e) => setFiltros({ dataInicio: e.target.value })}
           InputLabelProps={{ shrink: true }}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
         />
@@ -317,7 +337,7 @@ export function ChamadasPage() {
           type="date"
           size="small"
           value={dataFim}
-          onChange={(e) => setDataFim(e.target.value)}
+          onChange={(e) => setFiltros({ dataFim: e.target.value })}
           InputLabelProps={{ shrink: true }}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
         />
@@ -327,7 +347,7 @@ export function ChamadasPage() {
             labelId="filtro-registro-label"
             label="Registro"
             value={filtroRegistro}
-            onChange={(e) => setFiltroRegistro(e.target.value as FiltroRegistro)}
+            onChange={(e) => setFiltros({ filtroRegistro: e.target.value as FiltroRegistroChamada })}
           >
             <MenuItem value="all">Todos</MenuItem>
             <MenuItem value="pending">Pendente</MenuItem>
@@ -335,12 +355,29 @@ export function ChamadasPage() {
             <MenuItem value="cancelled">Cancelados</MenuItem>
           </Select>
         </FormControl>
+        {isAdmin ? (
+          <TextField
+            select
+            size="small"
+            label="Atendente"
+            value={filtroAtendenteId}
+            onChange={(e) => setFiltros({ filtroAtendenteId: e.target.value })}
+            sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
+          >
+            <MenuItem value="">Todos</MenuItem>
+            {atendentes.map((atendente) => (
+              <MenuItem key={atendente.id} value={String(atendente.id)}>
+                {atendente.label}
+              </MenuItem>
+            ))}
+          </TextField>
+        ) : null}
         <FormControlLabel
           sx={{ width: { xs: '100%', sm: 'auto' }, m: 0 }}
           control={
             <Checkbox
               checked={mostrarNaoAtendidos}
-              onChange={(e) => setMostrarNaoAtendidos(e.target.checked)}
+              onChange={(e) => setFiltros({ mostrarNaoAtendidos: e.target.checked })}
             />
           }
           label="Mostrar não atendidos"
@@ -350,7 +387,7 @@ export function ChamadasPage() {
           control={
             <Checkbox
               checked={mostrarRealizados}
-              onChange={(e) => setMostrarRealizados(e.target.checked)}
+              onChange={(e) => setFiltros({ mostrarRealizados: e.target.checked })}
             />
           }
           label="Mostrar realizados"
