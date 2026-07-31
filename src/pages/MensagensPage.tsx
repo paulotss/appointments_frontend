@@ -23,29 +23,39 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
   Tooltip,
   Typography,
 } from '@mui/material'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getIsAdmin, getLoggedUserId } from '../services/authStorage'
+import { getIsAdmin } from '../services/authStorage'
 import { atualizarMensagem, listarMensagens } from '../services/messages.service'
 import { listarUsuarios } from '../services/users.service'
 import {
   type FiltroRegistroMensagem,
   useMensagensFiltros,
 } from '../stores/pageFiltersStore'
+import type { ListMeta, RecordStatusCounts } from '../types/listEnvelope'
 import type { Message, MessageRecordStatus } from '../types/message'
 import { formatAtendenteExibicao } from '../utils/formatAtendente'
 
-function toDataLocalISO(value: string | Date): string {
-  const date = value instanceof Date ? value : new Date(value)
-  const ano = date.getFullYear()
-  const mes = String(date.getMonth() + 1).padStart(2, '0')
-  const dia = String(date.getDate()).padStart(2, '0')
-  return `${ano}-${mes}-${dia}`
+const PAGE_SIZE_OPTIONS = [25, 50, 100]
+
+const COUNTS_VAZIOS: RecordStatusCounts = {
+  pending: 0,
+  registered: 0,
+  cancelled: 0,
+  total: 0,
+}
+
+const META_VAZIA: ListMeta = {
+  page: 1,
+  limit: 50,
+  total: 0,
+  totalPages: 1,
 }
 
 function formatarDataHora(value: string): string {
@@ -90,12 +100,22 @@ function recordStatusTooltip(mensagem: Message): string {
   return recordStatusLabel(mensagem.recordStatus)
 }
 
+function normalizarPeriodo(dataInicio: string, dataFim: string) {
+  return {
+    from: dataInicio <= dataFim ? dataInicio : dataFim,
+    to: dataFim >= dataInicio ? dataFim : dataInicio,
+  }
+}
+
 export function MensagensPage() {
   const navigate = useNavigate()
   const isAdmin = getIsAdmin()
-  const loggedUserId = getLoggedUserId()
 
   const [mensagens, setMensagens] = useState<Message[]>([])
+  const [counts, setCounts] = useState<RecordStatusCounts>(COUNTS_VAZIOS)
+  const [meta, setMeta] = useState<ListMeta>(META_VAZIA)
+  const [page, setPage] = useState(0)
+  const [rowsPerPage, setRowsPerPage] = useState(50)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actionId, setActionId] = useState<number | null>(null)
@@ -109,13 +129,28 @@ export function MensagensPage() {
   const [cancelNote, setCancelNote] = useState('')
   const [cancelNoteError, setCancelNoteError] = useState<string | null>(null)
 
-  const carregar = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      if (isAdmin) {
-        const [data, usuariosData] = await Promise.all([listarMensagens(), listarUsuarios()])
-        setMensagens(data)
+  const atualizarFiltros = useCallback(
+    (partial: Parameters<typeof setFiltros>[0]) => {
+      setFiltros(partial)
+      setPage(0)
+    },
+    [setFiltros],
+  )
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setAtendentes([])
+      setFiltros({ filtroAtendenteId: '' })
+      return
+    }
+
+    let cancelled = false
+    void (async () => {
+      try {
+        const usuariosData = await listarUsuarios()
+        if (cancelled) {
+          return
+        }
         setAtendentes(
           usuariosData
             .map((usuario) => ({
@@ -125,71 +160,57 @@ export function MensagensPage() {
             .filter((item) => item.label.length > 0)
             .sort((a, b) => a.label.localeCompare(b.label)),
         )
-      } else {
-        const data = await listarMensagens()
-        setMensagens(data)
-        setAtendentes([])
-        setFiltros({ filtroAtendenteId: '' })
+      } catch {
+        if (!cancelled) {
+          setError('Nao foi possivel carregar os atendentes.')
+        }
       }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [isAdmin, setFiltros])
+
+  const carregar = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const { from, to } = normalizarPeriodo(dataInicio, dataFim)
+      const result = await listarMensagens({
+        from,
+        to,
+        ...(filtroRegistro !== 'all' ? { recordStatus: filtroRegistro } : {}),
+        ...(isAdmin && filtroAtendenteId
+          ? { userId: Number(filtroAtendenteId) }
+          : {}),
+        page: page + 1,
+        limit: rowsPerPage,
+      })
+      setMensagens(result.data)
+      setCounts(result.counts)
+      setMeta(result.meta)
     } catch {
       setError('Nao foi possivel carregar as mensagens.')
+      setMensagens([])
+      setCounts(COUNTS_VAZIOS)
+      setMeta(META_VAZIA)
     } finally {
       setLoading(false)
     }
-  }, [isAdmin, setFiltros])
+  }, [
+    dataInicio,
+    dataFim,
+    filtroRegistro,
+    filtroAtendenteId,
+    isAdmin,
+    page,
+    rowsPerPage,
+  ])
 
   useEffect(() => {
     void carregar()
   }, [carregar])
-
-  const mensagensPorFiltrosGerais = useMemo(() => {
-    const ini = dataInicio <= dataFim ? dataInicio : dataFim
-    const fim = dataFim >= dataInicio ? dataFim : dataInicio
-    const atendenteIdSelecionado = filtroAtendenteId ? Number(filtroAtendenteId) : null
-
-    return mensagens.filter((m) => {
-      if (!isAdmin) {
-        if (loggedUserId == null) {
-          return false
-        }
-        if (m.userId !== loggedUserId) {
-          return false
-        }
-      } else if (atendenteIdSelecionado != null && m.userId !== atendenteIdSelecionado) {
-        return false
-      }
-      const dataFinalizada = toDataLocalISO(m.finishAt)
-      return dataFinalizada >= ini && dataFinalizada <= fim
-    })
-  }, [mensagens, dataInicio, dataFim, filtroAtendenteId, isAdmin, loggedUserId])
-
-  const mensagensFiltradas = useMemo(() => {
-    if (filtroRegistro === 'all') {
-      return mensagensPorFiltrosGerais
-    }
-    return mensagensPorFiltrosGerais.filter((m) => m.recordStatus === filtroRegistro)
-  }, [mensagensPorFiltrosGerais, filtroRegistro])
-
-  const totaisRegistro = useMemo(() => {
-    let pendentes = 0
-    let registradas = 0
-    let canceladas = 0
-    for (const mensagem of mensagensPorFiltrosGerais) {
-      if (mensagem.recordStatus === 'registered') {
-        registradas += 1
-      } else if (mensagem.recordStatus === 'cancelled') {
-        canceladas += 1
-      } else {
-        pendentes += 1
-      }
-    }
-    return {
-      pendentes,
-      registradas,
-      canceladas,
-      total: mensagensPorFiltrosGerais.length,
-    }
-  }, [mensagensPorFiltrosGerais])
 
   function abrirCancelar(mensagem: Message) {
     if (mensagem.recordStatus !== 'pending') {
@@ -224,14 +245,8 @@ export function MensagensPage() {
         recordStatus: 'cancelled',
         note: trimmed,
       })
-      setMensagens((prev) =>
-        prev.map((m) =>
-          m.id === cancelTarget.id
-            ? { ...m, recordStatus: 'cancelled' as const, note: trimmed }
-            : m,
-        ),
-      )
       fecharCancelar()
+      await carregar()
     } catch {
       setError('Nao foi possivel cancelar o registro da mensagem.')
     } finally {
@@ -285,7 +300,7 @@ export function MensagensPage() {
           type="date"
           size="small"
           value={dataInicio}
-          onChange={(e) => setFiltros({ dataInicio: e.target.value })}
+          onChange={(e) => atualizarFiltros({ dataInicio: e.target.value })}
           InputLabelProps={{ shrink: true }}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
         />
@@ -294,7 +309,7 @@ export function MensagensPage() {
           type="date"
           size="small"
           value={dataFim}
-          onChange={(e) => setFiltros({ dataFim: e.target.value })}
+          onChange={(e) => atualizarFiltros({ dataFim: e.target.value })}
           InputLabelProps={{ shrink: true }}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
         />
@@ -304,7 +319,9 @@ export function MensagensPage() {
             labelId="filtro-registro-mensagem-label"
             label="Registro"
             value={filtroRegistro}
-            onChange={(e) => setFiltros({ filtroRegistro: e.target.value as FiltroRegistroMensagem })}
+            onChange={(e) =>
+              atualizarFiltros({ filtroRegistro: e.target.value as FiltroRegistroMensagem })
+            }
           >
             <MenuItem value="all">Todos</MenuItem>
             <MenuItem value="pending">Pendente</MenuItem>
@@ -318,7 +335,7 @@ export function MensagensPage() {
             size="small"
             label="Atendente"
             value={filtroAtendenteId}
-            onChange={(e) => setFiltros({ filtroAtendenteId: e.target.value })}
+            onChange={(e) => atualizarFiltros({ filtroAtendenteId: e.target.value })}
             sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
           >
             <MenuItem value="">Todos</MenuItem>
@@ -343,22 +360,22 @@ export function MensagensPage() {
         <>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             <Chip
-              label={`Pendentes: ${totaisRegistro.pendentes}`}
+              label={`Pendentes: ${counts.pending}`}
               size="small"
               sx={{ bgcolor: recordStatusColor('pending'), color: '#000' }}
             />
             <Chip
-              label={`Registradas: ${totaisRegistro.registradas}`}
+              label={`Registradas: ${counts.registered}`}
               size="small"
               sx={{ bgcolor: recordStatusColor('registered'), color: '#fff' }}
             />
             <Chip
-              label={`Canceladas: ${totaisRegistro.canceladas}`}
+              label={`Canceladas: ${counts.cancelled}`}
               size="small"
               sx={{ bgcolor: recordStatusColor('cancelled'), color: '#fff' }}
             />
             <Chip
-              label={`Total: ${totaisRegistro.total}`}
+              label={`Total: ${counts.total}`}
               size="small"
               sx={{ bgcolor: '#000', color: '#fff' }}
             />
@@ -377,14 +394,14 @@ export function MensagensPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {mensagensFiltradas.length === 0 ? (
+                {mensagens.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6}>
                       <Typography color="text.secondary">Nenhuma mensagem encontrada.</Typography>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  mensagensFiltradas.map((mensagem) => {
+                  mensagens.map((mensagem) => {
                     const pendente = mensagem.recordStatus === 'pending'
                     const busy = actionId === mensagem.id
                     return (
@@ -414,10 +431,7 @@ export function MensagensPage() {
                           </Tooltip>
                         </TableCell>
                         <TableCell>{mensagem.user?.name?.trim() || '—'}</TableCell>
-                        <TableCell
-                          align="right"
-                          onClick={(e) => e.stopPropagation()}
-                        >
+                        <TableCell align="right" onClick={(e) => e.stopPropagation()}>
                           <Stack direction="row" spacing={0.5} justifyContent="flex-end">
                             <Tooltip title="Registrar">
                               <span>
@@ -457,6 +471,22 @@ export function MensagensPage() {
                 )}
               </TableBody>
             </Table>
+            <TablePagination
+              component="div"
+              count={meta.total}
+              page={page}
+              onPageChange={(_, nextPage) => setPage(nextPage)}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={(e) => {
+                setRowsPerPage(Number(e.target.value))
+                setPage(0)
+              }}
+              rowsPerPageOptions={PAGE_SIZE_OPTIONS}
+              labelRowsPerPage="Por página"
+              labelDisplayedRows={({ from, to, count }) =>
+                `${from}–${to} de ${count !== -1 ? count : `mais de ${to}`}`
+              }
+            />
           </TableContainer>
         </>
       ) : null}

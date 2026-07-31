@@ -21,7 +21,8 @@ export interface Message {
   note: string | null
   recordStatus: MessageRecordStatus
   interactionId: string
-  content: unknown | null
+  /** Ausente na listagem; presente em GET /messages/:id */
+  content?: unknown | null
   user: MessageUser | null
   /** Somente leitura: registro de atendimento vinculado, quando existir. */
   appointment?: BackendAppointment | null

@@ -2,7 +2,7 @@ import PercentIcon from '@mui/icons-material/Percent'
 import { BarChart } from '@mui/x-charts/BarChart'
 import { Alert, Box, CircularProgress, Paper, Stack, TextField, Typography } from '@mui/material'
 import { useEffect, useMemo, useState } from 'react'
-import { listarRegistros } from '../services/registros.service'
+import { exportarRegistros } from '../services/registros.service'
 import type { RegistroAtendimento } from '../types/registro'
 
 type ConversaoPorUsuario = {
@@ -26,13 +26,6 @@ function getInicioMesAtualISO(): string {
   return `${ano}-${mes}-01`
 }
 
-function parseDateISO(value: string, endOfDay = false): Date {
-  const [ano, mes, dia] = value.split('-').map(Number)
-  return endOfDay
-    ? new Date(ano, mes - 1, dia, 23, 59, 59, 999)
-    : new Date(ano, mes - 1, dia, 0, 0, 0, 0)
-}
-
 function formatarDataBR(value: string): string {
   const [ano, mes, dia] = value.split('-')
   return `${dia}/${mes}/${ano}`
@@ -45,45 +38,46 @@ export function TaxaConversaoPage() {
   const [dataInicio, setDataInicio] = useState(getInicioMesAtualISO())
   const [dataFim, setDataFim] = useState(toDateISO(new Date()))
 
+  const intervaloInvalido = dataInicio > dataFim
+
   useEffect(() => {
+    if (intervaloInvalido) {
+      setRegistros([])
+      return
+    }
+
     async function carregarRegistros() {
       setLoading(true)
       setError(null)
       try {
-        const data = await listarRegistros()
+        const from = dataInicio <= dataFim ? dataInicio : dataFim
+        const to = dataFim >= dataInicio ? dataFim : dataInicio
+        const data = await exportarRegistros({ from, to })
         setRegistros(data)
       } catch {
         setError('Nao foi possivel carregar os registros.')
+        setRegistros([])
       } finally {
         setLoading(false)
       }
     }
 
     void carregarRegistros()
-  }, [])
-
-  const intervaloInvalido = dataInicio > dataFim
+  }, [dataInicio, dataFim, intervaloInvalido])
 
   const conversaoPorUsuario = useMemo<ConversaoPorUsuario[]>(() => {
     if (intervaloInvalido) return []
 
-    const inicio = parseDateISO(dataInicio)
-    const fim = parseDateISO(dataFim, true)
     const mapa = new Map<string, { total: number; sim: number }>()
 
-    registros
-      .filter((r) => {
-        const dataRegistro = new Date(r.data)
-        return dataRegistro >= inicio && dataRegistro <= fim
-      })
-      .forEach((r) => {
-        const nomeRaw = r.atendente
-        const usuario = (typeof nomeRaw === 'string' ? nomeRaw.trim() : '') || 'Sem atendente'
-        const atual = mapa.get(usuario) ?? { total: 0, sim: 0 }
-        atual.total += 1
-        if (r.agendamento === 'sim') atual.sim += 1
-        mapa.set(usuario, atual)
-      })
+    registros.forEach((r) => {
+      const nomeRaw = r.atendente
+      const usuario = (typeof nomeRaw === 'string' ? nomeRaw.trim() : '') || 'Sem atendente'
+      const atual = mapa.get(usuario) ?? { total: 0, sim: 0 }
+      atual.total += 1
+      if (r.agendamento === 'sim') atual.sim += 1
+      mapa.set(usuario, atual)
+    })
 
     return Array.from(mapa.entries())
       .map(([usuario, { total, sim }]) => ({
@@ -93,7 +87,7 @@ export function TaxaConversaoPage() {
         percentual: total === 0 ? 0 : (sim / total) * 100,
       }))
       .sort((a, b) => b.percentual - a.percentual || b.total - a.total || a.usuario.localeCompare(b.usuario))
-  }, [dataFim, dataInicio, intervaloInvalido, registros])
+  }, [intervaloInvalido, registros])
 
   const chart = useMemo(() => {
     return {

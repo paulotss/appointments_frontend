@@ -2,7 +2,7 @@ import PieChartIcon from '@mui/icons-material/PieChart'
 import { BarChart } from '@mui/x-charts/BarChart'
 import { Alert, Box, CircularProgress, Paper, Stack, TextField, Typography } from '@mui/material'
 import { useEffect, useMemo, useState } from 'react'
-import { listarRegistros } from '../services/registros.service'
+import { exportarRegistros } from '../services/registros.service'
 import type { RegistroAtendimento } from '../types/registro'
 
 function getInicioMesAtualISO(): string {
@@ -18,14 +18,6 @@ function getFimMesAtualISO(): string {
   const ano = fimMes.getFullYear()
   const mes = String(fimMes.getMonth() + 1).padStart(2, '0')
   const dia = String(fimMes.getDate()).padStart(2, '0')
-  return `${ano}-${mes}-${dia}`
-}
-
-function toDataLocalISO(value: string | Date): string {
-  const date = value instanceof Date ? value : new Date(value)
-  const ano = date.getFullYear()
-  const mes = String(date.getMonth() + 1).padStart(2, '0')
-  const dia = String(date.getDate()).padStart(2, '0')
   return `${ano}-${mes}-${dia}`
 }
 
@@ -47,32 +39,28 @@ export function EspecialidadesAtendidasPage() {
       setLoading(true)
       setError(null)
       try {
-        const data = await listarRegistros()
+        const from = dataInicio <= dataFim ? dataInicio : dataFim
+        const to = dataFim >= dataInicio ? dataFim : dataInicio
+        const data = await exportarRegistros({ from, to })
         setRegistros(data)
       } catch {
         setError('Nao foi possivel carregar os registros.')
+        setRegistros([])
       } finally {
         setLoading(false)
       }
     }
 
     void carregarRegistros()
-  }, [])
+  }, [dataInicio, dataFim])
 
   const dadosBarras = useMemo(() => {
     const contagem = new Map<string, number>()
-    const dataInicial = dataInicio <= dataFim ? dataInicio : dataFim
-    const dataFinal = dataFim >= dataInicio ? dataFim : dataInicio
 
-    registros
-      .filter((r) => {
-        const dataRegistro = toDataLocalISO(r.data)
-        return dataRegistro >= dataInicial && dataRegistro <= dataFinal
-      })
-      .forEach((r) => {
-        const especialidade = r.especialidade_nome?.trim() || 'Sem especialidade'
-        contagem.set(especialidade, (contagem.get(especialidade) ?? 0) + 1)
-      })
+    registros.forEach((r) => {
+      const especialidade = r.especialidade_nome?.trim() || 'Sem especialidade'
+      contagem.set(especialidade, (contagem.get(especialidade) ?? 0) + 1)
+    })
 
     const totaisOrdenados = Array.from(contagem.entries())
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
@@ -83,7 +71,7 @@ export function EspecialidadesAtendidasPage() {
       total,
       percentual: totalAtendimentos > 0 ? Number(((total / totalAtendimentos) * 100).toFixed(2)) : 0,
     }))
-  }, [dataFim, dataInicio, registros])
+  }, [registros])
 
   const especialidades = dadosBarras.map((item) => item.especialidade)
   const percentuais = dadosBarras.map((item) => item.percentual)

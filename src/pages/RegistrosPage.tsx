@@ -11,32 +11,48 @@ import {
   MenuItem,
   Paper,
   Stack,
+  TablePagination,
   TextField,
   Tooltip,
   Typography,
 } from '@mui/material'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatAtendenteExibicao } from '../utils/formatAtendente'
 import { RegistrosTable } from '../components/RegistrosTable'
 import { getIsAdmin, getLoggedUser } from '../services/authStorage'
-import { listarRegistros } from '../services/registros.service'
+import { listarEspecialidades } from '../services/especialidades.service'
+import {
+  exportarRegistros,
+  listarRegistros,
+  type ContactMethodBackend,
+} from '../services/registros.service'
 import { listarUsuarios } from '../services/users.service'
-import type { RegistroAtendimento, SimNao, TipoAtendimento } from '../types/registro'
+import type { AppointmentListCounts, ListMeta } from '../types/listEnvelope'
+import type { Especialidade, RegistroAtendimento, SimNao, TipoAtendimento } from '../types/registro'
+
+const PAGE_SIZE_OPTIONS = [25, 50, 100]
+
+const COUNTS_VAZIOS: AppointmentListCounts = {
+  scheduledYes: 0,
+  scheduledNo: 0,
+  firstTimeYes: 0,
+  firstTimeNo: 0,
+  total: 0,
+}
+
+const META_VAZIA: ListMeta = {
+  page: 1,
+  limit: 50,
+  total: 0,
+  totalPages: 1,
+}
 
 function getHojeLocalISO(): string {
   const agora = new Date()
   const ano = agora.getFullYear()
   const mes = String(agora.getMonth() + 1).padStart(2, '0')
   const dia = String(agora.getDate()).padStart(2, '0')
-  return `${ano}-${mes}-${dia}`
-}
-
-function toDataLocalISO(value: string | Date): string {
-  const date = value instanceof Date ? value : new Date(value)
-  const ano = date.getFullYear()
-  const mes = String(date.getMonth() + 1).padStart(2, '0')
-  const dia = String(date.getDate()).padStart(2, '0')
   return `${ano}-${mes}-${dia}`
 }
 
@@ -57,180 +73,244 @@ function escaparCampoCSV(valor: string | number | null | undefined): string {
   return `"${texto}"`
 }
 
+function normalizarPeriodo(dataInicio: string, dataFim: string) {
+  return {
+    from: dataInicio <= dataFim ? dataInicio : dataFim,
+    to: dataFim >= dataInicio ? dataFim : dataInicio,
+  }
+}
+
+function mapAtendimentoToContactMethod(
+  atendimento: '' | TipoAtendimento,
+): ContactMethodBackend | undefined {
+  if (atendimento === 'telefone') {
+    return 'phone'
+  }
+  if (atendimento === 'outro') {
+    return 'other'
+  }
+  if (atendimento === 'whatsapp') {
+    return 'whatsapp'
+  }
+  return undefined
+}
+
+function mapSimNaoToBoolean(value: '' | SimNao): boolean | undefined {
+  if (value === 'sim') {
+    return true
+  }
+  if (value === 'nao') {
+    return false
+  }
+  return undefined
+}
+
 export function RegistrosPage() {
   const navigate = useNavigate()
   const isAdmin = getIsAdmin()
-  const usuarioLogado = getLoggedUser()
-  const idUsuarioLogado =
-    usuarioLogado != null && typeof usuarioLogado.id === 'number' && Number.isFinite(usuarioLogado.id)
-      ? usuarioLogado.id
-      : null
   const filtroDataPadrao = getHojeLocalISO()
+
   const [registros, setRegistros] = useState<RegistroAtendimento[]>([])
-  const [usuarios, setUsuarios] = useState<string[]>([])
+  const [counts, setCounts] = useState<AppointmentListCounts>(COUNTS_VAZIOS)
+  const [meta, setMeta] = useState<ListMeta>(META_VAZIA)
+  const [page, setPage] = useState(0)
+  const [rowsPerPage, setRowsPerPage] = useState(50)
+  const [atendentes, setAtendentes] = useState<{ id: number; label: string }[]>([])
+  const [especialidades, setEspecialidades] = useState<Especialidade[]>([])
   const [loading, setLoading] = useState(true)
+  const [exporting, setExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
   const [filtroDataInicio, setFiltroDataInicio] = useState(filtroDataPadrao)
   const [filtroDataFim, setFiltroDataFim] = useState(filtroDataPadrao)
-  /** Valor inicial vazio; apos carregar usuarios da API alinhamos ao rotulo exato das opcoes (ex.: nome | ramal). */
-  const [filtroAtendente, setFiltroAtendente] = useState('')
+  const [filtroAtendenteId, setFiltroAtendenteId] = useState('')
   const [filtroAtendimento, setFiltroAtendimento] = useState<'' | TipoAtendimento>('')
   const [filtroPrimeiraVez, setFiltroPrimeiraVez] = useState<'' | SimNao>('')
   const [filtroAgendamento, setFiltroAgendamento] = useState<'' | SimNao>('')
   const [filtroEspecialidade, setFiltroEspecialidade] = useState('')
   const [todosExpandidos, setTodosExpandidos] = useState(false)
 
-  useEffect(() => {
-    async function carregarRegistros() {
-      setLoading(true)
-      setError(null)
-      try {
-        if (isAdmin) {
-          const [registrosData, usuariosData] = await Promise.all([listarRegistros(), listarUsuarios()])
-          setRegistros(registrosData)
-          const nomesUsuarios = usuariosData
-            .map((usuario) => formatAtendenteExibicao(usuario.name.trim(), usuario.extension))
-            .filter((nome) => nome.length > 0)
-            .sort((a, b) => a.localeCompare(b))
-          const opcoesAtendentes = Array.from(new Set(nomesUsuarios))
-          setUsuarios(opcoesAtendentes)
-
-          const loggedUser = getLoggedUser()
-          if (loggedUser) {
-            const linhaUsuario = usuariosData.find((u) => u.id === loggedUser.id)
-            const rotuloPreferido = linhaUsuario
-              ? formatAtendenteExibicao(linhaUsuario.name.trim(), linhaUsuario.extension)
-              : formatAtendenteExibicao(loggedUser.name.trim(), loggedUser.extension)
-            if (opcoesAtendentes.includes(rotuloPreferido)) {
-              setFiltroAtendente(rotuloPreferido)
-            }
-          }
-        } else {
-          const registrosData = await listarRegistros()
-          setRegistros(registrosData)
-          setUsuarios([])
-          setFiltroAtendente('')
-        }
-      } catch {
-        setError('Nao foi possivel carregar os registros.')
-      } finally {
-        setLoading(false)
-      }
+  const montarFiltrosApi = useCallback(() => {
+    const { from, to } = normalizarPeriodo(filtroDataInicio, filtroDataFim)
+    return {
+      from,
+      to,
+      ...(isAdmin && filtroAtendenteId
+        ? { attendantId: Number(filtroAtendenteId) }
+        : {}),
+      ...(mapAtendimentoToContactMethod(filtroAtendimento)
+        ? { contactMethod: mapAtendimentoToContactMethod(filtroAtendimento) }
+        : {}),
+      ...(mapSimNaoToBoolean(filtroPrimeiraVez) !== undefined
+        ? { firstTime: mapSimNaoToBoolean(filtroPrimeiraVez) }
+        : {}),
+      ...(mapSimNaoToBoolean(filtroAgendamento) !== undefined
+        ? { scheduled: mapSimNaoToBoolean(filtroAgendamento) }
+        : {}),
+      ...(filtroEspecialidade
+        ? { specialtyId: Number(filtroEspecialidade) }
+        : {}),
     }
-
-    void carregarRegistros()
-  }, [isAdmin])
-
-  const atendentes = useMemo(() => {
-    if (!isAdmin) {
-      return []
-    }
-    if (usuarios.length > 0) {
-      return usuarios
-    }
-    const unicos = Array.from(new Set(registros.map((registro) => registro.atendente)))
-    return unicos.sort((a, b) => a.localeCompare(b))
-  }, [isAdmin, registros, usuarios])
-
-  const registrosVisiveis = useMemo(() => {
-    if (isAdmin) {
-      return registros
-    }
-    if (idUsuarioLogado == null) {
-      return []
-    }
-    return registros.filter((registro) => registro.atendente_id === idUsuarioLogado)
-  }, [idUsuarioLogado, isAdmin, registros])
-
-  const especialidades = useMemo(() => {
-    const map = new Map<number, string>()
-    registrosVisiveis.forEach((registro) => {
-      const nome = registro.especialidade_nome?.trim()
-      if (nome) {
-        map.set(registro.especialidade_id, nome)
-      }
-    })
-    return Array.from(map.entries())
-      .map(([id, nome]) => ({ id, nome }))
-      .sort((a, b) => a.nome.localeCompare(b.nome))
-  }, [registrosVisiveis])
-
-  const registrosFiltrados = useMemo(() => {
-    return registrosVisiveis.filter((registro) => {
-      const dataRegistro = toDataLocalISO(registro.data)
-      const dataOkInicio = !filtroDataInicio || dataRegistro >= filtroDataInicio
-      const dataOkFim = !filtroDataFim || dataRegistro <= filtroDataFim
-      const atendenteOk = !isAdmin || !filtroAtendente || registro.atendente === filtroAtendente
-      const atendimentoOk = !filtroAtendimento || registro.atendimento === filtroAtendimento
-      const primeiraVezOk = !filtroPrimeiraVez || registro.primeira_vez === filtroPrimeiraVez
-      const agendamentoOk = !filtroAgendamento || registro.agendamento === filtroAgendamento
-      const especialidadeOk =
-        !filtroEspecialidade || registro.especialidade_id === Number(filtroEspecialidade)
-      return (
-        dataOkInicio &&
-        dataOkFim &&
-        atendenteOk &&
-        atendimentoOk &&
-        primeiraVezOk &&
-        agendamentoOk &&
-        especialidadeOk
-      )
-    })
   }, [
     filtroAgendamento,
-    filtroAtendente,
+    filtroAtendenteId,
     filtroAtendimento,
     filtroDataFim,
     filtroDataInicio,
     filtroEspecialidade,
     filtroPrimeiraVez,
     isAdmin,
-    registrosVisiveis,
   ])
 
-  const exportarCSV = () => {
-    const cabecalho = [
-      'ID',
-      'Data',
-      'Nome',
-      'Telefone',
-      'Atendimento',
-      'Primeira vez',
-      'Agendamento',
-      'Motivo',
-      'Especialidade',
-      'Observacoes',
-      'Atendente',
-    ]
+  const resetPage = useCallback(() => {
+    setPage(0)
+  }, [])
 
-    const linhas = registrosFiltrados.map((registro) =>
-      [
-        registro.id,
-        toDataHoraLocal(registro.data),
-        registro.nome,
-        registro.telefone,
-        registro.atendimento,
-        registro.primeira_vez,
-        registro.agendamento,
-        registro.motivo,
-        registro.especialidade_nome ?? '',
-        registro.observacoes,
-        registro.atendente,
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const especialidadesData = await listarEspecialidades()
+        if (!cancelled) {
+          setEspecialidades(especialidadesData)
+        }
+      } catch {
+        // filtro de especialidade fica vazio se falhar
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setAtendentes([])
+      setFiltroAtendenteId('')
+      return
+    }
+
+    let cancelled = false
+    void (async () => {
+      try {
+        const usuariosData = await listarUsuarios()
+        if (cancelled) {
+          return
+        }
+        const opcoes = usuariosData
+          .map((usuario) => ({
+            id: usuario.id,
+            label: formatAtendenteExibicao(usuario.name.trim(), usuario.extension),
+          }))
+          .filter((item) => item.label.length > 0)
+          .sort((a, b) => a.label.localeCompare(b.label))
+        setAtendentes(opcoes)
+
+        const loggedUser = getLoggedUser()
+        if (loggedUser && !filtroAtendenteId) {
+          const existe = opcoes.some((item) => item.id === loggedUser.id)
+          if (existe) {
+            setFiltroAtendenteId(String(loggedUser.id))
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setError('Nao foi possivel carregar os atendentes.')
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só na entrada admin
+  }, [isAdmin])
+
+  const carregar = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const result = await listarRegistros({
+        ...montarFiltrosApi(),
+        page: page + 1,
+        limit: rowsPerPage,
+      })
+      setRegistros(result.data)
+      setCounts(result.counts ?? COUNTS_VAZIOS)
+      setMeta(result.meta)
+    } catch {
+      setError('Nao foi possivel carregar os registros.')
+      setRegistros([])
+      setCounts(COUNTS_VAZIOS)
+      setMeta(META_VAZIA)
+    } finally {
+      setLoading(false)
+    }
+  }, [montarFiltrosApi, page, rowsPerPage])
+
+  useEffect(() => {
+    void carregar()
+  }, [carregar])
+
+  async function exportarCSV() {
+    setExporting(true)
+    setError(null)
+    try {
+      const registrosExport = await exportarRegistros(montarFiltrosApi())
+      if (registrosExport.length === 0) {
+        setError('Nenhum registro para exportar com os filtros atuais.')
+        return
+      }
+
+      const cabecalho = [
+        'ID',
+        'Data',
+        'Nome',
+        'Telefone',
+        'Atendimento',
+        'Primeira vez',
+        'Agendamento',
+        'Motivo',
+        'Especialidade',
+        'Observacoes',
+        'Atendente',
       ]
-        .map((campo) => escaparCampoCSV(campo))
-        .join(';'),
-    )
 
-    const csv = [cabecalho.map((campo) => escaparCampoCSV(campo)).join(';'), ...linhas].join('\r\n')
-    const csvComBOM = `\uFEFF${csv}`
-    const blob = new Blob([csvComBOM], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    const dataAtual = getHojeLocalISO()
-    link.href = url
-    link.setAttribute('download', `registros-${dataAtual}.csv`)
-    link.click()
-    URL.revokeObjectURL(url)
+      const linhas = registrosExport.map((registro) =>
+        [
+          registro.id,
+          toDataHoraLocal(registro.data),
+          registro.nome,
+          registro.telefone,
+          registro.atendimento,
+          registro.primeira_vez,
+          registro.agendamento,
+          registro.motivo,
+          registro.especialidade_nome ?? '',
+          registro.observacoes,
+          registro.atendente,
+        ]
+          .map((campo) => escaparCampoCSV(campo))
+          .join(';'),
+      )
+
+      const csv = [cabecalho.map((campo) => escaparCampoCSV(campo)).join(';'), ...linhas].join(
+        '\r\n',
+      )
+      const csvComBOM = `\uFEFF${csv}`
+      const blob = new Blob([csvComBOM], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      const dataAtual = getHojeLocalISO()
+      link.href = url
+      link.setAttribute('download', `registros-${dataAtual}.csv`)
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setError('Nao foi possivel exportar os registros. Verifique o periodo/filtros.')
+    } finally {
+      setExporting(false)
+    }
   }
 
   return (
@@ -242,9 +322,9 @@ export function RegistrosPage() {
         <Stack direction="row" spacing={1.5}>
           <Button
             variant="outlined"
-            startIcon={<DownloadIcon />}
-            onClick={exportarCSV}
-            disabled={registrosFiltrados.length === 0}
+            startIcon={exporting ? <CircularProgress size={16} /> : <DownloadIcon />}
+            onClick={() => void exportarCSV()}
+            disabled={exporting || loading || meta.total === 0}
           >
             Exportar CSV
           </Button>
@@ -264,7 +344,10 @@ export function RegistrosPage() {
           type="date"
           size="small"
           value={filtroDataInicio}
-          onChange={(event) => setFiltroDataInicio(event.target.value)}
+          onChange={(event) => {
+            setFiltroDataInicio(event.target.value)
+            resetPage()
+          }}
           InputLabelProps={{ shrink: true }}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
         />
@@ -273,7 +356,10 @@ export function RegistrosPage() {
           type="date"
           size="small"
           value={filtroDataFim}
-          onChange={(event) => setFiltroDataFim(event.target.value)}
+          onChange={(event) => {
+            setFiltroDataFim(event.target.value)
+            resetPage()
+          }}
           InputLabelProps={{ shrink: true }}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
         />
@@ -282,14 +368,17 @@ export function RegistrosPage() {
             select
             size="small"
             label="Filtrar por atendente"
-            value={filtroAtendente}
-            onChange={(event) => setFiltroAtendente(event.target.value)}
+            value={filtroAtendenteId}
+            onChange={(event) => {
+              setFiltroAtendenteId(event.target.value)
+              resetPage()
+            }}
             sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
           >
             <MenuItem value="">Todos</MenuItem>
             {atendentes.map((atendente) => (
-              <MenuItem key={atendente} value={atendente}>
-                {atendente}
+              <MenuItem key={atendente.id} value={String(atendente.id)}>
+                {atendente.label}
               </MenuItem>
             ))}
           </TextField>
@@ -299,7 +388,10 @@ export function RegistrosPage() {
           size="small"
           label="Atendimento"
           value={filtroAtendimento}
-          onChange={(event) => setFiltroAtendimento(event.target.value as '' | TipoAtendimento)}
+          onChange={(event) => {
+            setFiltroAtendimento(event.target.value as '' | TipoAtendimento)
+            resetPage()
+          }}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 160 } }}
         >
           <MenuItem value="">Todos</MenuItem>
@@ -312,31 +404,40 @@ export function RegistrosPage() {
           size="small"
           label="1ª vez"
           value={filtroPrimeiraVez}
-          onChange={(event) => setFiltroPrimeiraVez(event.target.value as '' | SimNao)}
+          onChange={(event) => {
+            setFiltroPrimeiraVez(event.target.value as '' | SimNao)
+            resetPage()
+          }}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 160 } }}
         >
           <MenuItem value="">Todos</MenuItem>
-          <MenuItem value="sim">Sim</MenuItem>
-          <MenuItem value="nao">Não</MenuItem>
+          <MenuItem value="sim">Sim ({counts.firstTimeYes})</MenuItem>
+          <MenuItem value="nao">Não ({counts.firstTimeNo})</MenuItem>
         </TextField>
         <TextField
           select
           size="small"
           label="Agendamento"
           value={filtroAgendamento}
-          onChange={(event) => setFiltroAgendamento(event.target.value as '' | SimNao)}
+          onChange={(event) => {
+            setFiltroAgendamento(event.target.value as '' | SimNao)
+            resetPage()
+          }}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 160 } }}
         >
           <MenuItem value="">Todos</MenuItem>
-          <MenuItem value="sim">Sim</MenuItem>
-          <MenuItem value="nao">Não</MenuItem>
+          <MenuItem value="sim">Sim ({counts.scheduledYes})</MenuItem>
+          <MenuItem value="nao">Não ({counts.scheduledNo})</MenuItem>
         </TextField>
         <TextField
           select
           size="small"
           label="Especialidade"
           value={filtroEspecialidade}
-          onChange={(event) => setFiltroEspecialidade(event.target.value)}
+          onChange={(event) => {
+            setFiltroEspecialidade(event.target.value)
+            resetPage()
+          }}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
         >
           <MenuItem value="">Todas</MenuItem>
@@ -352,7 +453,7 @@ export function RegistrosPage() {
               size="small"
               color="primary"
               onClick={() => setTodosExpandidos((prev) => !prev)}
-              disabled={registrosFiltrados.length === 0}
+              disabled={registros.length === 0}
               aria-label={todosExpandidos ? 'Fechar tudo' : 'Abrir tudo'}
               sx={{ mt: { xs: 0, sm: 0.5 } }}
             >
@@ -375,10 +476,26 @@ export function RegistrosPage() {
 
       {error ? <Alert severity="error">{error}</Alert> : null}
 
-      {!loading && !error ? (
-        registrosFiltrados.length > 0 ? (
+      {!loading ? (
+        registros.length > 0 ? (
           <Paper sx={{ p: 0 }}>
-            <RegistrosTable registros={registrosFiltrados} expandAll={todosExpandidos} />
+            <RegistrosTable registros={registros} expandAll={todosExpandidos} />
+            <TablePagination
+              component="div"
+              count={meta.total}
+              page={page}
+              onPageChange={(_, nextPage) => setPage(nextPage)}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={(e) => {
+                setRowsPerPage(Number(e.target.value))
+                setPage(0)
+              }}
+              rowsPerPageOptions={PAGE_SIZE_OPTIONS}
+              labelRowsPerPage="Por página"
+              labelDisplayedRows={({ from, to, count }) =>
+                `${from}–${to} de ${count !== -1 ? count : `mais de ${to}`}`
+              }
+            />
           </Paper>
         ) : (
           <Paper sx={{ p: 3 }}>
