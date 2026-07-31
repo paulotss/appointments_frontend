@@ -11,7 +11,7 @@ import {
   Typography,
 } from '@mui/material'
 import { useEffect, useMemo, useState } from 'react'
-import { listarRegistros } from '../services/registros.service'
+import { exportarRegistros } from '../services/registros.service'
 import type { RegistroAtendimento } from '../types/registro'
 
 function getDataHojeISO(): string {
@@ -54,17 +54,24 @@ export function HorariosPage() {
       setLoading(true)
       setError(null)
       try {
-        const data = await listarRegistros()
+        const from = dataInicio <= dataFim ? dataInicio : dataFim
+        const to = dataFim >= dataInicio ? dataFim : dataInicio
+        if (!from || !to || from > to) {
+          setRegistros([])
+          return
+        }
+        const data = await exportarRegistros({ from, to })
         setRegistros(data)
       } catch {
         setError('Nao foi possivel carregar os registros.')
+        setRegistros([])
       } finally {
         setLoading(false)
       }
     }
 
     void carregarRegistros()
-  }, [])
+  }, [dataInicio, dataFim])
 
   const atendentesDisponiveis = useMemo(() => {
     return Array.from(new Set(registros.map((r) => r.atendente).filter(Boolean))).sort((a, b) =>
@@ -73,24 +80,11 @@ export function HorariosPage() {
   }, [registros])
 
   const registrosDoPeriodo = useMemo(() => {
-    const filtrarAtendente = (registro: RegistroAtendimento) =>
-      atendenteSelecionado === 'todos' || registro.atendente === atendenteSelecionado
-
-    if (!dataInicio || !dataFim) return registros.filter(filtrarAtendente)
-
-    const inicio = new Date(`${dataInicio}T00:00:00`)
-    const fim = new Date(`${dataFim}T23:59:59.999`)
-
-    if (Number.isNaN(inicio.getTime()) || Number.isNaN(fim.getTime()) || inicio > fim) {
-      return []
-    }
-
-    return registros.filter((r) => {
-      if (!filtrarAtendente(r)) return false
-      const dataRegistro = new Date(r.data)
-      return dataRegistro >= inicio && dataRegistro <= fim
-    })
-  }, [atendenteSelecionado, dataFim, dataInicio, registros])
+    return registros.filter(
+      (registro) =>
+        atendenteSelecionado === 'todos' || registro.atendente === atendenteSelecionado,
+    )
+  }, [atendenteSelecionado, registros])
 
   const dadosGrafico = useMemo(() => {
     const contagemWhatsappPorHora = new Array<number>(24).fill(0)

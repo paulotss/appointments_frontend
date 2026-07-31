@@ -28,29 +28,39 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
   Tooltip,
   Typography,
 } from '@mui/material'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { atualizarChamada, listarChamadas } from '../services/calls.service'
-import { getIsAdmin, getLoggedUserId } from '../services/authStorage'
+import { getIsAdmin } from '../services/authStorage'
 import { listarUsuarios } from '../services/users.service'
 import {
   type FiltroRegistroChamada,
   useChamadasFiltros,
 } from '../stores/pageFiltersStore'
 import type { Call, CallRecordStatus, CallStatus } from '../types/call'
+import type { ListMeta, RecordStatusCounts } from '../types/listEnvelope'
 import { formatAtendenteExibicao } from '../utils/formatAtendente'
 
-function toDataLocalISO(value: string | Date): string {
-  const date = value instanceof Date ? value : new Date(value)
-  const ano = date.getFullYear()
-  const mes = String(date.getMonth() + 1).padStart(2, '0')
-  const dia = String(date.getDate()).padStart(2, '0')
-  return `${ano}-${mes}-${dia}`
+const PAGE_SIZE_OPTIONS = [25, 50, 100]
+
+const COUNTS_VAZIOS: RecordStatusCounts = {
+  pending: 0,
+  registered: 0,
+  cancelled: 0,
+  total: 0,
+}
+
+const META_VAZIA: ListMeta = {
+  page: 1,
+  limit: 50,
+  total: 0,
+  totalPages: 1,
 }
 
 function formatarDataHora(value: string): string {
@@ -109,12 +119,36 @@ function callStatusIconProps(status: CallStatus): {
   return { Icon: TaskAltIcon, label: 'Realizado', color: 'info.main' }
 }
 
+function normalizarPeriodo(dataInicio: string, dataFim: string) {
+  return {
+    from: dataInicio <= dataFim ? dataInicio : dataFim,
+    to: dataFim >= dataInicio ? dataFim : dataInicio,
+  }
+}
+
+function montarStatusesChamada(
+  mostrarNaoAtendidos: boolean,
+  mostrarRealizados: boolean,
+): CallStatus[] {
+  const statuses: CallStatus[] = ['ATENDIDO']
+  if (mostrarNaoAtendidos) {
+    statuses.push('NAO_ATENDIDO')
+  }
+  if (mostrarRealizados) {
+    statuses.push('REALIZADO')
+  }
+  return statuses
+}
+
 export function ChamadasPage() {
   const navigate = useNavigate()
   const isAdmin = getIsAdmin()
-  const loggedUserId = getLoggedUserId()
 
   const [chamadas, setChamadas] = useState<Call[]>([])
+  const [counts, setCounts] = useState<RecordStatusCounts>(COUNTS_VAZIOS)
+  const [meta, setMeta] = useState<ListMeta>(META_VAZIA)
+  const [page, setPage] = useState(0)
+  const [rowsPerPage, setRowsPerPage] = useState(50)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actionId, setActionId] = useState<number | null>(null)
@@ -135,13 +169,28 @@ export function ChamadasPage() {
   const [cancelNote, setCancelNote] = useState('')
   const [cancelNoteError, setCancelNoteError] = useState<string | null>(null)
 
-  const carregar = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      if (isAdmin) {
-        const [data, usuariosData] = await Promise.all([listarChamadas(), listarUsuarios()])
-        setChamadas(data)
+  const atualizarFiltros = useCallback(
+    (partial: Parameters<typeof setFiltros>[0]) => {
+      setFiltros(partial)
+      setPage(0)
+    },
+    [setFiltros],
+  )
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setAtendentes([])
+      setFiltros({ filtroAtendenteId: '' })
+      return
+    }
+
+    let cancelled = false
+    void (async () => {
+      try {
+        const usuariosData = await listarUsuarios()
+        if (cancelled) {
+          return
+        }
         setAtendentes(
           usuariosData
             .map((usuario) => ({
@@ -151,92 +200,60 @@ export function ChamadasPage() {
             .filter((item) => item.label.length > 0)
             .sort((a, b) => a.label.localeCompare(b.label)),
         )
-      } else {
-        const data = await listarChamadas()
-        setChamadas(data)
-        setAtendentes([])
-        setFiltros({ filtroAtendenteId: '' })
+      } catch {
+        if (!cancelled) {
+          setError('Nao foi possivel carregar os atendentes.')
+        }
       }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [isAdmin, setFiltros])
+
+  const carregar = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const { from, to } = normalizarPeriodo(dataInicio, dataFim)
+      const result = await listarChamadas({
+        from,
+        to,
+        ...(filtroRegistro !== 'all' ? { recordStatus: filtroRegistro } : {}),
+        ...(isAdmin && filtroAtendenteId
+          ? { userId: Number(filtroAtendenteId) }
+          : {}),
+        statuses: montarStatusesChamada(mostrarNaoAtendidos, mostrarRealizados),
+        page: page + 1,
+        limit: rowsPerPage,
+      })
+      setChamadas(result.data)
+      setCounts(result.counts)
+      setMeta(result.meta)
     } catch {
       setError('Nao foi possivel carregar as chamadas.')
+      setChamadas([])
+      setCounts(COUNTS_VAZIOS)
+      setMeta(META_VAZIA)
     } finally {
       setLoading(false)
     }
-  }, [isAdmin, setFiltros])
+  }, [
+    dataInicio,
+    dataFim,
+    filtroRegistro,
+    filtroAtendenteId,
+    isAdmin,
+    mostrarNaoAtendidos,
+    mostrarRealizados,
+    page,
+    rowsPerPage,
+  ])
 
   useEffect(() => {
     void carregar()
   }, [carregar])
-
-  const chamadasPorFiltrosGerais = useMemo(() => {
-    const ini = dataInicio <= dataFim ? dataInicio : dataFim
-    const fim = dataFim >= dataInicio ? dataFim : dataInicio
-    const atendenteIdSelecionado = filtroAtendenteId ? Number(filtroAtendenteId) : null
-
-    const statusPermitidos = new Set<CallStatus>(['ATENDIDO'])
-    if (mostrarNaoAtendidos) {
-      statusPermitidos.add('NAO_ATENDIDO')
-    }
-    if (mostrarRealizados) {
-      statusPermitidos.add('REALIZADO')
-    }
-
-    return chamadas.filter((c) => {
-      if (!statusPermitidos.has(c.status)) {
-        return false
-      }
-      if (!isAdmin) {
-        if (loggedUserId == null) {
-          return false
-        }
-        const visivelParaTodos = c.status === 'NAO_ATENDIDO'
-        if (!visivelParaTodos && c.userId !== loggedUserId) {
-          return false
-        }
-      } else if (atendenteIdSelecionado != null && c.userId !== atendenteIdSelecionado) {
-        return false
-      }
-      const dataRecebida = toDataLocalISO(c.receivedAt)
-      return dataRecebida >= ini && dataRecebida <= fim
-    })
-  }, [
-    chamadas,
-    dataInicio,
-    dataFim,
-    filtroAtendenteId,
-    isAdmin,
-    loggedUserId,
-    mostrarNaoAtendidos,
-    mostrarRealizados,
-  ])
-
-  const chamadasFiltradas = useMemo(() => {
-    if (filtroRegistro === 'all') {
-      return chamadasPorFiltrosGerais
-    }
-    return chamadasPorFiltrosGerais.filter((c) => c.recordStatus === filtroRegistro)
-  }, [chamadasPorFiltrosGerais, filtroRegistro])
-
-  const totaisRegistro = useMemo(() => {
-    let pendentes = 0
-    let registradas = 0
-    let canceladas = 0
-    for (const chamada of chamadasPorFiltrosGerais) {
-      if (chamada.recordStatus === 'registered') {
-        registradas += 1
-      } else if (chamada.recordStatus === 'cancelled') {
-        canceladas += 1
-      } else {
-        pendentes += 1
-      }
-    }
-    return {
-      pendentes,
-      registradas,
-      canceladas,
-      total: chamadasPorFiltrosGerais.length,
-    }
-  }, [chamadasPorFiltrosGerais])
 
   function abrirCancelar(chamada: Call) {
     if (chamada.recordStatus !== 'pending') {
@@ -271,14 +288,8 @@ export function ChamadasPage() {
         recordStatus: 'cancelled',
         note: trimmed,
       })
-      setChamadas((prev) =>
-        prev.map((c) =>
-          c.id === cancelTarget.id
-            ? { ...c, recordStatus: 'cancelled' as const, note: trimmed }
-            : c,
-        ),
-      )
       fecharCancelar()
+      await carregar()
     } catch {
       setError('Nao foi possivel cancelar o registro da chamada.')
     } finally {
@@ -328,7 +339,7 @@ export function ChamadasPage() {
           type="date"
           size="small"
           value={dataInicio}
-          onChange={(e) => setFiltros({ dataInicio: e.target.value })}
+          onChange={(e) => atualizarFiltros({ dataInicio: e.target.value })}
           InputLabelProps={{ shrink: true }}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
         />
@@ -337,7 +348,7 @@ export function ChamadasPage() {
           type="date"
           size="small"
           value={dataFim}
-          onChange={(e) => setFiltros({ dataFim: e.target.value })}
+          onChange={(e) => atualizarFiltros({ dataFim: e.target.value })}
           InputLabelProps={{ shrink: true }}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
         />
@@ -347,7 +358,9 @@ export function ChamadasPage() {
             labelId="filtro-registro-label"
             label="Registro"
             value={filtroRegistro}
-            onChange={(e) => setFiltros({ filtroRegistro: e.target.value as FiltroRegistroChamada })}
+            onChange={(e) =>
+              atualizarFiltros({ filtroRegistro: e.target.value as FiltroRegistroChamada })
+            }
           >
             <MenuItem value="all">Todos</MenuItem>
             <MenuItem value="pending">Pendente</MenuItem>
@@ -361,7 +374,7 @@ export function ChamadasPage() {
             size="small"
             label="Atendente"
             value={filtroAtendenteId}
-            onChange={(e) => setFiltros({ filtroAtendenteId: e.target.value })}
+            onChange={(e) => atualizarFiltros({ filtroAtendenteId: e.target.value })}
             sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
           >
             <MenuItem value="">Todos</MenuItem>
@@ -377,7 +390,7 @@ export function ChamadasPage() {
           control={
             <Checkbox
               checked={mostrarNaoAtendidos}
-              onChange={(e) => setFiltros({ mostrarNaoAtendidos: e.target.checked })}
+              onChange={(e) => atualizarFiltros({ mostrarNaoAtendidos: e.target.checked })}
             />
           }
           label="Mostrar não atendidos"
@@ -387,7 +400,7 @@ export function ChamadasPage() {
           control={
             <Checkbox
               checked={mostrarRealizados}
-              onChange={(e) => setFiltros({ mostrarRealizados: e.target.checked })}
+              onChange={(e) => atualizarFiltros({ mostrarRealizados: e.target.checked })}
             />
           }
           label="Mostrar realizados"
@@ -406,123 +419,142 @@ export function ChamadasPage() {
         <>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             <Chip
-              label={`Pendentes: ${totaisRegistro.pendentes}`}
+              label={`Pendentes: ${counts.pending}`}
               size="small"
               sx={{ bgcolor: recordStatusColor('pending'), color: '#000' }}
             />
             <Chip
-              label={`Registradas: ${totaisRegistro.registradas}`}
+              label={`Registradas: ${counts.registered}`}
               size="small"
               sx={{ bgcolor: recordStatusColor('registered'), color: '#fff' }}
             />
             <Chip
-              label={`Canceladas: ${totaisRegistro.canceladas}`}
+              label={`Canceladas: ${counts.cancelled}`}
               size="small"
               sx={{ bgcolor: recordStatusColor('cancelled'), color: '#fff' }}
             />
             <Chip
-              label={`Total: ${totaisRegistro.total}`}
+              label={`Total: ${counts.total}`}
               size="small"
               sx={{ bgcolor: '#000', color: '#fff' }}
             />
           </Stack>
 
           <TableContainer component={Paper}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Recebida em</TableCell>
-                <TableCell>Origem</TableCell>
-                <TableCell>Destino</TableCell>
-                <TableCell>Ramal</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="center">Registro</TableCell>
-                <TableCell>Usuário</TableCell>
-                <TableCell align="right">Ações</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {chamadasFiltradas.length === 0 ? (
+            <Table size="small">
+              <TableHead>
                 <TableRow>
-                  <TableCell colSpan={8}>
-                    <Typography color="text.secondary">Nenhuma chamada encontrada.</Typography>
-                  </TableCell>
+                  <TableCell>Recebida em</TableCell>
+                  <TableCell>Origem</TableCell>
+                  <TableCell>Destino</TableCell>
+                  <TableCell>Ramal</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell align="center">Registro</TableCell>
+                  <TableCell>Usuário</TableCell>
+                  <TableCell align="right">Ações</TableCell>
                 </TableRow>
-              ) : (
-                chamadasFiltradas.map((chamada) => {
-                  const pendente = chamada.recordStatus === 'pending'
-                  const busy = actionId === chamada.id
-                  const { Icon: StatusIcon, label: statusLabel, color: statusColor } =
-                    callStatusIconProps(chamada.status)
-                  return (
-                    <TableRow key={chamada.id} hover>
-                      <TableCell>{formatarDataHora(chamada.receivedAt)}</TableCell>
-                      <TableCell>{chamada.origin}</TableCell>
-                      <TableCell>{chamada.destination?.trim() || '—'}</TableCell>
-                      <TableCell>{chamada.extension}</TableCell>
-                      <TableCell>
-                        <Tooltip title={statusLabel} arrow>
-                          <StatusIcon sx={{ color: statusColor, verticalAlign: 'middle' }} fontSize="small" />
-                        </Tooltip>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Tooltip title={recordStatusTooltip(chamada)} arrow>
-                          <Box
-                            component="span"
-                            sx={{
-                              display: 'inline-block',
-                              width: 12,
-                              height: 12,
-                              borderRadius: '50%',
-                              bgcolor: recordStatusColor(chamada.recordStatus),
-                              verticalAlign: 'middle',
-                            }}
-                            aria-label={recordStatusTooltip(chamada)}
-                          />
-                        </Tooltip>
-                      </TableCell>
-                      <TableCell>{chamada.user?.name?.trim() || '—'}</TableCell>
-                      <TableCell align="right">
-                        <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                          <Tooltip title="Registrar">
-                            <span>
-                              <IconButton
-                                size="small"
-                                color="primary"
-                                disabled={!pendente || busy}
-                                onClick={() => handleRegistrar(chamada)}
-                                aria-label="Registrar"
-                              >
-                                <NoteAddIcon fontSize="small" />
-                              </IconButton>
-                            </span>
+              </TableHead>
+              <TableBody>
+                {chamadas.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8}>
+                      <Typography color="text.secondary">Nenhuma chamada encontrada.</Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  chamadas.map((chamada) => {
+                    const pendente = chamada.recordStatus === 'pending'
+                    const busy = actionId === chamada.id
+                    const { Icon: StatusIcon, label: statusLabel, color: statusColor } =
+                      callStatusIconProps(chamada.status)
+                    return (
+                      <TableRow key={chamada.id} hover>
+                        <TableCell>{formatarDataHora(chamada.receivedAt)}</TableCell>
+                        <TableCell>{chamada.origin}</TableCell>
+                        <TableCell>{chamada.destination?.trim() || '—'}</TableCell>
+                        <TableCell>{chamada.extension}</TableCell>
+                        <TableCell>
+                          <Tooltip title={statusLabel} arrow>
+                            <StatusIcon
+                              sx={{ color: statusColor, verticalAlign: 'middle' }}
+                              fontSize="small"
+                            />
                           </Tooltip>
-                          <Tooltip title="Cancelar">
-                            <span>
-                              <IconButton
-                                size="small"
-                                color="error"
-                                disabled={!pendente || busy}
-                                onClick={() => abrirCancelar(chamada)}
-                                aria-label="Cancelar"
-                              >
-                                {busy ? (
-                                  <CircularProgress color="inherit" size={18} />
-                                ) : (
-                                  <BlockIcon fontSize="small" />
-                                )}
-                              </IconButton>
-                            </span>
+                        </TableCell>
+                        <TableCell align="center">
+                          <Tooltip title={recordStatusTooltip(chamada)} arrow>
+                            <Box
+                              component="span"
+                              sx={{
+                                display: 'inline-block',
+                                width: 12,
+                                height: 12,
+                                borderRadius: '50%',
+                                bgcolor: recordStatusColor(chamada.recordStatus),
+                                verticalAlign: 'middle',
+                              }}
+                              aria-label={recordStatusTooltip(chamada)}
+                            />
                           </Tooltip>
-                        </Stack>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                        </TableCell>
+                        <TableCell>{chamada.user?.name?.trim() || '—'}</TableCell>
+                        <TableCell align="right">
+                          <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                            <Tooltip title="Registrar">
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  color="primary"
+                                  disabled={!pendente || busy}
+                                  onClick={() => handleRegistrar(chamada)}
+                                  aria-label="Registrar"
+                                >
+                                  <NoteAddIcon fontSize="small" />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                            <Tooltip title="Cancelar">
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  disabled={!pendente || busy}
+                                  onClick={() => abrirCancelar(chamada)}
+                                  aria-label="Cancelar"
+                                >
+                                  {busy ? (
+                                    <CircularProgress color="inherit" size={18} />
+                                  ) : (
+                                    <BlockIcon fontSize="small" />
+                                  )}
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                )}
+              </TableBody>
+            </Table>
+            <TablePagination
+              component="div"
+              count={meta.total}
+              page={page}
+              onPageChange={(_, nextPage) => setPage(nextPage)}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={(e) => {
+                setRowsPerPage(Number(e.target.value))
+                setPage(0)
+              }}
+              rowsPerPageOptions={PAGE_SIZE_OPTIONS}
+              labelRowsPerPage="Por página"
+              labelDisplayedRows={({ from, to, count }) =>
+                `${from}–${to} de ${count !== -1 ? count : `mais de ${to}`}`
+              }
+            />
+          </TableContainer>
         </>
       ) : null}
 

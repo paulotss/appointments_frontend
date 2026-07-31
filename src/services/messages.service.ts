@@ -1,8 +1,22 @@
+import type { ListEnvelope } from '../types/listEnvelope'
 import type { Message, MessageRecordStatus } from '../types/message'
 import { apiClient } from './apiClient'
 
-export async function listarMensagens(): Promise<Message[]> {
-  const response = await apiClient.get<Message[]>('/messages')
+export type ListarMensagensParams = {
+  from: string
+  to: string
+  recordStatus?: MessageRecordStatus
+  userId?: number
+  page?: number
+  limit?: number
+}
+
+export async function listarMensagens(
+  params: ListarMensagensParams,
+): Promise<ListEnvelope<Message>> {
+  const response = await apiClient.get<ListEnvelope<Message>>('/messages', {
+    params,
+  })
   return response.data
 }
 

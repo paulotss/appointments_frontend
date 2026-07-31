@@ -1,5 +1,6 @@
 import { apiClient } from './apiClient'
 import { getLoggedUserId } from './authStorage'
+import type { ListEnvelope, AppointmentListCounts } from '../types/listEnvelope'
 import { formatAtendenteExibicao } from '../utils/formatAtendente'
 import type {
   BackendAppointment,
@@ -7,6 +8,22 @@ import type {
   CriarRegistroAtendimentoInput,
   RegistroAtendimento,
 } from '../types/registro'
+
+export type ContactMethodBackend = BackendAppointment['contactMethod']
+
+export type ListarRegistrosParams = {
+  from: string
+  to: string
+  attendantId?: number
+  contactMethod?: ContactMethodBackend
+  firstTime?: boolean
+  scheduled?: boolean
+  specialtyId?: number
+  page?: number
+  limit?: number
+}
+
+export type ExportarRegistrosParams = Omit<ListarRegistrosParams, 'page' | 'limit'>
 
 function mapContactMethod(contactMethod: BackendAppointment['contactMethod']) {
   if (contactMethod === 'phone') {
@@ -81,8 +98,41 @@ function mapCriarRegistroToAppointment(
   return body
 }
 
-export async function listarRegistros(): Promise<RegistroAtendimento[]> {
-  const response = await apiClient.get<BackendAppointment[]>('/appointments')
+function toQueryParams(params: ListarRegistrosParams | ExportarRegistrosParams) {
+  return {
+    from: params.from,
+    to: params.to,
+    ...(params.attendantId != null ? { attendantId: params.attendantId } : {}),
+    ...(params.contactMethod ? { contactMethod: params.contactMethod } : {}),
+    ...(params.firstTime !== undefined ? { firstTime: params.firstTime } : {}),
+    ...(params.scheduled !== undefined ? { scheduled: params.scheduled } : {}),
+    ...(params.specialtyId != null ? { specialtyId: params.specialtyId } : {}),
+    ...('page' in params && params.page != null ? { page: params.page } : {}),
+    ...('limit' in params && params.limit != null ? { limit: params.limit } : {}),
+  }
+}
+
+export async function listarRegistros(
+  params: ListarRegistrosParams,
+): Promise<ListEnvelope<RegistroAtendimento, AppointmentListCounts>> {
+  const response = await apiClient.get<ListEnvelope<BackendAppointment, AppointmentListCounts>>(
+    '/appointments',
+    { params: toQueryParams(params) },
+  )
+  return {
+    data: response.data.data.map(mapAppointmentToRegistro),
+    meta: response.data.meta,
+    counts: response.data.counts,
+  }
+}
+
+/** Todos os registros do filtro (sem paginação). Máx. 10.000 no back. */
+export async function exportarRegistros(
+  params: ExportarRegistrosParams,
+): Promise<RegistroAtendimento[]> {
+  const response = await apiClient.get<BackendAppointment[]>('/appointments/export', {
+    params: toQueryParams(params),
+  })
   return response.data.map(mapAppointmentToRegistro)
 }
 
