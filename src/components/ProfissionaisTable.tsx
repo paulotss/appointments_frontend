@@ -13,6 +13,13 @@ function formatarCpf(cpf: string): string {
   return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`
 }
 
+function nomesEspecialidades(profissional: HealthProfessional): string {
+  const nomes = profissional.specialties
+    .map((item) => item.specialty?.name)
+    .filter((nome): nome is string => Boolean(nome))
+  return nomes.length > 0 ? nomes.join(', ') : '—'
+}
+
 export function ProfissionaisTable({ profissionais, onEditar }: ProfissionaisTableProps) {
   return (
     <TableContainer>
@@ -20,7 +27,7 @@ export function ProfissionaisTable({ profissionais, onEditar }: ProfissionaisTab
         <TableHead>
           <TableRow>
             <TableCell>Nome</TableCell>
-            <TableCell>Especialidade</TableCell>
+            <TableCell>Especialidades</TableCell>
             <TableCell>Conselho</TableCell>
             <TableCell>CPF</TableCell>
             <TableCell>Status</TableCell>
@@ -31,7 +38,7 @@ export function ProfissionaisTable({ profissionais, onEditar }: ProfissionaisTab
           {profissionais.map((profissional) => (
             <TableRow key={profissional.id} hover>
               <TableCell>{profissional.name}</TableCell>
-              <TableCell>{profissional.specialty?.name ?? '—'}</TableCell>
+              <TableCell>{nomesEspecialidades(profissional)}</TableCell>
               <TableCell>
                 {profissional.councilType} {profissional.councilNumber}
               </TableCell>

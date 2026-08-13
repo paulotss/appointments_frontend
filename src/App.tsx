@@ -26,7 +26,13 @@ import { MensagensPage } from './pages/MensagensPage'
 import { NovoRegistroPage } from './pages/NovoRegistroPage'
 import { RegistrosPage } from './pages/RegistrosPage'
 import { NovoUsuarioPage } from './pages/NovoUsuarioPage'
+import { GuiasPage } from './pages/GuiasPage'
+import { NovaGuiaPage } from './pages/NovaGuiaPage'
+import { NovoPacientePage } from './pages/NovoPacientePage'
+import { NovoPlanoSaudePage } from './pages/NovoPlanoSaudePage'
 import { NovoProfissionalPage } from './pages/NovoProfissionalPage'
+import { PacientesPage } from './pages/PacientesPage'
+import { PlanosSaudePage } from './pages/PlanosSaudePage'
 import { ProdutosConfigPage } from './pages/ProdutosConfigPage'
 import { ProdutosEstoquePage } from './pages/ProdutosEstoquePage'
 import { ProfissionaisPage } from './pages/ProfissionaisPage'
@@ -231,6 +237,54 @@ function App() {
           element={
             <AdminRoute>
               <NovoProfissionalPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/pacientes"
+          element={
+            <AdminRoute>
+              <PacientesPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/pacientes/novo"
+          element={
+            <AdminRoute>
+              <NovoPacientePage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/planos-saude"
+          element={
+            <AdminRoute>
+              <PlanosSaudePage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/planos-saude/novo"
+          element={
+            <AdminRoute>
+              <NovoPlanoSaudePage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/guias"
+          element={
+            <AdminRoute>
+              <GuiasPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/guias/novo"
+          element={
+            <AdminRoute>
+              <NovaGuiaPage />
             </AdminRoute>
           }
         />

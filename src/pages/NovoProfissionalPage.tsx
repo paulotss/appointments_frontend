@@ -1,10 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import AddIcon from '@mui/icons-material/Add'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import {
   Alert,
   Button,
   CircularProgress,
   FormControlLabel,
+  IconButton,
   MenuItem,
   Stack,
   Switch,
@@ -12,8 +15,9 @@ import {
   Typography,
 } from '@mui/material'
 import { useEffect, useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
+import { CampoValorMoeda } from '../components/CampoValorMoeda'
 import {
   profissionalSchema,
   type ProfissionalFormInput,
@@ -41,7 +45,7 @@ export function NovoProfissionalPage() {
     resolver: zodResolver(profissionalSchema),
     defaultValues: {
       name: '',
-      specialtyId: undefined,
+      specialties: [{ specialtyId: undefined, privatePrice: undefined }],
       councilType: 'CRM',
       councilNumber: '',
       cpf: '',
@@ -50,6 +54,13 @@ export function NovoProfissionalPage() {
       isActive: true,
     },
   })
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'specialties',
+  })
+
+  const specialtiesWatch = useWatch({ control, name: 'specialties' })
 
   useEffect(() => {
     async function carregarEspecialidades() {
@@ -74,7 +85,7 @@ export function NovoProfissionalPage() {
     try {
       await criarProfissional({
         name: values.name,
-        specialtyId: values.specialtyId,
+        specialties: values.specialties,
         councilType: values.councilType,
         councilNumber: values.councilNumber,
         cpf: values.cpf,
@@ -122,36 +133,94 @@ export function NovoProfissionalPage() {
       ) : null}
 
       {!loadingEspecialidades && especialidades.length > 0 ? (
-        <Stack component="form" spacing={2} sx={{ maxWidth: 540 }} onSubmit={handleSubmit(onSubmit)}>
+        <Stack component="form" spacing={2} sx={{ maxWidth: 640 }} onSubmit={handleSubmit(onSubmit)}>
           <TextField
             label="Nome"
             error={Boolean(errors.name)}
             helperText={errors.name?.message}
             {...register('name')}
           />
-          <Controller
-            name="specialtyId"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                select
-                label="Especialidade"
-                value={field.value ?? ''}
-                onChange={(event) => field.onChange(Number(event.target.value))}
-                error={Boolean(errors.specialtyId)}
-                helperText={errors.specialtyId?.message}
-              >
-                <MenuItem value="" disabled>
-                  Selecione uma especialidade
-                </MenuItem>
-                {especialidades.map((esp) => (
-                  <MenuItem key={esp.id} value={esp.id}>
-                    {esp.nome}
-                  </MenuItem>
-                ))}
-              </TextField>
-            )}
-          />
+          <Typography variant="subtitle2" fontWeight={700}>
+            Especialidades
+          </Typography>
+          {errors.specialties?.root?.message || errors.specialties?.message ? (
+            <Alert severity="error">
+              {errors.specialties.root?.message ?? errors.specialties.message}
+            </Alert>
+          ) : null}
+          {fields.map((field, index) => {
+            const selecionados = (specialtiesWatch ?? [])
+              .map((item, itemIndex) => (itemIndex === index ? undefined : item?.specialtyId))
+              .filter((id): id is number => typeof id === 'number')
+            const opcoes = especialidades.filter(
+              (esp) =>
+                !selecionados.includes(esp.id) ||
+                esp.id === specialtiesWatch?.[index]?.specialtyId,
+            )
+            const itemError = errors.specialties?.[index]
+
+            return (
+              <Stack key={field.id} direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="flex-start">
+                <Controller
+                  name={`specialties.${index}.specialtyId`}
+                  control={control}
+                  render={({ field: specialtyField }) => (
+                    <TextField
+                      select
+                      label="Especialidade"
+                      value={specialtyField.value ?? ''}
+                      onChange={(event) => specialtyField.onChange(Number(event.target.value))}
+                      error={Boolean(itemError?.specialtyId)}
+                      helperText={itemError?.specialtyId?.message ?? ' '}
+                      sx={{ flex: 1, minWidth: 220 }}
+                    >
+                      <MenuItem value="" disabled>
+                        Selecione uma especialidade
+                      </MenuItem>
+                      {opcoes.map((esp) => (
+                        <MenuItem key={esp.id} value={esp.id}>
+                          {esp.nome}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  )}
+                />
+                <Controller
+                  name={`specialties.${index}.privatePrice`}
+                  control={control}
+                  render={({ field: priceField }) => (
+                    <CampoValorMoeda
+                      label="Preco particular"
+                      value={priceField.value}
+                      onChange={priceField.onChange}
+                      onBlur={priceField.onBlur}
+                      inputRef={priceField.ref}
+                      error={Boolean(itemError?.privatePrice)}
+                      helperText={itemError?.privatePrice?.message ?? ' '}
+                    />
+                  )}
+                />
+                <IconButton
+                  aria-label="Remover especialidade"
+                  onClick={() => remove(index)}
+                  disabled={fields.length === 1}
+                  sx={{ mt: 0.5 }}
+                >
+                  <DeleteOutlineIcon />
+                </IconButton>
+              </Stack>
+            )
+          })}
+          <Button
+            type="button"
+            variant="outlined"
+            startIcon={<AddIcon />}
+            onClick={() => append({ specialtyId: undefined as unknown as number, privatePrice: undefined as unknown as number })}
+            disabled={fields.length >= especialidades.length}
+            sx={{ alignSelf: 'flex-start' }}
+          >
+            Adicionar especialidade
+          </Button>
           <Controller
             name="councilType"
             control={control}
