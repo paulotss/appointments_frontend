@@ -2,27 +2,37 @@ export type CouncilType = 'CRM' | 'CRO' | 'CRP' | 'COREN' | 'OTHER'
 
 export const COUNCIL_TYPES: CouncilType[] = ['CRM', 'CRO', 'CRP', 'COREN', 'OTHER']
 
-export interface HealthProfessionalSpecialty {
+export interface HealthProfessionalSpecialtyRef {
   id: number
   name: string
+}
+
+export interface HealthProfessionalSpecialtyLink {
+  specialtyId: number
+  privatePrice: number
+  specialty?: HealthProfessionalSpecialtyRef
+}
+
+export interface HealthProfessionalSpecialtyInput {
+  specialtyId: number
+  privatePrice: number
 }
 
 export interface HealthProfessional {
   id: number
   name: string
-  specialtyId: number
   councilType: CouncilType
   councilNumber: string
   cpf: string
   phone: string | null
   email: string | null
   isActive: boolean
-  specialty?: HealthProfessionalSpecialty
+  specialties: HealthProfessionalSpecialtyLink[]
 }
 
 export interface CreateHealthProfessionalRequest {
   name: string
-  specialtyId: number
+  specialties: HealthProfessionalSpecialtyInput[]
   councilType: CouncilType
   councilNumber: string
   cpf: string
@@ -33,7 +43,7 @@ export interface CreateHealthProfessionalRequest {
 
 export interface UpdateHealthProfessionalRequest {
   name?: string
-  specialtyId?: number
+  specialties?: HealthProfessionalSpecialtyInput[]
   councilType?: CouncilType
   councilNumber?: string
   cpf?: string

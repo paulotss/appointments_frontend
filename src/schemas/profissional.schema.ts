@@ -8,9 +8,26 @@ const optionalText = z
     return t === '' ? null : t
   })
 
+const specialtyItemSchema = z.object({
+  specialtyId: z.number({ error: 'Selecione uma especialidade' }).int().positive('Selecione uma especialidade'),
+  privatePrice: z.number({ error: 'Informe o preco particular' }).positive('Informe o preco particular'),
+})
+
 export const profissionalSchema = z.object({
   name: z.string().min(3, 'Informe o nome'),
-  specialtyId: z.number().int().positive('Selecione uma especialidade'),
+  specialties: z
+    .array(specialtyItemSchema)
+    .min(1, 'Informe ao menos uma especialidade')
+    .superRefine((items, ctx) => {
+      const ids = items.map((item) => item.specialtyId)
+      if (new Set(ids).size !== ids.length) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Especialidades duplicadas nao sao permitidas',
+          path: [],
+        })
+      }
+    }),
   councilType: z.enum(['CRM', 'CRO', 'CRP', 'COREN', 'OTHER'], {
     error: 'Selecione o tipo de conselho',
   }),

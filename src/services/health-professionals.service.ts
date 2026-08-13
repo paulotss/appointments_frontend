@@ -3,22 +3,43 @@ import type {
   CouncilType,
   CreateHealthProfessionalRequest,
   HealthProfessional,
+  HealthProfessionalSpecialtyLink,
   UpdateHealthProfessionalRequest,
 } from '../types/profissional'
+
+interface BackendSpecialtyRef {
+  id: number
+  name: string
+}
+
+interface BackendHealthProfessionalSpecialty {
+  specialtyId: number
+  privatePrice: number | string
+  specialty?: BackendSpecialtyRef
+}
 
 interface BackendHealthProfessional {
   id: number
   name: string
-  specialtyId: number
   councilType: CouncilType
   councilNumber: string
   cpf: string
   phone?: string | null
   email?: string | null
   isActive: boolean
-  specialty?: {
-    id: number
-    name: string
+  specialties?: BackendHealthProfessionalSpecialty[]
+}
+
+function parsePrivatePrice(value: number | string): number {
+  const n = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(n) ? n : 0
+}
+
+function mapSpecialtyLink(item: BackendHealthProfessionalSpecialty): HealthProfessionalSpecialtyLink {
+  return {
+    specialtyId: item.specialtyId,
+    privatePrice: parsePrivatePrice(item.privatePrice),
+    specialty: item.specialty,
   }
 }
 
@@ -26,14 +47,13 @@ function mapBackendHealthProfessional(item: BackendHealthProfessional): HealthPr
   return {
     id: item.id,
     name: item.name,
-    specialtyId: item.specialtyId,
     councilType: item.councilType,
     councilNumber: item.councilNumber,
     cpf: item.cpf,
     phone: item.phone ?? null,
     email: item.email ?? null,
     isActive: item.isActive,
-    specialty: item.specialty,
+    specialties: (item.specialties ?? []).map(mapSpecialtyLink),
   }
 }
 

@@ -1,4 +1,5 @@
 import AssessmentIcon from '@mui/icons-material/Assessment'
+import AssignmentIcon from '@mui/icons-material/Assignment'
 import EventNoteIcon from '@mui/icons-material/EventNote'
 import Inventory2Icon from '@mui/icons-material/Inventory2'
 import SettingsIcon from '@mui/icons-material/Settings'
@@ -14,7 +15,15 @@ export type MenuSubmenu = {
   adminOnly?: boolean
   items: (MenuLink | MenuDivider)[]
 }
-export type MenuItem = MenuSubmenu
+export type MenuTopLink = {
+  kind: 'link'
+  id: string
+  label: string
+  to: string
+  icon: ReactNode
+  adminOnly?: boolean
+}
+export type MenuItem = MenuSubmenu | MenuTopLink
 
 const allMenuItems: MenuItem[] = [
   {
@@ -27,6 +36,14 @@ const allMenuItems: MenuItem[] = [
       { kind: 'link', label: 'Chamadas', to: '/chamadas' },
       { kind: 'link', label: 'Mensagens', to: '/mensagens' },
     ],
+  },
+  {
+    kind: 'link',
+    id: 'guias',
+    label: 'Guias',
+    to: '/guias',
+    icon: <AssignmentIcon />,
+    adminOnly: true,
   },
   {
     kind: 'submenu',
@@ -68,6 +85,8 @@ const allMenuItems: MenuItem[] = [
       { kind: 'link', label: 'Usuários', to: '/usuarios' },
       { kind: 'link', label: 'Profissionais', to: '/profissionais' },
       { kind: 'link', label: 'Especialidades', to: '/especialidades' },
+      { kind: 'link', label: 'Pacientes', to: '/pacientes' },
+      { kind: 'link', label: 'Planos de saúde', to: '/planos-saude' },
       { kind: 'divider', label: 'Estoque' },
       { kind: 'link', label: 'Categorias', to: '/configuracoes/estoque/categorias' },
       { kind: 'link', label: 'Produtos', to: '/configuracoes/estoque/produtos' },
@@ -84,6 +103,12 @@ export function getMenuItems(isAdmin: boolean): MenuItem[] {
 
 export function getSubmenuIdForPath(pathname: string, menuItems: MenuItem[]): string | null {
   for (const item of menuItems) {
+    if (item.kind === 'link') {
+      if (pathname.startsWith(item.to)) {
+        return item.id
+      }
+      continue
+    }
     const hasMatch = item.items.some(
       (subitem) => subitem.kind === 'link' && pathname.startsWith(subitem.to),
     )

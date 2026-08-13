@@ -98,74 +98,102 @@ export function AppLayout() {
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.22)', flexShrink: 0 }} />
       <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
         <List disablePadding>
-          {menuItems.map((item) => (
-            <Box key={item.id}>
-              <ListItemButton
-                onClick={() => toggleSubmenu(item.id)}
-                sx={{
-                  color: 'inherit',
-                  '& .MuiListItemIcon-root': {
+          {menuItems.map((item) => {
+            if (item.kind === 'link') {
+              return (
+                <ListItemButton
+                  key={item.id}
+                  component={NavLink}
+                  to={item.to}
+                  sx={{
                     color: 'inherit',
-                    minWidth: 40,
-                  },
-                  '&:hover': {
-                    bgcolor: 'rgba(255,255,255,0.12)',
-                  },
-                }}
-              >
-                <ListItemIcon>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.label} />
-                {openSubmenus[item.id] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-              </ListItemButton>
-              <Collapse in={openSubmenus[item.id]} timeout="auto" unmountOnExit>
-                <List component="div" disablePadding>
-                  {item.items.map((subitem) => {
-                    if (subitem.kind === 'divider') {
+                    '& .MuiListItemIcon-root': {
+                      color: 'inherit',
+                      minWidth: 40,
+                    },
+                    '&.active': {
+                      bgcolor: 'rgba(255,255,255,0.18)',
+                    },
+                    '&:hover': {
+                      bgcolor: 'rgba(255,255,255,0.12)',
+                    },
+                  }}
+                >
+                  <ListItemIcon>{item.icon}</ListItemIcon>
+                  <ListItemText primary={item.label} />
+                </ListItemButton>
+              )
+            }
+
+            return (
+              <Box key={item.id}>
+                <ListItemButton
+                  onClick={() => toggleSubmenu(item.id)}
+                  sx={{
+                    color: 'inherit',
+                    '& .MuiListItemIcon-root': {
+                      color: 'inherit',
+                      minWidth: 40,
+                    },
+                    '&:hover': {
+                      bgcolor: 'rgba(255,255,255,0.12)',
+                    },
+                  }}
+                >
+                  <ListItemIcon>{item.icon}</ListItemIcon>
+                  <ListItemText primary={item.label} />
+                  {openSubmenus[item.id] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                </ListItemButton>
+                <Collapse in={openSubmenus[item.id]} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding>
+                    {item.items.map((subitem) => {
+                      if (subitem.kind === 'divider') {
+                        return (
+                          <ListSubheader
+                            key={`${item.id}-${subitem.label}`}
+                            disableSticky
+                            sx={{
+                              bgcolor: 'transparent',
+                              color: 'rgba(255,255,255,0.7)',
+                              lineHeight: '32px',
+                              pl: 4,
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.05em',
+                            }}
+                          >
+                            {(subitem as MenuDivider).label}
+                          </ListSubheader>
+                        )
+                      }
+
+                      const link = subitem as MenuLink
                       return (
-                        <ListSubheader
-                          key={`${item.id}-${subitem.label}`}
-                          disableSticky
+                        <ListItemButton
+                          key={link.to}
+                          component={NavLink}
+                          to={link.to}
                           sx={{
-                            bgcolor: 'transparent',
-                            color: 'rgba(255,255,255,0.7)',
-                            lineHeight: '32px',
                             pl: 4,
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
+                            color: 'inherit',
+                            '&.active': {
+                              bgcolor: 'rgba(255,255,255,0.18)',
+                            },
+                            '&:hover': {
+                              bgcolor: 'rgba(255,255,255,0.12)',
+                            },
                           }}
                         >
-                          {(subitem as MenuDivider).label}
-                        </ListSubheader>
+                          <ListItemText primary={link.label} />
+                        </ListItemButton>
                       )
-                    }
-
-                    const link = subitem as MenuLink
-                    return (
-                      <ListItemButton
-                        key={link.to}
-                        component={NavLink}
-                        to={link.to}
-                        sx={{
-                          pl: 4,
-                          color: 'inherit',
-                          '&.active': {
-                            bgcolor: 'rgba(255,255,255,0.18)',
-                          },
-                          '&:hover': {
-                            bgcolor: 'rgba(255,255,255,0.12)',
-                          },
-                        }}
-                      >
-                        <ListItemText primary={link.label} />
-                      </ListItemButton>
-                    )
-                  })}
-                </List>
-              </Collapse>
-            </Box>
-          ))}
+                    })}
+                  </List>
+                </Collapse>
+              </Box>
+            )
+          })}
         </List>
       </Box>
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.22)', flexShrink: 0 }} />
