@@ -4,14 +4,30 @@ export function isoDatePrefix(value: string | null | undefined): string {
   return value.slice(0, 10)
 }
 
-export function hojeMaisDiasLocal(dias: number): string {
-  const date = new Date()
-  date.setHours(0, 0, 0, 0)
-  date.setDate(date.getDate() + dias)
+function formatarDateLocal(date: Date): string {
   const y = date.getFullYear()
   const m = String(date.getMonth() + 1).padStart(2, '0')
   const d = String(date.getDate()).padStart(2, '0')
   return `${y}-${m}-${d}`
+}
+
+export function adicionarDiasISO(dataISO: string, dias: number): string {
+  const prefix = isoDatePrefix(dataISO)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(prefix)) return ''
+  const [year, month, day] = prefix.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  date.setDate(date.getDate() + dias)
+  return formatarDateLocal(date)
+}
+
+export function hojeLocalISO(): string {
+  const date = new Date()
+  date.setHours(0, 0, 0, 0)
+  return formatarDateLocal(date)
+}
+
+export function hojeMaisDiasLocal(dias: number): string {
+  return adicionarDiasISO(hojeLocalISO(), dias)
 }
 
 export function formatarDataISO(value: string | null | undefined): string {
@@ -19,10 +35,6 @@ export function formatarDataISO(value: string | null | undefined): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(prefix)) return value ?? '—'
   const [year, month, day] = prefix.split('-')
   return `${day}/${month}/${year}`
-}
-
-export function hojeLocalISO(): string {
-  return hojeMaisDiasLocal(0)
 }
 
 /** Diferenca em dias civis (local): positivo = futuro, 0 = hoje, negativo = atrasado. */
@@ -36,12 +48,13 @@ export function diasAteDataISO(value: string | null | undefined): number | null 
   return Math.round((alvo - hoje) / (24 * 60 * 60 * 1000))
 }
 
-export type StatusPrazoGuia = 'ok' | 'proxima' | 'vencida'
+export type StatusPrazoGuia = 'ok' | 'proxima' | 'ultimoDia' | 'vencida'
 
 export function statusPrazoGuia(expirationDate: string): StatusPrazoGuia {
   const dias = diasAteDataISO(expirationDate)
   if (dias == null) return 'ok'
-  if (dias <= 0) return 'vencida'
+  if (dias < 0) return 'vencida'
+  if (dias === 0) return 'ultimoDia'
   if (dias <= 7) return 'proxima'
   return 'ok'
 }

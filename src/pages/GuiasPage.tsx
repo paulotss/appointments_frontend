@@ -28,7 +28,14 @@ import type { InsuranceGuide } from '../types/guia'
 import type { Patient } from '../types/paciente'
 import type { HealthPlan } from '../types/planoSaude'
 import type { HealthProfessional } from '../types/profissional'
-import { hojeMaisDiasLocal, statusPrazoGuia } from '../utils/dataISO'
+import { adicionarDiasISO, statusPrazoGuia } from '../utils/dataISO'
+
+function prazoDoPlano(guia: InsuranceGuide, planos: HealthPlan[]): number | undefined {
+  return (
+    guia.healthPlan?.submissionDeadlineDays ??
+    planos.find((item) => item.id === guia.healthPlanId)?.submissionDeadlineDays
+  )
+}
 
 export function GuiasPage() {
   const navigate = useNavigate()
@@ -45,10 +52,14 @@ export function GuiasPage() {
   const [healthProfessionalIdEdicao, setHealthProfessionalIdEdicao] = useState<number | ''>('')
   const [specialtyIdEdicao, setSpecialtyIdEdicao] = useState<number | ''>('')
   const [quantityEdicao, setQuantityEdicao] = useState('1')
+  const [startDateEdicao, setStartDateEdicao] = useState('')
   const [expirationDateEdicao, setExpirationDateEdicao] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
+  const [faturando, setFaturando] = useState<InsuranceGuide | null>(null)
+  const [savingFaturar, setSavingFaturar] = useState(false)
   const [filtroPlanoId, setFiltroPlanoId] = useState<number | ''>('')
   const [filtroPertoVencer, setFiltroPertoVencer] = useState(false)
+  const [filtroMostrarFaturadas, setFiltroMostrarFaturadas] = useState(false)
 
   const profissionaisEdicao = useMemo(() => {
     return profissionais.filter(
@@ -66,7 +77,13 @@ export function GuiasPage() {
       ? undefined
       : planos.find((item) => item.id === healthPlanIdEdicao)?.submissionDeadlineDays
 
+  function recalcularValidade(startDate: string, prazo: number | undefined) {
+    if (prazo == null || !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) return
+    setExpirationDateEdicao(adicionarDiasISO(startDate, prazo))
+  }
+
   function abrirEdicao(guia: InsuranceGuide) {
+    const prazo = prazoDoPlano(guia, planos)
     setEditando(guia)
     setPatientIdEdicao(guia.patientId)
     setHealthPlanIdEdicao(guia.healthPlanId)
@@ -74,6 +91,7 @@ export function GuiasPage() {
     setSpecialtyIdEdicao(guia.specialtyId)
     setQuantityEdicao(String(guia.quantity))
     setExpirationDateEdicao(guia.expirationDate)
+    setStartDateEdicao(prazo != null ? adicionarDiasISO(guia.expirationDate, -prazo) : '')
   }
 
   function fecharEdicao() {
@@ -83,6 +101,7 @@ export function GuiasPage() {
     setHealthProfessionalIdEdicao('')
     setSpecialtyIdEdicao('')
     setQuantityEdicao('1')
+    setStartDateEdicao('')
     setExpirationDateEdicao('')
   }
 
@@ -99,6 +118,10 @@ export function GuiasPage() {
     const quantity = Number(quantityEdicao)
     if (!Number.isInteger(quantity) || quantity < 1) {
       setError('Quantidade deve ser um inteiro maior ou igual a 1.')
+      return
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDateEdicao)) {
+      setError('Informe a data de inicio.')
       return
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(expirationDateEdicao)) {
@@ -127,8 +150,39 @@ export function GuiasPage() {
     }
   }
 
+  function abrirFaturar(guia: InsuranceGuide) {
+    setFaturando(guia)
+  }
+
+  function fecharFaturar() {
+    if (savingFaturar) return
+    setFaturando(null)
+  }
+
+  async function confirmarFaturar() {
+    if (!faturando) return
+    setSavingFaturar(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const atualizado = await atualizarGuia(faturando.id, { isBilled: true })
+      setGuias((prev) => prev.map((item) => (item.id === atualizado.id ? atualizado : item)))
+      setFaturando(null)
+      setSuccess('Guia faturada com sucesso.')
+    } catch {
+      setError('Nao foi possivel faturar a guia.')
+    } finally {
+      setSavingFaturar(false)
+    }
+  }
+
+  function alterarFiltroFaturadas(checked: boolean) {
+    setFiltroMostrarFaturadas(checked)
+  }
+
   const quantityNumero = Number(quantityEdicao)
   const quantityInvalida = !Number.isInteger(quantityNumero) || quantityNumero < 1
+  const startDateInvalida = !/^\d{4}-\d{2}-\d{2}$/.test(startDateEdicao)
   const expirationInvalida = !/^\d{4}-\d{2}-\d{2}$/.test(expirationDateEdicao)
   const formInvalido =
     patientIdEdicao === '' ||
@@ -136,10 +190,14 @@ export function GuiasPage() {
     healthProfessionalIdEdicao === '' ||
     specialtyIdEdicao === '' ||
     quantityInvalida ||
+    startDateInvalida ||
     expirationInvalida
 
   const guiasFiltradas = useMemo(() => {
     return guias.filter((guia) => {
+      if (!filtroMostrarFaturadas && guia.isBilled) {
+        return false
+      }
       if (filtroPlanoId !== '' && guia.healthPlanId !== filtroPlanoId) {
         return false
       }
@@ -148,7 +206,7 @@ export function GuiasPage() {
       }
       return true
     })
-  }, [guias, filtroPlanoId, filtroPertoVencer])
+  }, [guias, filtroPlanoId, filtroPertoVencer, filtroMostrarFaturadas])
 
   useEffect(() => {
     async function carregarDados() {
@@ -196,7 +254,7 @@ export function GuiasPage() {
       {success ? <Alert severity="success">{success}</Alert> : null}
 
       {!loading && !error ? (
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }} flexWrap="wrap">
           <Autocomplete
             options={planos}
             getOptionLabel={(plano) => plano.name}
@@ -217,14 +275,31 @@ export function GuiasPage() {
             }
             label="Perto de vencer (7 dias)"
           />
-          <Stack direction="row" spacing={2} sx={{ ml: { md: 'auto' } }}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={filtroMostrarFaturadas}
+                onChange={(_, checked) => alterarFiltroFaturadas(checked)}
+              />
+            }
+            label="Mostrar faturadas"
+          />
+          <Stack direction="row" spacing={2} flexWrap="wrap" sx={{ ml: { md: 'auto' } }}>
+            <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+              <Box sx={{ width: 12, height: 12, bgcolor: 'success.light', borderRadius: 0.5 }} />
+              Faturada
+            </Typography>
             <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
               <Box sx={{ width: 12, height: 12, bgcolor: 'warning.light', borderRadius: 0.5 }} />
               Faltam ate 7 dias
             </Typography>
             <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
               <Box sx={{ width: 12, height: 12, bgcolor: 'error.light', borderRadius: 0.5 }} />
-              Vence hoje ou vencida
+              Ultimo dia de validade
+            </Typography>
+            <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+              <Box sx={{ width: 12, height: 12, bgcolor: 'grey.300', borderRadius: 0.5 }} />
+              Vencida
             </Typography>
           </Stack>
         </Stack>
@@ -244,7 +319,7 @@ export function GuiasPage() {
 
       {!loading && !error && guiasFiltradas.length > 0 ? (
         <Paper sx={{ p: 0 }}>
-          <GuiasTable guias={guiasFiltradas} onEditar={abrirEdicao} />
+          <GuiasTable guias={guiasFiltradas} onEditar={abrirEdicao} onFaturar={abrirFaturar} />
         </Paper>
       ) : null}
 
@@ -275,7 +350,7 @@ export function GuiasPage() {
               onChange={(_, plano) => {
                 setHealthPlanIdEdicao(plano?.id ?? '')
                 if (plano) {
-                  setExpirationDateEdicao(hojeMaisDiasLocal(plano.submissionDeadlineDays))
+                  recalcularValidade(startDateEdicao, plano.submissionDeadlineDays)
                 }
               }}
               renderInput={(params) => (
@@ -346,17 +421,30 @@ export function GuiasPage() {
               helperText={quantityInvalida ? 'Informe um inteiro maior ou igual a 1' : ' '}
             />
             <TextField
+              label="Data de inicio"
+              type="date"
+              InputLabelProps={{ shrink: true }}
+              value={startDateEdicao}
+              onChange={(event) => {
+                const next = event.target.value
+                setStartDateEdicao(next)
+                recalcularValidade(next, prazoPlano)
+              }}
+              error={startDateInvalida}
+              helperText={startDateInvalida ? 'Informe a data de inicio' : ' '}
+            />
+            <TextField
               label="Data de validade"
               type="date"
               InputLabelProps={{ shrink: true }}
+              InputProps={{ readOnly: true }}
               value={expirationDateEdicao}
-              onChange={(event) => setExpirationDateEdicao(event.target.value)}
               error={expirationInvalida}
               helperText={
                 expirationInvalida
                   ? 'Informe a data de validade'
                   : prazoPlano != null
-                    ? `Sugestao com base no prazo do plano (${prazoPlano} dias). Voce pode alterar.`
+                    ? `Calculada com base na data de inicio + prazo do plano (${prazoPlano} dias).`
                     : ' '
               }
             />
@@ -366,6 +454,27 @@ export function GuiasPage() {
           <Button onClick={fecharEdicao}>Cancelar</Button>
           <Button onClick={salvarEdicao} variant="contained" disabled={savingEdit || formInvalido}>
             Salvar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(faturando)} onClose={fecharFaturar} fullWidth maxWidth="sm">
+        <DialogTitle>Faturar guia</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mt: 0.5 }}>
+            Confirma o faturamento desta guia?
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={fecharFaturar} disabled={savingFaturar}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => void confirmarFaturar()}
+            variant="contained"
+            disabled={savingFaturar}
+          >
+            {savingFaturar ? 'Faturando...' : 'Confirmar'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -12,6 +12,7 @@ export const guiaSchema = z.object({
     .number({ error: 'Informe a quantidade' })
     .int('Informe um numero inteiro')
     .min(1, 'Quantidade deve ser no minimo 1'),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe a data de inicio'),
   expirationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe a data de validade'),
 })
 
