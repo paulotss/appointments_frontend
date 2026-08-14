@@ -21,7 +21,7 @@ import { listarPacientes } from '../services/patients.service'
 import type { Patient } from '../types/paciente'
 import type { HealthPlan } from '../types/planoSaude'
 import type { HealthProfessional } from '../types/profissional'
-import { hojeMaisDiasLocal } from '../utils/dataISO'
+import { adicionarDiasISO, hojeLocalISO } from '../utils/dataISO'
 
 export function NovaGuiaPage() {
   const navigate = useNavigate()
@@ -48,11 +48,13 @@ export function NovaGuiaPage() {
       healthProfessionalId: undefined,
       specialtyId: undefined,
       quantity: 1,
+      startDate: hojeLocalISO(),
       expirationDate: '',
     },
   })
 
   const healthPlanId = useWatch({ control, name: 'healthPlanId' })
+  const startDate = useWatch({ control, name: 'startDate' })
   const healthProfessionalId = useWatch({ control, name: 'healthProfessionalId' })
 
   const profissionaisAtivos = useMemo(
@@ -91,11 +93,11 @@ export function NovaGuiaPage() {
   }, [])
 
   useEffect(() => {
-    if (healthPlanId == null) return
+    if (!startDate || healthPlanId == null) return
     const plano = planos.find((item) => item.id === healthPlanId)
     if (!plano) return
-    setValue('expirationDate', hojeMaisDiasLocal(plano.submissionDeadlineDays))
-  }, [healthPlanId, planos, setValue])
+    setValue('expirationDate', adicionarDiasISO(startDate, plano.submissionDeadlineDays))
+  }, [startDate, healthPlanId, planos, setValue])
 
   useEffect(() => {
     resetField('specialtyId')
@@ -260,15 +262,24 @@ export function NovaGuiaPage() {
             {...register('quantity')}
           />
           <TextField
+            label="Data de inicio"
+            type="date"
+            InputLabelProps={{ shrink: true }}
+            error={Boolean(errors.startDate)}
+            helperText={errors.startDate?.message ?? ' '}
+            {...register('startDate')}
+          />
+          <TextField
             label="Data de validade"
             type="date"
             InputLabelProps={{ shrink: true }}
+            InputProps={{ readOnly: true }}
             error={Boolean(errors.expirationDate)}
             helperText={
               errors.expirationDate?.message ??
               (prazoPlano != null
-                ? `Sugestao com base no prazo do plano (${prazoPlano} dias). Voce pode alterar.`
-                : 'Selecione o plano para sugerir a validade.')
+                ? `Calculada com base na data de inicio + prazo do plano (${prazoPlano} dias).`
+                : 'Selecione o plano e a data de inicio para calcular a validade.')
             }
             {...register('expirationDate')}
           />

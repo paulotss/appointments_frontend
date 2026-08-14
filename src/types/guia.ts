@@ -15,6 +15,7 @@ export interface InsuranceGuide {
   healthProfessionalId: number
   quantity: number
   expirationDate: string
+  isBilled: boolean
   healthPlan?: InsuranceGuidePlanRef
   patient?: InsuranceGuideRef
   specialty?: InsuranceGuideRef
@@ -28,6 +29,7 @@ export interface CreateInsuranceGuideRequest {
   healthProfessionalId: number
   quantity: number
   expirationDate: string
+  isBilled?: boolean
 }
 
 export interface UpdateInsuranceGuideRequest {
@@ -37,4 +39,9 @@ export interface UpdateInsuranceGuideRequest {
   healthProfessionalId?: number
   quantity?: number
   expirationDate?: string
+  isBilled?: boolean
+}
+
+export interface ListarGuiasParams {
+  isBilled?: boolean
 }

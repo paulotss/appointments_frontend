@@ -1,6 +1,7 @@
 import type {
   CreateInsuranceGuideRequest,
   InsuranceGuide,
+  ListarGuiasParams,
   UpdateInsuranceGuideRequest,
 } from '../types/guia'
 import { isoDatePrefix } from '../utils/dataISO'
@@ -23,6 +24,7 @@ interface BackendInsuranceGuide {
   healthProfessionalId: number
   quantity: number
   expirationDate: string
+  isBilled: boolean
   healthPlan?: BackendPlanRef
   patient?: BackendRef
   specialty?: BackendRef
@@ -38,6 +40,7 @@ function mapBackendGuide(item: BackendInsuranceGuide): InsuranceGuide {
     healthProfessionalId: item.healthProfessionalId,
     quantity: item.quantity,
     expirationDate: isoDatePrefix(item.expirationDate),
+    isBilled: Boolean(item.isBilled),
     healthPlan: item.healthPlan,
     patient: item.patient,
     specialty: item.specialty,
@@ -45,8 +48,10 @@ function mapBackendGuide(item: BackendInsuranceGuide): InsuranceGuide {
   }
 }
 
-export async function listarGuias(): Promise<InsuranceGuide[]> {
-  const response = await apiClient.get<BackendInsuranceGuide[]>('/insurance-guides')
+export async function listarGuias(params?: ListarGuiasParams): Promise<InsuranceGuide[]> {
+  const response = await apiClient.get<BackendInsuranceGuide[]>('/insurance-guides', {
+    params: params?.isBilled === undefined ? undefined : { isBilled: params.isBilled },
+  })
   return response.data.map(mapBackendGuide)
 }
 
