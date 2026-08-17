@@ -7,8 +7,8 @@ interface BackendPatient {
   name: string
   phone: string
   email?: string | null
-  birthDate: string
-  cpf: string
+  birthDate?: string | null
+  cpf?: string | null
 }
 
 function mapBackendPatient(item: BackendPatient): Patient {
@@ -17,8 +17,8 @@ function mapBackendPatient(item: BackendPatient): Patient {
     name: item.name,
     phone: item.phone,
     email: item.email ?? null,
-    birthDate: isoDatePrefix(item.birthDate),
-    cpf: item.cpf,
+    birthDate: isoDatePrefix(item.birthDate) || null,
+    cpf: item.cpf ?? null,
   }
 }
 

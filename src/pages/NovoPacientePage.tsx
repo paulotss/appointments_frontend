@@ -35,9 +35,9 @@ export function NovoPacientePage() {
       await criarPaciente({
         name: values.name,
         phone: values.phone,
-        birthDate: values.birthDate,
-        cpf: values.cpf,
         ...(values.email != null ? { email: values.email } : {}),
+        ...(values.birthDate != null ? { birthDate: values.birthDate } : {}),
+        ...(values.cpf != null ? { cpf: values.cpf } : {}),
       })
       reset()
       navigate('/pacientes', { replace: true })
@@ -82,7 +82,7 @@ export function NovoPacientePage() {
           {...register('email')}
         />
         <TextField
-          label="Data de nascimento"
+          label="Data de nascimento (opcional)"
           type="date"
           InputLabelProps={{ shrink: true }}
           error={Boolean(errors.birthDate)}
@@ -90,7 +90,7 @@ export function NovoPacientePage() {
           {...register('birthDate')}
         />
         <TextField
-          label="CPF"
+          label="CPF (opcional)"
           error={Boolean(errors.cpf)}
           helperText={errors.cpf?.message}
           {...register('cpf')}
