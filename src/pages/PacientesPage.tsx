@@ -38,8 +38,8 @@ export function PacientesPage() {
     setNomeEdicao(paciente.name)
     setPhoneEdicao(paciente.phone)
     setEmailEdicao(paciente.email ?? '')
-    setBirthDateEdicao(paciente.birthDate)
-    setCpfEdicao(paciente.cpf)
+    setBirthDateEdicao(paciente.birthDate ?? '')
+    setCpfEdicao(paciente.cpf ?? '')
   }
 
   function fecharEdicao() {
@@ -54,7 +54,7 @@ export function PacientesPage() {
   async function salvarEdicao() {
     if (!editando) return
     const cpfDigits = cpfEdicao.replace(/\D/g, '')
-    if (cpfDigits.length !== 11) {
+    if (cpfDigits.length > 0 && cpfDigits.length !== 11) {
       setError('CPF deve ter 11 digitos.')
       return
     }
@@ -66,8 +66,8 @@ export function PacientesPage() {
         name: nomeEdicao.trim(),
         phone: phoneEdicao.trim(),
         email: emailEdicao.trim() || null,
-        birthDate: birthDateEdicao,
-        cpf: cpfDigits,
+        birthDate: birthDateEdicao || null,
+        cpf: cpfDigits || null,
       })
       setPacientes((prev) => prev.map((item) => (item.id === atualizado.id ? atualizado : item)))
       fecharEdicao()
@@ -81,8 +81,9 @@ export function PacientesPage() {
 
   const nomeInvalido = nomeEdicao.trim().length < 3
   const phoneInvalido = phoneEdicao.trim().length < 1
-  const birthDateInvalida = !/^\d{4}-\d{2}-\d{2}$/.test(birthDateEdicao)
-  const cpfInvalido = cpfEdicao.replace(/\D/g, '').length !== 11
+  const birthDateInvalida = birthDateEdicao !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(birthDateEdicao)
+  const cpfDigitsLength = cpfEdicao.replace(/\D/g, '').length
+  const cpfInvalido = cpfDigitsLength > 0 && cpfDigitsLength !== 11
   const emailTrim = emailEdicao.trim()
   const emailInvalido = emailTrim !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)
 
@@ -162,7 +163,7 @@ export function PacientesPage() {
               helperText={emailInvalido ? 'Informe um e-mail valido' : ' '}
             />
             <TextField
-              label="Data de nascimento"
+              label="Data de nascimento (opcional)"
               type="date"
               InputLabelProps={{ shrink: true }}
               value={birthDateEdicao}
@@ -171,11 +172,11 @@ export function PacientesPage() {
               helperText={birthDateInvalida ? 'Informe a data de nascimento' : ' '}
             />
             <TextField
-              label="CPF"
+              label="CPF (opcional)"
               value={cpfEdicao}
               onChange={(event) => setCpfEdicao(event.target.value)}
-              error={Boolean(cpfEdicao) && cpfInvalido}
-              helperText={Boolean(cpfEdicao) && cpfInvalido ? 'CPF deve ter 11 digitos' : ' '}
+              error={cpfInvalido}
+              helperText={cpfInvalido ? 'CPF deve ter 11 digitos' : ' '}
             />
           </Stack>
         </DialogContent>
