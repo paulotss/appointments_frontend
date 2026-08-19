@@ -1,4 +1,5 @@
 import AddIcon from '@mui/icons-material/Add'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import {
   Alert,
   Autocomplete,
@@ -10,6 +11,7 @@ import {
   DialogContent,
   DialogTitle,
   FormControlLabel,
+  IconButton,
   MenuItem,
   Paper,
   Stack,
@@ -22,12 +24,20 @@ import { useNavigate } from 'react-router-dom'
 import { GuiasTable } from '../components/GuiasTable'
 import { listarPlanosSaude } from '../services/health-plans.service'
 import { listarProfissionais } from '../services/health-professionals.service'
-import { atualizarGuia, listarGuias } from '../services/insurance-guides.service'
+import { atualizarGuia, excluirGuia, listarGuias } from '../services/insurance-guides.service'
 import { listarPacientes } from '../services/patients.service'
-import type { InsuranceGuide } from '../types/guia'
+import { listarProcedimentos } from '../services/procedures.service'
+import {
+  INSURANCE_GUIDE_STATUSES,
+  INSURANCE_GUIDE_STATUS_LABELS,
+  type InsuranceGuide,
+  type InsuranceGuideStatus,
+} from '../types/guia'
 import type { Patient } from '../types/paciente'
 import type { HealthPlan } from '../types/planoSaude'
+import type { Procedure } from '../types/procedimento'
 import type { HealthProfessional } from '../types/profissional'
+import { mensagemErroApi } from '../utils/apiError'
 import { adicionarDiasISO, statusPrazoGuia } from '../utils/dataISO'
 
 function prazoDoPlano(guia: InsuranceGuide, planos: HealthPlan[]): number | undefined {
@@ -35,6 +45,12 @@ function prazoDoPlano(guia: InsuranceGuide, planos: HealthPlan[]): number | unde
     guia.healthPlan?.submissionDeadlineDays ??
     planos.find((item) => item.id === guia.healthPlanId)?.submissionDeadlineDays
   )
+}
+
+type ProcedimentoEdicao = {
+  procedureId: number | ''
+  authorizedQuantity: string
+  usedQuantity: number
 }
 
 export function GuiasPage() {
@@ -50,27 +66,32 @@ export function GuiasPage() {
   const [patientIdEdicao, setPatientIdEdicao] = useState<number | ''>('')
   const [healthPlanIdEdicao, setHealthPlanIdEdicao] = useState<number | ''>('')
   const [healthProfessionalIdEdicao, setHealthProfessionalIdEdicao] = useState<number | ''>('')
-  const [specialtyIdEdicao, setSpecialtyIdEdicao] = useState<number | ''>('')
-  const [quantityEdicao, setQuantityEdicao] = useState('1')
+  const [statusEdicao, setStatusEdicao] = useState<InsuranceGuideStatus>('pending')
   const [startDateEdicao, setStartDateEdicao] = useState('')
   const [expirationDateEdicao, setExpirationDateEdicao] = useState('')
+  const [procedimentosEdicao, setProcedimentosEdicao] = useState<ProcedimentoEdicao[]>([])
+  const [procedimentosPlano, setProcedimentosPlano] = useState<Procedure[]>([])
   const [savingEdit, setSavingEdit] = useState(false)
   const [faturando, setFaturando] = useState<InsuranceGuide | null>(null)
   const [savingFaturar, setSavingFaturar] = useState(false)
   const [filtroPlanoId, setFiltroPlanoId] = useState<number | ''>('')
+  const [filtroStatus, setFiltroStatus] = useState<InsuranceGuideStatus | ''>('')
   const [filtroPertoVencer, setFiltroPertoVencer] = useState(false)
   const [filtroMostrarFaturadas, setFiltroMostrarFaturadas] = useState(false)
 
   const profissionaisEdicao = useMemo(() => {
-    return profissionais.filter(
-      (item) => item.isActive || item.id === healthProfessionalIdEdicao,
-    )
+    return profissionais.filter((item) => item.isActive || item.id === healthProfessionalIdEdicao)
   }, [profissionais, healthProfessionalIdEdicao])
 
-  const especialidadesDoProfissional = useMemo(() => {
+  const especialidadeIdsDoProfissional = useMemo(() => {
     const profissional = profissionais.find((item) => item.id === healthProfessionalIdEdicao)
-    return profissional?.specialties ?? []
+    return new Set((profissional?.specialties ?? []).map((item) => item.specialtyId))
   }, [profissionais, healthProfessionalIdEdicao])
+
+  const procedimentosElegiveis = useMemo(() => {
+    if (especialidadeIdsDoProfissional.size === 0) return procedimentosPlano
+    return procedimentosPlano.filter((item) => especialidadeIdsDoProfissional.has(item.specialtyId))
+  }, [procedimentosPlano, especialidadeIdsDoProfissional])
 
   const prazoPlano =
     healthPlanIdEdicao === ''
@@ -88,10 +109,18 @@ export function GuiasPage() {
     setPatientIdEdicao(guia.patientId)
     setHealthPlanIdEdicao(guia.healthPlanId)
     setHealthProfessionalIdEdicao(guia.healthProfessionalId)
-    setSpecialtyIdEdicao(guia.specialtyId)
-    setQuantityEdicao(String(guia.quantity))
+    setStatusEdicao(guia.status)
     setExpirationDateEdicao(guia.expirationDate)
     setStartDateEdicao(prazo != null ? adicionarDiasISO(guia.expirationDate, -prazo) : '')
+    setProcedimentosEdicao(
+      guia.procedures.length > 0
+        ? guia.procedures.map((item) => ({
+            procedureId: item.procedureId,
+            authorizedQuantity: String(item.authorizedQuantity),
+            usedQuantity: item.usedQuantity,
+          }))
+        : [{ procedureId: '', authorizedQuantity: '1', usedQuantity: 0 }],
+    )
   }
 
   function fecharEdicao() {
@@ -99,10 +128,11 @@ export function GuiasPage() {
     setPatientIdEdicao('')
     setHealthPlanIdEdicao('')
     setHealthProfessionalIdEdicao('')
-    setSpecialtyIdEdicao('')
-    setQuantityEdicao('1')
+    setStatusEdicao('pending')
     setStartDateEdicao('')
     setExpirationDateEdicao('')
+    setProcedimentosEdicao([])
+    setProcedimentosPlano([])
   }
 
   async function salvarEdicao() {
@@ -110,22 +140,39 @@ export function GuiasPage() {
       !editando ||
       patientIdEdicao === '' ||
       healthPlanIdEdicao === '' ||
-      healthProfessionalIdEdicao === '' ||
-      specialtyIdEdicao === ''
+      healthProfessionalIdEdicao === ''
     ) {
       return
     }
-    const quantity = Number(quantityEdicao)
-    if (!Number.isInteger(quantity) || quantity < 1) {
-      setError('Quantidade deve ser um inteiro maior ou igual a 1.')
-      return
-    }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(startDateEdicao)) {
-      setError('Informe a data de inicio.')
+      setError('Informe a data de início.')
       return
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(expirationDateEdicao)) {
       setError('Informe a data de validade.')
+      return
+    }
+    const procedures = procedimentosEdicao
+      .filter((item) => item.procedureId !== '')
+      .map((item) => ({
+        procedureId: item.procedureId as number,
+        authorizedQuantity: Number(item.authorizedQuantity),
+        usedQuantity: item.usedQuantity,
+      }))
+    if (procedures.length < 1) {
+      setError('Informe ao menos um procedimento.')
+      return
+    }
+    if (new Set(procedures.map((item) => item.procedureId)).size !== procedures.length) {
+      setError('Procedimentos duplicados não são permitidos.')
+      return
+    }
+    if (procedures.some((item) => !Number.isInteger(item.authorizedQuantity) || item.authorizedQuantity < 1)) {
+      setError('Quantidade autorizada deve ser um inteiro maior ou igual a 1.')
+      return
+    }
+    if (procedures.some((item) => item.authorizedQuantity < item.usedQuantity)) {
+      setError('A quantidade autorizada não pode ser menor que a quantidade já utilizada.')
       return
     }
     setSavingEdit(true)
@@ -136,15 +183,18 @@ export function GuiasPage() {
         patientId: patientIdEdicao,
         healthPlanId: healthPlanIdEdicao,
         healthProfessionalId: healthProfessionalIdEdicao,
-        specialtyId: specialtyIdEdicao,
-        quantity,
+        status: statusEdicao,
         expirationDate: expirationDateEdicao,
+        procedures: procedures.map((item) => ({
+          procedureId: item.procedureId,
+          authorizedQuantity: item.authorizedQuantity,
+        })),
       })
       setGuias((prev) => prev.map((item) => (item.id === atualizado.id ? atualizado : item)))
       fecharEdicao()
       setSuccess('Guia atualizada com sucesso.')
-    } catch {
-      setError('Nao foi possivel editar a guia.')
+    } catch (err) {
+      setError(mensagemErroApi(err, 'Não foi possível editar a guia.'))
     } finally {
       setSavingEdit(false)
     }
@@ -169,44 +219,61 @@ export function GuiasPage() {
       setGuias((prev) => prev.map((item) => (item.id === atualizado.id ? atualizado : item)))
       setFaturando(null)
       setSuccess('Guia faturada com sucesso.')
-    } catch {
-      setError('Nao foi possivel faturar a guia.')
+    } catch (err) {
+      setError(mensagemErroApi(err, 'Não foi possível faturar a guia.'))
     } finally {
       setSavingFaturar(false)
     }
   }
 
-  function alterarFiltroFaturadas(checked: boolean) {
-    setFiltroMostrarFaturadas(checked)
+  async function excluir(guia: InsuranceGuide) {
+    const confirmou = window.confirm(
+      `Confirma excluir a guia de ${guia.patient?.name ?? 'paciente'}?`,
+    )
+    if (!confirmou) return
+    setError(null)
+    setSuccess(null)
+    try {
+      await excluirGuia(guia.id)
+      setGuias((prev) => prev.filter((item) => item.id !== guia.id))
+      setSuccess('Guia excluída com sucesso.')
+    } catch (err) {
+      setError(mensagemErroApi(err, 'Não foi possível excluir a guia.'))
+    }
   }
 
-  const quantityNumero = Number(quantityEdicao)
-  const quantityInvalida = !Number.isInteger(quantityNumero) || quantityNumero < 1
   const startDateInvalida = !/^\d{4}-\d{2}-\d{2}$/.test(startDateEdicao)
   const expirationInvalida = !/^\d{4}-\d{2}-\d{2}$/.test(expirationDateEdicao)
+  const proceduresInvalidos =
+    procedimentosEdicao.length === 0 ||
+    procedimentosEdicao.some((item) => {
+      const qtd = Number(item.authorizedQuantity)
+      return (
+        item.procedureId === '' ||
+        !Number.isInteger(qtd) ||
+        qtd < 1 ||
+        qtd < item.usedQuantity
+      )
+    }) ||
+    new Set(procedimentosEdicao.map((item) => item.procedureId).filter((id) => id !== '')).size !==
+      procedimentosEdicao.filter((item) => item.procedureId !== '').length
   const formInvalido =
     patientIdEdicao === '' ||
     healthPlanIdEdicao === '' ||
     healthProfessionalIdEdicao === '' ||
-    specialtyIdEdicao === '' ||
-    quantityInvalida ||
+    proceduresInvalidos ||
     startDateInvalida ||
     expirationInvalida
 
   const guiasFiltradas = useMemo(() => {
     return guias.filter((guia) => {
-      if (!filtroMostrarFaturadas && guia.isBilled) {
-        return false
-      }
-      if (filtroPlanoId !== '' && guia.healthPlanId !== filtroPlanoId) {
-        return false
-      }
-      if (filtroPertoVencer && statusPrazoGuia(guia.expirationDate) !== 'proxima') {
-        return false
-      }
+      if (!filtroMostrarFaturadas && guia.isBilled) return false
+      if (filtroPlanoId !== '' && guia.healthPlanId !== filtroPlanoId) return false
+      if (filtroStatus !== '' && guia.status !== filtroStatus) return false
+      if (filtroPertoVencer && statusPrazoGuia(guia.expirationDate) !== 'proxima') return false
       return true
     })
-  }, [guias, filtroPlanoId, filtroPertoVencer, filtroMostrarFaturadas])
+  }, [guias, filtroPlanoId, filtroStatus, filtroPertoVencer, filtroMostrarFaturadas])
 
   useEffect(() => {
     async function carregarDados() {
@@ -223,8 +290,8 @@ export function GuiasPage() {
         setPacientes(pacientesData)
         setPlanos(planosData)
         setProfissionais(profissionaisData)
-      } catch {
-        setError('Nao foi possivel carregar as guias.')
+      } catch (err) {
+        setError(mensagemErroApi(err, 'Não foi possível carregar as guias.'))
       } finally {
         setLoading(false)
       }
@@ -232,6 +299,24 @@ export function GuiasPage() {
 
     void carregarDados()
   }, [])
+
+  useEffect(() => {
+    async function carregarProcedimentos() {
+      if (healthPlanIdEdicao === '') {
+        setProcedimentosPlano([])
+        return
+      }
+      try {
+        const data = await listarProcedimentos({ healthPlanId: healthPlanIdEdicao })
+        setProcedimentosPlano(data)
+      } catch {
+        setProcedimentosPlano([])
+      }
+    }
+    if (editando) {
+      void carregarProcedimentos()
+    }
+  }, [healthPlanIdEdicao, editando])
 
   return (
     <Stack spacing={2}>
@@ -261,11 +346,26 @@ export function GuiasPage() {
             isOptionEqualToValue={(option, selected) => option.id === selected.id}
             value={planos.find((plano) => plano.id === filtroPlanoId) ?? null}
             onChange={(_, plano) => setFiltroPlanoId(plano?.id ?? '')}
-            sx={{ minWidth: { xs: '100%', md: 280 } }}
+            sx={{ minWidth: { xs: '100%', md: 240 } }}
             renderInput={(params) => (
-              <TextField {...params} label="Plano de saude" size="small" placeholder="Todos" />
+              <TextField {...params} label="Plano de saúde" size="small" placeholder="Todos" />
             )}
           />
+          <TextField
+            select
+            size="small"
+            label="Status"
+            value={filtroStatus}
+            onChange={(event) => setFiltroStatus(event.target.value as InsuranceGuideStatus | '')}
+            sx={{ minWidth: 180 }}
+          >
+            <MenuItem value="">Todos</MenuItem>
+            {INSURANCE_GUIDE_STATUSES.map((status) => (
+              <MenuItem key={status} value={status}>
+                {INSURANCE_GUIDE_STATUS_LABELS[status]}
+              </MenuItem>
+            ))}
+          </TextField>
           <FormControlLabel
             control={
               <Switch
@@ -279,7 +379,7 @@ export function GuiasPage() {
             control={
               <Switch
                 checked={filtroMostrarFaturadas}
-                onChange={(_, checked) => alterarFiltroFaturadas(checked)}
+                onChange={(_, checked) => setFiltroMostrarFaturadas(checked)}
               />
             }
             label="Mostrar faturadas"
@@ -291,11 +391,11 @@ export function GuiasPage() {
             </Typography>
             <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
               <Box sx={{ width: 12, height: 12, bgcolor: 'warning.light', borderRadius: 0.5 }} />
-              Faltam ate 7 dias
+              Faltam até 7 dias
             </Typography>
             <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
               <Box sx={{ width: 12, height: 12, bgcolor: 'error.light', borderRadius: 0.5 }} />
-              Ultimo dia de validade
+              Último dia de validade
             </Typography>
             <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
               <Box sx={{ width: 12, height: 12, bgcolor: 'grey.300', borderRadius: 0.5 }} />
@@ -319,11 +419,16 @@ export function GuiasPage() {
 
       {!loading && !error && guiasFiltradas.length > 0 ? (
         <Paper sx={{ p: 0 }}>
-          <GuiasTable guias={guiasFiltradas} onEditar={abrirEdicao} onFaturar={abrirFaturar} />
+          <GuiasTable
+            guias={guiasFiltradas}
+            onEditar={abrirEdicao}
+            onFaturar={abrirFaturar}
+            onExcluir={(guia) => void excluir(guia)}
+          />
         </Paper>
       ) : null}
 
-      <Dialog open={Boolean(editando)} onClose={fecharEdicao} fullWidth maxWidth="sm">
+      <Dialog open={Boolean(editando)} onClose={fecharEdicao} fullWidth maxWidth="md">
         <DialogTitle>Editar guia</DialogTitle>
         <DialogContent>
           <Stack spacing={1.5} sx={{ mt: 0.5 }}>
@@ -349,16 +454,14 @@ export function GuiasPage() {
               value={planos.find((plano) => plano.id === healthPlanIdEdicao) ?? null}
               onChange={(_, plano) => {
                 setHealthPlanIdEdicao(plano?.id ?? '')
-                if (plano) {
-                  recalcularValidade(startDateEdicao, plano.submissionDeadlineDays)
-                }
+                if (plano) recalcularValidade(startDateEdicao, plano.submissionDeadlineDays)
               }}
               renderInput={(params) => (
                 <TextField
                   {...params}
-                  label="Plano de saude"
+                  label="Plano de saúde"
                   error={healthPlanIdEdicao === ''}
-                  helperText={healthPlanIdEdicao === '' ? 'Selecione o plano de saude' : ' '}
+                  helperText={healthPlanIdEdicao === '' ? 'Selecione o plano de saúde' : ' '}
                 />
               )}
             />
@@ -370,14 +473,7 @@ export function GuiasPage() {
                 profissionaisEdicao.find((profissional) => profissional.id === healthProfessionalIdEdicao) ??
                 null
               }
-              onChange={(_, profissional) => {
-                const nextId = profissional?.id ?? ''
-                setHealthProfessionalIdEdicao(nextId)
-                const ids = profissional?.specialties.map((item) => item.specialtyId) ?? []
-                if (specialtyIdEdicao !== '' && !ids.includes(specialtyIdEdicao)) {
-                  setSpecialtyIdEdicao('')
-                }
-              }}
+              onChange={(_, profissional) => setHealthProfessionalIdEdicao(profissional?.id ?? '')}
               renderInput={(params) => (
                 <TextField
                   {...params}
@@ -389,39 +485,18 @@ export function GuiasPage() {
             />
             <TextField
               select
-              label="Especialidade"
-              value={specialtyIdEdicao}
-              onChange={(event) => setSpecialtyIdEdicao(Number(event.target.value))}
-              error={specialtyIdEdicao === ''}
-              helperText={
-                specialtyIdEdicao === ''
-                  ? healthProfessionalIdEdicao === ''
-                    ? 'Selecione o profissional para listar as especialidades'
-                    : 'Selecione a especialidade'
-                  : ' '
-              }
-              disabled={especialidadesDoProfissional.length === 0}
+              label="Status"
+              value={statusEdicao}
+              onChange={(event) => setStatusEdicao(event.target.value as InsuranceGuideStatus)}
             >
-              <MenuItem value="" disabled>
-                Selecione uma especialidade
-              </MenuItem>
-              {especialidadesDoProfissional.map((item) => (
-                <MenuItem key={item.specialtyId} value={item.specialtyId}>
-                  {item.specialty?.name ?? `Especialidade ${item.specialtyId}`}
+              {INSURANCE_GUIDE_STATUSES.map((status) => (
+                <MenuItem key={status} value={status}>
+                  {INSURANCE_GUIDE_STATUS_LABELS[status]}
                 </MenuItem>
               ))}
             </TextField>
             <TextField
-              label="Quantidade"
-              type="number"
-              inputProps={{ min: 1, step: 1 }}
-              value={quantityEdicao}
-              onChange={(event) => setQuantityEdicao(event.target.value)}
-              error={quantityInvalida}
-              helperText={quantityInvalida ? 'Informe um inteiro maior ou igual a 1' : ' '}
-            />
-            <TextField
-              label="Data de inicio"
+              label="Data de início"
               type="date"
               InputLabelProps={{ shrink: true }}
               value={startDateEdicao}
@@ -431,7 +506,7 @@ export function GuiasPage() {
                 recalcularValidade(next, prazoPlano)
               }}
               error={startDateInvalida}
-              helperText={startDateInvalida ? 'Informe a data de inicio' : ' '}
+              helperText={startDateInvalida ? 'Informe a data de início' : ' '}
             />
             <TextField
               label="Data de validade"
@@ -444,15 +519,125 @@ export function GuiasPage() {
                 expirationInvalida
                   ? 'Informe a data de validade'
                   : prazoPlano != null
-                    ? `Calculada com base na data de inicio + prazo do plano (${prazoPlano} dias).`
+                    ? `Calculada com base na data de início + prazo do plano (${prazoPlano} dias).`
                     : ' '
               }
             />
+
+            <Typography variant="subtitle2" fontWeight={700}>
+              Procedimentos
+            </Typography>
+            {procedimentosEdicao.map((item, index) => {
+              const selecionados = procedimentosEdicao
+                .map((row, rowIndex) => (rowIndex === index ? undefined : row.procedureId))
+                .filter((id): id is number => typeof id === 'number')
+              const opcoes = procedimentosElegiveis.filter(
+                (proc) => !selecionados.includes(proc.id) || proc.id === item.procedureId,
+              )
+              const qtd = Number(item.authorizedQuantity)
+              const qtdInvalida = !Number.isInteger(qtd) || qtd < 1 || qtd < item.usedQuantity
+              const podeRemover = item.usedQuantity === 0
+
+              return (
+                <Stack key={`${item.procedureId}-${index}`} direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                  <TextField
+                    select
+                    label="Procedimento"
+                    value={item.procedureId}
+                    onChange={(event) => {
+                      const value = Number(event.target.value)
+                      setProcedimentosEdicao((prev) =>
+                        prev.map((row, rowIndex) =>
+                          rowIndex === index ? { ...row, procedureId: value } : row,
+                        ),
+                      )
+                    }}
+                    error={item.procedureId === ''}
+                    helperText={item.procedureId === '' ? 'Selecione o procedimento' : ' '}
+                    sx={{ flex: 1, minWidth: 220 }}
+                    disabled={item.usedQuantity > 0}
+                  >
+                    <MenuItem value="" disabled>
+                      Selecione
+                    </MenuItem>
+                    {opcoes.map((proc) => (
+                      <MenuItem key={proc.id} value={proc.id}>
+                        {proc.name} ({proc.tissCode})
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField
+                    label="Autorizado"
+                    type="number"
+                    inputProps={{ min: Math.max(1, item.usedQuantity), step: 1 }}
+                    value={item.authorizedQuantity}
+                    onChange={(event) => {
+                      const value = event.target.value
+                      setProcedimentosEdicao((prev) =>
+                        prev.map((row, rowIndex) =>
+                          rowIndex === index ? { ...row, authorizedQuantity: value } : row,
+                        ),
+                      )
+                    }}
+                    error={qtdInvalida}
+                    helperText={
+                      qtdInvalida
+                        ? item.usedQuantity > 0
+                          ? `Mínimo ${item.usedQuantity} (já utilizado)`
+                          : 'Informe um inteiro ≥ 1'
+                        : ' '
+                    }
+                    sx={{ width: { xs: '100%', sm: 140 } }}
+                  />
+                  <TextField
+                    label="Utilizado"
+                    value={item.usedQuantity}
+                    InputProps={{ readOnly: true }}
+                    sx={{ width: { xs: '100%', sm: 120 } }}
+                  />
+                  <TextField
+                    label="Saldo"
+                    value={Math.max(0, (Number.isFinite(qtd) ? qtd : 0) - item.usedQuantity)}
+                    InputProps={{ readOnly: true }}
+                    sx={{ width: { xs: '100%', sm: 120 } }}
+                  />
+                  <IconButton
+                    aria-label="Remover procedimento"
+                    onClick={() =>
+                      setProcedimentosEdicao((prev) => prev.filter((_, rowIndex) => rowIndex !== index))
+                    }
+                    disabled={!podeRemover || procedimentosEdicao.length === 1}
+                    sx={{ mt: 0.5 }}
+                    title={
+                      !podeRemover
+                        ? 'Não é possível remover procedimento com quantidade utilizada'
+                        : 'Remover'
+                    }
+                  >
+                    <DeleteOutlineIcon />
+                  </IconButton>
+                </Stack>
+              )
+            })}
+            <Button
+              type="button"
+              variant="outlined"
+              startIcon={<AddIcon />}
+              onClick={() =>
+                setProcedimentosEdicao((prev) => [
+                  ...prev,
+                  { procedureId: '', authorizedQuantity: '1', usedQuantity: 0 },
+                ])
+              }
+              sx={{ alignSelf: 'flex-start' }}
+            >
+              Adicionar procedimento
+            </Button>
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={fecharEdicao}>Cancelar</Button>
-          <Button onClick={salvarEdicao} variant="contained" disabled={savingEdit || formInvalido}>
+          <Button onClick={() => void salvarEdicao()} variant="contained" disabled={savingEdit || formInvalido}>
             Salvar
           </Button>
         </DialogActions>
@@ -462,18 +647,14 @@ export function GuiasPage() {
         <DialogTitle>Faturar guia</DialogTitle>
         <DialogContent>
           <Alert severity="warning" sx={{ mt: 0.5 }}>
-            Confirma o faturamento desta guia?
+            Confirma o faturamento desta guia? Guias faturadas não podem ser associadas a novos agendamentos.
           </Alert>
         </DialogContent>
         <DialogActions>
           <Button onClick={fecharFaturar} disabled={savingFaturar}>
             Cancelar
           </Button>
-          <Button
-            onClick={() => void confirmarFaturar()}
-            variant="contained"
-            disabled={savingFaturar}
-          >
+          <Button onClick={() => void confirmarFaturar()} variant="contained" disabled={savingFaturar}>
             {savingFaturar ? 'Faturando...' : 'Confirmar'}
           </Button>
         </DialogActions>

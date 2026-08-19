@@ -2,6 +2,7 @@ import AssessmentIcon from '@mui/icons-material/Assessment'
 import AssignmentIcon from '@mui/icons-material/Assignment'
 import EventNoteIcon from '@mui/icons-material/EventNote'
 import Inventory2Icon from '@mui/icons-material/Inventory2'
+import MedicalServicesIcon from '@mui/icons-material/MedicalServices'
 import SettingsIcon from '@mui/icons-material/Settings'
 import type { ReactNode } from 'react'
 
@@ -33,6 +34,7 @@ const allMenuItems: MenuItem[] = [
     icon: <EventNoteIcon />,
     items: [
       { kind: 'link', label: 'Registros', to: '/registros' },
+      { kind: 'link', label: 'Agenda clínica', to: '/clinical-appointments' },
       { kind: 'link', label: 'Chamadas', to: '/chamadas' },
       { kind: 'link', label: 'Mensagens', to: '/mensagens' },
     ],
@@ -43,6 +45,14 @@ const allMenuItems: MenuItem[] = [
     label: 'Guias',
     to: '/guias',
     icon: <AssignmentIcon />,
+    adminOnly: true,
+  },
+  {
+    kind: 'link',
+    id: 'procedimentos',
+    label: 'Procedimentos',
+    to: '/procedimentos',
+    icon: <MedicalServicesIcon />,
     adminOnly: true,
   },
   {

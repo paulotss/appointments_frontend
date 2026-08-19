@@ -3,9 +3,16 @@ const formatadorMoeda = new Intl.NumberFormat('pt-BR', {
   currency: 'BRL',
 })
 
-export function formatarMoedaBRL(value: number | null | undefined): string {
-  if (value == null || Number.isNaN(value)) return ''
-  return formatadorMoeda.format(value)
+export function parseValorDecimal(value: string | number | null | undefined): number {
+  if (value == null || value === '') return Number.NaN
+  const n = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(n) ? n : Number.NaN
+}
+
+export function formatarMoedaBRL(value: string | number | null | undefined): string {
+  const n = parseValorDecimal(value)
+  if (Number.isNaN(n)) return ''
+  return formatadorMoeda.format(n)
 }
 
 export function numeroParaDigitosMoedaBRL(value: number | null | undefined): string {
