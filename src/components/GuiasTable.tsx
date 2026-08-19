@@ -1,3 +1,4 @@
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import EditIcon from '@mui/icons-material/Edit'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
@@ -16,8 +17,8 @@ import {
   TableRow,
 } from '@mui/material'
 import { Fragment, useState } from 'react'
-import type { InsuranceGuide } from '../types/guia'
-import { INSURANCE_GUIDE_STATUS_LABELS } from '../types/guia'
+import type { InsuranceGuide, InsuranceGuideStatus } from '../types/guia'
+import { guiaProcedimentosTotalmenteUtilizados, INSURANCE_GUIDE_STATUS_LABELS } from '../types/guia'
 import { formatarDataISO, statusPrazoGuia } from '../utils/dataISO'
 import { GuiaProcedimentosTabela } from './GuiaProcedimentosTabela'
 
@@ -26,6 +27,19 @@ interface GuiasTableProps {
   onEditar: (guia: InsuranceGuide) => void
   onFaturar: (guia: InsuranceGuide) => void
   onExcluir: (guia: InsuranceGuide) => void
+}
+
+function corChipStatusGuia(status: InsuranceGuideStatus) {
+  if (status === 'pending') {
+    return { bgcolor: 'error.light', color: '#fff' }
+  }
+  if (status === 'under_analysis') {
+    return { bgcolor: 'warning.main', color: 'warning.contrastText' }
+  }
+  if (status === 'authorized') {
+    return { bgcolor: 'success.main', color: 'success.contrastText' }
+  }
+  return undefined
 }
 
 function corLinhaGuia(guia: InsuranceGuide) {
@@ -87,7 +101,20 @@ function GuiaRow({
         <TableCell>{guia.healthPlan?.name ?? '—'}</TableCell>
         <TableCell>{guia.healthProfessional?.name ?? '—'}</TableCell>
         <TableCell>
-          <Chip size="small" label={INSURANCE_GUIDE_STATUS_LABELS[guia.status] ?? guia.status} />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <Chip
+              size="small"
+              label={INSURANCE_GUIDE_STATUS_LABELS[guia.status] ?? guia.status}
+              sx={corChipStatusGuia(guia.status)}
+            />
+            {guiaProcedimentosTotalmenteUtilizados(guia.procedures) ? (
+              <CheckCircleIcon
+                fontSize="small"
+                color="success"
+                aria-label="Quantidade utilizada igual à autorizada em todos os procedimentos"
+              />
+            ) : null}
+          </Box>
         </TableCell>
         <TableCell>{formatarDataISO(guia.expirationDate)}</TableCell>
         <TableCell align="right">

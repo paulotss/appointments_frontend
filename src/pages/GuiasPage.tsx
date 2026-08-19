@@ -74,6 +74,7 @@ export function GuiasPage() {
   const [savingEdit, setSavingEdit] = useState(false)
   const [faturando, setFaturando] = useState<InsuranceGuide | null>(null)
   const [savingFaturar, setSavingFaturar] = useState(false)
+  const [filtroPacienteId, setFiltroPacienteId] = useState<number | ''>('')
   const [filtroPlanoId, setFiltroPlanoId] = useState<number | ''>('')
   const [filtroStatus, setFiltroStatus] = useState<InsuranceGuideStatus | ''>('')
   const [filtroPertoVencer, setFiltroPertoVencer] = useState(false)
@@ -268,12 +269,13 @@ export function GuiasPage() {
   const guiasFiltradas = useMemo(() => {
     return guias.filter((guia) => {
       if (!filtroMostrarFaturadas && guia.isBilled) return false
+      if (filtroPacienteId !== '' && guia.patientId !== filtroPacienteId) return false
       if (filtroPlanoId !== '' && guia.healthPlanId !== filtroPlanoId) return false
       if (filtroStatus !== '' && guia.status !== filtroStatus) return false
       if (filtroPertoVencer && statusPrazoGuia(guia.expirationDate) !== 'proxima') return false
       return true
     })
-  }, [guias, filtroPlanoId, filtroStatus, filtroPertoVencer, filtroMostrarFaturadas])
+  }, [guias, filtroPacienteId, filtroPlanoId, filtroStatus, filtroPertoVencer, filtroMostrarFaturadas])
 
   useEffect(() => {
     async function carregarDados() {
@@ -339,52 +341,65 @@ export function GuiasPage() {
       {success ? <Alert severity="success">{success}</Alert> : null}
 
       {!loading && !error ? (
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }} flexWrap="wrap">
-          <Autocomplete
-            options={planos}
-            getOptionLabel={(plano) => plano.name}
-            isOptionEqualToValue={(option, selected) => option.id === selected.id}
-            value={planos.find((plano) => plano.id === filtroPlanoId) ?? null}
-            onChange={(_, plano) => setFiltroPlanoId(plano?.id ?? '')}
-            sx={{ minWidth: { xs: '100%', md: 240 } }}
-            renderInput={(params) => (
-              <TextField {...params} label="Plano de saúde" size="small" placeholder="Todos" />
-            )}
-          />
-          <TextField
-            select
-            size="small"
-            label="Status"
-            value={filtroStatus}
-            onChange={(event) => setFiltroStatus(event.target.value as InsuranceGuideStatus | '')}
-            sx={{ minWidth: 180 }}
-          >
-            <MenuItem value="">Todos</MenuItem>
-            {INSURANCE_GUIDE_STATUSES.map((status) => (
-              <MenuItem key={status} value={status}>
-                {INSURANCE_GUIDE_STATUS_LABELS[status]}
-              </MenuItem>
-            ))}
-          </TextField>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={filtroPertoVencer}
-                onChange={(_, checked) => setFiltroPertoVencer(checked)}
-              />
-            }
-            label="Perto de vencer (7 dias)"
-          />
-          <FormControlLabel
-            control={
-              <Switch
-                checked={filtroMostrarFaturadas}
-                onChange={(_, checked) => setFiltroMostrarFaturadas(checked)}
-              />
-            }
-            label="Mostrar faturadas"
-          />
-          <Stack direction="row" spacing={2} flexWrap="wrap" sx={{ ml: { md: 'auto' } }}>
+        <Stack spacing={1.5}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }} flexWrap="wrap">
+            <Autocomplete
+              options={pacientes}
+              getOptionLabel={(paciente) => paciente.name}
+              isOptionEqualToValue={(option, selected) => option.id === selected.id}
+              value={pacientes.find((paciente) => paciente.id === filtroPacienteId) ?? null}
+              onChange={(_, paciente) => setFiltroPacienteId(paciente?.id ?? '')}
+              sx={{ minWidth: { xs: '100%', md: 240 } }}
+              renderInput={(params) => (
+                <TextField {...params} label="Paciente" size="small" placeholder="Todos" />
+              )}
+            />
+            <Autocomplete
+              options={planos}
+              getOptionLabel={(plano) => plano.name}
+              isOptionEqualToValue={(option, selected) => option.id === selected.id}
+              value={planos.find((plano) => plano.id === filtroPlanoId) ?? null}
+              onChange={(_, plano) => setFiltroPlanoId(plano?.id ?? '')}
+              sx={{ minWidth: { xs: '100%', md: 240 } }}
+              renderInput={(params) => (
+                <TextField {...params} label="Plano de saúde" size="small" placeholder="Todos" />
+              )}
+            />
+            <TextField
+              select
+              size="small"
+              label="Status"
+              value={filtroStatus}
+              onChange={(event) => setFiltroStatus(event.target.value as InsuranceGuideStatus | '')}
+              sx={{ minWidth: 180 }}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              {INSURANCE_GUIDE_STATUSES.map((status) => (
+                <MenuItem key={status} value={status}>
+                  {INSURANCE_GUIDE_STATUS_LABELS[status]}
+                </MenuItem>
+              ))}
+            </TextField>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={filtroPertoVencer}
+                  onChange={(_, checked) => setFiltroPertoVencer(checked)}
+                />
+              }
+              label="Perto de vencer (7 dias)"
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={filtroMostrarFaturadas}
+                  onChange={(_, checked) => setFiltroMostrarFaturadas(checked)}
+                />
+              }
+              label="Mostrar faturadas"
+            />
+          </Stack>
+          <Stack direction="row" spacing={2} flexWrap="wrap">
             <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
               <Box sx={{ width: 12, height: 12, bgcolor: 'success.light', borderRadius: 0.5 }} />
               Faturada
