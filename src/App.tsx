@@ -26,8 +26,11 @@ import { MensagensPage } from './pages/MensagensPage'
 import { NovoRegistroPage } from './pages/NovoRegistroPage'
 import { RegistrosPage } from './pages/RegistrosPage'
 import { NovoUsuarioPage } from './pages/NovoUsuarioPage'
+import { AgendaClinicaPage } from './pages/AgendaClinicaPage'
 import { GuiasPage } from './pages/GuiasPage'
 import { NovaGuiaPage } from './pages/NovaGuiaPage'
+import { NovoProcedimentoPage } from './pages/NovoProcedimentoPage'
+import { ProcedimentosPage } from './pages/ProcedimentosPage'
 import { NovoPacientePage } from './pages/NovoPacientePage'
 import { NovoPlanoSaudePage } from './pages/NovoPlanoSaudePage'
 import { NovoProfissionalPage } from './pages/NovoProfissionalPage'
@@ -56,6 +59,7 @@ function App() {
         <Route path="/" element={<Navigate to="/registros" replace />} />
         <Route path="/registros" element={<RegistrosPage />} />
         <Route path="/registros/novo" element={<NovoRegistroPage />} />
+        <Route path="/clinical-appointments" element={<AgendaClinicaPage />} />
         <Route path="/chamadas" element={<ChamadasPage />} />
         <Route path="/chamadas/:callId" element={<ChamadaDetalhePage />} />
         <Route path="/mensagens" element={<MensagensPage />} />
@@ -285,6 +289,22 @@ function App() {
           element={
             <AdminRoute>
               <NovaGuiaPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/procedimentos"
+          element={
+            <AdminRoute>
+              <ProcedimentosPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/procedimentos/novo"
+          element={
+            <AdminRoute>
+              <NovoProcedimentoPage />
             </AdminRoute>
           }
         />

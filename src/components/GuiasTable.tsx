@@ -1,13 +1,31 @@
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import EditIcon from '@mui/icons-material/Edit'
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
-import { IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material'
+import {
+  Box,
+  Chip,
+  Collapse,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+} from '@mui/material'
+import { Fragment, useState } from 'react'
 import type { InsuranceGuide } from '../types/guia'
+import { INSURANCE_GUIDE_STATUS_LABELS } from '../types/guia'
 import { formatarDataISO, statusPrazoGuia } from '../utils/dataISO'
+import { GuiaProcedimentosTabela } from './GuiaProcedimentosTabela'
 
 interface GuiasTableProps {
   guias: InsuranceGuide[]
   onEditar: (guia: InsuranceGuide) => void
   onFaturar: (guia: InsuranceGuide) => void
+  onExcluir: (guia: InsuranceGuide) => void
 }
 
 function corLinhaGuia(guia: InsuranceGuide) {
@@ -39,44 +57,96 @@ function corLinhaGuia(guia: InsuranceGuide) {
   return undefined
 }
 
-export function GuiasTable({ guias, onEditar, onFaturar }: GuiasTableProps) {
+function GuiaRow({
+  guia,
+  onEditar,
+  onFaturar,
+  onExcluir,
+}: {
+  guia: InsuranceGuide
+  onEditar: (guia: InsuranceGuide) => void
+  onFaturar: (guia: InsuranceGuide) => void
+  onExcluir: (guia: InsuranceGuide) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const corLinha = corLinhaGuia(guia)
+
+  return (
+    <Fragment>
+      <TableRow hover sx={{ ...corLinha, '& > *': { borderBottom: 'unset' } }}>
+        <TableCell>
+          <IconButton
+            size="small"
+            aria-label={open ? 'Recolher procedimentos' : 'Expandir procedimentos'}
+            onClick={() => setOpen((prev) => !prev)}
+          >
+            {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+          </IconButton>
+        </TableCell>
+        <TableCell>{guia.patient?.name ?? '—'}</TableCell>
+        <TableCell>{guia.healthPlan?.name ?? '—'}</TableCell>
+        <TableCell>{guia.healthProfessional?.name ?? '—'}</TableCell>
+        <TableCell>
+          <Chip size="small" label={INSURANCE_GUIDE_STATUS_LABELS[guia.status] ?? guia.status} />
+        </TableCell>
+        <TableCell>{formatarDataISO(guia.expirationDate)}</TableCell>
+        <TableCell align="right">
+          <IconButton size="small" aria-label="Editar guia" onClick={() => onEditar(guia)}>
+            <EditIcon fontSize="small" />
+          </IconButton>
+          {!guia.isBilled ? (
+            <IconButton size="small" aria-label="Faturar guia" onClick={() => onFaturar(guia)}>
+              <ReceiptLongIcon fontSize="small" />
+            </IconButton>
+          ) : null}
+          <IconButton
+            size="small"
+            color="error"
+            aria-label="Excluir guia"
+            onClick={() => onExcluir(guia)}
+          >
+            <DeleteOutlineIcon fontSize="small" />
+          </IconButton>
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell colSpan={7} sx={{ py: 0, px: 0 }}>
+          <Collapse in={open} timeout="auto" unmountOnExit>
+            <Box sx={{ py: 1.5, px: 2 }}>
+              <GuiaProcedimentosTabela procedimentos={guia.procedures} />
+            </Box>
+          </Collapse>
+        </TableCell>
+      </TableRow>
+    </Fragment>
+  )
+}
+
+export function GuiasTable({ guias, onEditar, onFaturar, onExcluir }: GuiasTableProps) {
   return (
     <TableContainer>
       <Table size="small">
         <TableHead>
           <TableRow>
+            <TableCell width={48} />
             <TableCell>Paciente</TableCell>
             <TableCell>Plano</TableCell>
-            <TableCell>Especialidade</TableCell>
             <TableCell>Profissional</TableCell>
-            <TableCell>Quantidade</TableCell>
+            <TableCell>Status</TableCell>
             <TableCell>Validade</TableCell>
             <TableCell align="right">Ações</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {guias.map((guia) => {
-            return (
-              <TableRow key={guia.id} hover sx={corLinhaGuia(guia)}>
-                <TableCell>{guia.patient?.name ?? '—'}</TableCell>
-                <TableCell>{guia.healthPlan?.name ?? '—'}</TableCell>
-                <TableCell>{guia.specialty?.name ?? '—'}</TableCell>
-                <TableCell>{guia.healthProfessional?.name ?? '—'}</TableCell>
-                <TableCell>{guia.quantity}</TableCell>
-                <TableCell>{formatarDataISO(guia.expirationDate)}</TableCell>
-                <TableCell align="right">
-                  <IconButton size="small" aria-label="Editar guia" onClick={() => onEditar(guia)}>
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                  {!guia.isBilled ? (
-                    <IconButton size="small" aria-label="Faturar guia" onClick={() => onFaturar(guia)}>
-                      <ReceiptLongIcon fontSize="small" />
-                    </IconButton>
-                  ) : null}
-                </TableCell>
-              </TableRow>
-            )
-          })}
+          {guias.map((guia) => (
+            <GuiaRow
+              key={guia.id}
+              guia={guia}
+              onEditar={onEditar}
+              onFaturar={onFaturar}
+              onExcluir={onExcluir}
+            />
+          ))}
         </TableBody>
       </Table>
     </TableContainer>
