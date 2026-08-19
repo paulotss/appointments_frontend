@@ -86,6 +86,15 @@ export function saldoGuiaProcedimento(item: Pick<InsuranceGuideProcedure, 'autho
   return Math.max(0, item.authorizedQuantity - item.usedQuantity)
 }
 
+export function guiaProcedimentosTotalmenteUtilizados(
+  procedimentos: Pick<InsuranceGuideProcedure, 'authorizedQuantity' | 'usedQuantity'>[],
+): boolean {
+  return (
+    procedimentos.length > 0 &&
+    procedimentos.every((item) => item.usedQuantity === item.authorizedQuantity)
+  )
+}
+
 export function rotuloGuia(guia: Pick<InsuranceGuide, 'id' | 'healthPlan' | 'status'>): string {
   const plano = guia.healthPlan?.name ?? 'Plano'
   return `#${guia.id} · ${plano} · ${INSURANCE_GUIDE_STATUS_LABELS[guia.status] ?? guia.status}`
