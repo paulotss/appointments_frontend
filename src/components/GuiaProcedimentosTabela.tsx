@@ -57,12 +57,7 @@ export function GuiaProcedimentosTabela({
               <TableCell>{item.procedure?.name ?? `Procedimento ${item.procedureId}`}</TableCell>
               <TableCell>
                 {item.healthPlanId != null
-                  ? tissCodeDoPlano(
-                      item.procedure
-                        ? { healthPlanPrices: item.procedure.healthPlanPrices ?? [] }
-                        : undefined,
-                      item.healthPlanId,
-                    ) ?? '—'
+                  ? tissCodeDoPlano(item.procedure, item.healthPlanId) ?? '—'
                   : '—'}
               </TableCell>
               <TableCell align="right">{formatarMoedaBRL(item.value) || '—'}</TableCell>

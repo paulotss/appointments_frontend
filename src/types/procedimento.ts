@@ -52,15 +52,20 @@ export interface ListarProcedimentosParams {
   healthPlanId?: number
 }
 
+export type HealthPlanPriceLookup = Pick<
+  ProcedureHealthPlanPrice,
+  'healthPlanId' | 'tissCode' | 'value'
+>
+
 export function precoDoPlano(
-  procedure: Pick<Procedure, 'healthPlanPrices'> | undefined,
+  procedure: { healthPlanPrices?: HealthPlanPriceLookup[] } | undefined,
   healthPlanId: number,
-): ProcedureHealthPlanPrice | undefined {
+): HealthPlanPriceLookup | undefined {
   return procedure?.healthPlanPrices?.find((item) => item.healthPlanId === healthPlanId)
 }
 
 export function tissCodeDoPlano(
-  procedure: Pick<Procedure, 'healthPlanPrices'> | undefined,
+  procedure: { healthPlanPrices?: HealthPlanPriceLookup[] } | undefined,
   healthPlanId: number,
 ): string | undefined {
   const tiss = precoDoPlano(procedure, healthPlanId)?.tissCode?.trim()
@@ -68,7 +73,7 @@ export function tissCodeDoPlano(
 }
 
 export function valorDoPlano(
-  procedure: Pick<Procedure, 'healthPlanPrices'> | undefined,
+  procedure: { healthPlanPrices?: HealthPlanPriceLookup[] } | undefined,
   healthPlanId: number,
 ): number | undefined {
   const raw = precoDoPlano(procedure, healthPlanId)?.value
