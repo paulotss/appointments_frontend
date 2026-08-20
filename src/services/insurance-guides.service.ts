@@ -91,7 +91,6 @@ export function mapBackendGuide(item: BackendInsuranceGuide): InsuranceGuide {
 export async function listarGuias(params?: ListarGuiasParams): Promise<PagedList<InsuranceGuide>> {
   const query = params
     ? {
-        ...(params.isBilled !== undefined ? { isBilled: params.isBilled } : {}),
         ...(params.status != null ? { status: params.status } : {}),
         ...(params.patientId != null ? { patientId: params.patientId } : {}),
         ...(params.healthProfessionalId != null ? { healthProfessionalId: params.healthProfessionalId } : {}),
@@ -104,8 +103,14 @@ export async function listarGuias(params?: ListarGuiasParams): Promise<PagedList
   const response = await apiClient.get<PagedList<BackendInsuranceGuide>>('/insurance-guides', {
     params: query && Object.keys(query).length > 0 ? query : undefined,
   })
+  let data = (response.data.data ?? []).map(mapBackendGuide)
+  // O backend (ValidationPipe + enableImplicitConversion) trata a query
+  // `isBilled=false` como true. Filtra no cliente para respeitar is_billed.
+  if (params?.isBilled !== undefined) {
+    data = data.filter((item) => item.isBilled === params.isBilled)
+  }
   return {
-    data: (response.data.data ?? []).map(mapBackendGuide),
+    data,
     meta: response.data.meta ?? META_VAZIA,
   }
 }

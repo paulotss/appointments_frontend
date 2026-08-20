@@ -182,7 +182,9 @@ export function AgendamentoClinicoForm({
           isBilled: false,
           limit: 100,
         })
-        const elegiveis = data.data.filter((item) => item.procedures.length > 0)
+        const elegiveis = data.data.filter(
+          (item) => item.isBilled === false && item.procedures.length > 0,
+        )
         const faltando = insuranceGuideIds.filter((id) => !elegiveis.some((item) => item.id === id))
         if (faltando.length > 0) {
           const extras = await Promise.all(
