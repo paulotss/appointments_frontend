@@ -6,8 +6,11 @@ import type {
   ListarGuiasParams,
   UpdateInsuranceGuideRequest,
 } from '../types/guia'
+import type { PagedList } from '../types/listEnvelope'
 import { isoDatePrefix } from '../utils/dataISO'
 import { apiClient } from './apiClient'
+
+const META_VAZIA = { page: 1, limit: 50, total: 0, totalPages: 1 }
 
 interface BackendRef {
   id: number
@@ -18,13 +21,19 @@ interface BackendPlanRef extends BackendRef {
   submissionDeadlineDays: number
 }
 
+interface BackendHealthPlanPrice {
+  healthPlanId: number
+  tissCode: string
+  value: string | number
+}
+
 interface BackendProcedureRef {
   id: number
   name: string
-  tissCode: string
   value: string | number
   specialtyId: number
   specialty?: BackendRef
+  healthPlanPrices?: BackendHealthPlanPrice[]
 }
 
 interface BackendGuideProcedure {
@@ -33,6 +42,7 @@ interface BackendGuideProcedure {
   procedureId: number
   authorizedQuantity: number
   usedQuantity: number
+  value: string | number
   procedure?: BackendProcedureRef
 }
 
@@ -57,6 +67,7 @@ function mapGuideProcedure(item: BackendGuideProcedure): InsuranceGuideProcedure
     procedureId: item.procedureId,
     authorizedQuantity: item.authorizedQuantity,
     usedQuantity: item.usedQuantity,
+    value: item.value,
     procedure: item.procedure,
   }
 }
@@ -77,26 +88,26 @@ export function mapBackendGuide(item: BackendInsuranceGuide): InsuranceGuide {
   }
 }
 
-export async function listarGuias(params?: ListarGuiasParams): Promise<InsuranceGuide[]> {
-  // O backend trata qualquer valor de isBilled na query como true (Boolean("false") === true).
-  // Enviamos os demais filtros e aplicamos isBilled no cliente.
+export async function listarGuias(params?: ListarGuiasParams): Promise<PagedList<InsuranceGuide>> {
   const query = params
     ? {
+        ...(params.isBilled !== undefined ? { isBilled: params.isBilled } : {}),
         ...(params.status != null ? { status: params.status } : {}),
         ...(params.patientId != null ? { patientId: params.patientId } : {}),
         ...(params.healthProfessionalId != null ? { healthProfessionalId: params.healthProfessionalId } : {}),
         ...(params.healthPlanId != null ? { healthPlanId: params.healthPlanId } : {}),
+        ...(params.page != null ? { page: params.page } : {}),
+        ...(params.limit != null ? { limit: params.limit } : {}),
       }
     : undefined
 
-  const response = await apiClient.get<BackendInsuranceGuide[]>('/insurance-guides', {
+  const response = await apiClient.get<PagedList<BackendInsuranceGuide>>('/insurance-guides', {
     params: query && Object.keys(query).length > 0 ? query : undefined,
   })
-  let data = response.data.map(mapBackendGuide)
-  if (params?.isBilled !== undefined) {
-    data = data.filter((item) => item.isBilled === params.isBilled)
+  return {
+    data: (response.data.data ?? []).map(mapBackendGuide),
+    meta: response.data.meta ?? META_VAZIA,
   }
-  return data
 }
 
 export async function buscarGuia(id: number): Promise<InsuranceGuide> {

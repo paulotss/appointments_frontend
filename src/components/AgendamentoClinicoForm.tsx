@@ -15,6 +15,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Controller, useForm, useWatch, type DefaultValues } from 'react-hook-form'
 import { GuiaProcedimentosTabela } from './GuiaProcedimentosTabela'
 import { NovaGuiaDialog } from './NovaGuiaDialog'
+import { PacienteBuscaAutocomplete } from './PacienteBuscaAutocomplete'
+import { ProfissionalBuscaAutocomplete } from './ProfissionalBuscaAutocomplete'
 import {
   agendamentoClinicoSchema,
   type AgendamentoClinicoFormInput,
@@ -22,6 +24,8 @@ import {
 } from '../schemas/agendamentoClinico.schema'
 import { buscarGuia, listarGuias } from '../services/insurance-guides.service'
 import { listarProcedimentosPorEspecialidades } from '../services/procedures.service'
+import { buscarPaciente } from '../services/patients.service'
+import { buscarProfissional } from '../services/health-professionals.service'
 import {
   CLINICAL_APPOINTMENT_STATUSES,
   CLINICAL_APPOINTMENT_STATUS_LABELS,
@@ -79,13 +83,24 @@ export function AgendamentoClinicoForm({
   const [guias, setGuias] = useState<InsuranceGuide[]>([])
   const [loadingListas, setLoadingListas] = useState(false)
   const [dialogNovaGuiaAberto, setDialogNovaGuiaAberto] = useState(false)
-
-  const profissionaisAtivos = useMemo(
-    () => profissionais.filter((item) => item.isActive || item.id === healthProfessionalId),
-    [profissionais, healthProfessionalId],
+  const [pacienteSelecionado, setPacienteSelecionado] = useState<Patient | null>(
+    () => pacientes.find((item) => item.id === defaultValues.patientId) ?? null,
+  )
+  const [profissionalSelecionado, setProfissionalSelecionado] = useState<HealthProfessional | null>(
+    () => profissionais.find((item) => item.id === defaultValues.healthProfessionalId) ?? null,
   )
 
-  const profissional = profissionais.find((item) => item.id === healthProfessionalId)
+  const profissionaisAtivos = useMemo(() => {
+    const lista = [profissionalSelecionado, ...profissionais].filter(
+      (item): item is HealthProfessional => Boolean(item),
+    )
+    return lista.filter((item) => item.isActive || item.id === healthProfessionalId)
+  }, [profissionais, profissionalSelecionado, healthProfessionalId])
+
+  const profissional =
+    profissionalSelecionado?.id === healthProfessionalId
+      ? profissionalSelecionado
+      : profissionais.find((item) => item.id === healthProfessionalId)
   const specialtyIds = profissional?.specialties.map((item) => item.specialtyId) ?? []
 
   const guiasDoAtual = useMemo(
@@ -165,8 +180,9 @@ export function AgendamentoClinicoForm({
           patientId,
           healthProfessionalId,
           isBilled: false,
+          limit: 100,
         })
-        const elegiveis = data.filter((item) => item.procedures.length > 0)
+        const elegiveis = data.data.filter((item) => item.procedures.length > 0)
         const faltando = insuranceGuideIds.filter((id) => !elegiveis.some((item) => item.id === id))
         if (faltando.length > 0) {
           const extras = await Promise.all(
@@ -195,6 +211,25 @@ export function AgendamentoClinicoForm({
   useEffect(() => {
     setDialogNovaGuiaAberto(false)
   }, [type, patientId, healthProfessionalId])
+
+  useEffect(() => {
+    const patientIdInicial = defaultValues.patientId
+    if (typeof patientIdInicial !== 'number' || pacienteSelecionado?.id === patientIdInicial) return
+    void buscarPaciente(patientIdInicial)
+      .then((paciente) => setPacienteSelecionado(paciente))
+      .catch(() => undefined)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultValues.patientId])
+
+  useEffect(() => {
+    const professionalIdInicial = defaultValues.healthProfessionalId
+    if (typeof professionalIdInicial !== 'number' || profissionalSelecionado?.id === professionalIdInicial)
+      return
+    void buscarProfissional(professionalIdInicial)
+      .then((profissional) => setProfissionalSelecionado(profissional))
+      .catch(() => undefined)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultValues.healthProfessionalId])
 
   return (
     <Stack component="form" spacing={2} onSubmit={handleSubmit(onSubmit)}>
@@ -226,25 +261,21 @@ export function AgendamentoClinicoForm({
         name="patientId"
         control={control}
         render={({ field: { onChange, value, ref, onBlur } }) => (
-          <Autocomplete
-            options={pacientes}
-            getOptionLabel={(paciente) => paciente.name}
-            isOptionEqualToValue={(option, selected) => option.id === selected.id}
-            value={pacientes.find((paciente) => paciente.id === value) ?? null}
-            onChange={(_, paciente) => {
+          <PacienteBuscaAutocomplete
+            value={
+              pacienteSelecionado?.id === value
+                ? pacienteSelecionado
+                : pacientes.find((paciente) => paciente.id === value) ?? null
+            }
+            onChange={(paciente) => {
+              setPacienteSelecionado(paciente)
               onChange(paciente?.id)
               setValue('insuranceGuideIds', [])
             }}
             onBlur={onBlur}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                inputRef={ref}
-                label="Paciente"
-                error={Boolean(errors.patientId)}
-                helperText={errors.patientId?.message}
-              />
-            )}
+            inputRef={ref}
+            error={Boolean(errors.patientId)}
+            helperText={errors.patientId?.message}
           />
         )}
       />
@@ -253,26 +284,23 @@ export function AgendamentoClinicoForm({
         name="healthProfessionalId"
         control={control}
         render={({ field: { onChange, value, ref, onBlur } }) => (
-          <Autocomplete
-            options={profissionaisAtivos}
-            getOptionLabel={(profissional) => profissional.name}
-            isOptionEqualToValue={(option, selected) => option.id === selected.id}
-            value={profissionaisAtivos.find((item) => item.id === value) ?? null}
-            onChange={(_, profissional) => {
+          <ProfissionalBuscaAutocomplete
+            value={
+              profissionalSelecionado?.id === value
+                ? profissionalSelecionado
+                : profissionaisAtivos.find((item) => item.id === value) ?? null
+            }
+            onChange={(profissional) => {
+              setProfissionalSelecionado(profissional)
               onChange(profissional?.id)
               setValue('procedureIds', [])
               setValue('insuranceGuideIds', [])
             }}
             onBlur={onBlur}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                inputRef={ref}
-                label="Profissional"
-                error={Boolean(errors.healthProfessionalId)}
-                helperText={errors.healthProfessionalId?.message}
-              />
-            )}
+            inputRef={ref}
+            somenteAtivos
+            error={Boolean(errors.healthProfessionalId)}
+            helperText={errors.healthProfessionalId?.message}
           />
         )}
       />
@@ -301,11 +329,32 @@ export function AgendamentoClinicoForm({
             <TextField
               label="Horário"
               type="time"
+              inputProps={{ step: 1800 }}
               InputLabelProps={{ shrink: true }}
               value={field.value}
               onChange={field.onChange}
               error={Boolean(errors.scheduledTime)}
               helperText={errors.scheduledTime?.message ?? ' '}
+              fullWidth
+            />
+          )}
+        />
+        <Controller
+          name="durationMinutes"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              label="Duração (min)"
+              type="number"
+              inputProps={{ min: 1, step: 1 }}
+              InputLabelProps={{ shrink: true }}
+              value={field.value ?? ''}
+              onChange={(event) => {
+                const raw = event.target.value
+                field.onChange(raw === '' ? undefined : Number(raw))
+              }}
+              error={Boolean(errors.durationMinutes)}
+              helperText={errors.durationMinutes?.message ?? ' '}
               fullWidth
             />
           )}
@@ -347,7 +396,7 @@ export function AgendamentoClinicoForm({
               multiple
               options={procedimentos}
               getOptionLabel={(item) =>
-                `${item.name} (${item.tissCode}) — ${formatarMoedaBRL(item.value) || 's/ valor'}`
+                `${item.name} — ${formatarMoedaBRL(item.value) || 's/ valor'}`
               }
               isOptionEqualToValue={(option, selected) => option.id === selected.id}
               value={procedimentos.filter((item) => (value ?? []).includes(item.id))}
@@ -427,8 +476,8 @@ export function AgendamentoClinicoForm({
               open={dialogNovaGuiaAberto}
               patientId={patientId}
               healthProfessionalId={healthProfessionalId}
-              pacientes={pacientes}
-              profissionais={profissionais}
+              pacientes={pacienteSelecionado ? [pacienteSelecionado] : pacientes}
+              profissionais={profissional ? [profissional] : profissionais}
               onClose={() => setDialogNovaGuiaAberto(false)}
               onCreated={(guia) => {
                 setGuias((prev) => {
@@ -453,6 +502,7 @@ export function AgendamentoClinicoForm({
             procedimentos={linhasProcedimentosDasGuias(guiasSelecionadas).map((item) => ({
               ...item,
               guiaLabel: rotuloGuia(item.guia),
+              healthPlanId: item.guia.healthPlanId,
             }))}
             emptyText="Selecione as guias para ver os procedimentos (somente leitura)."
           />

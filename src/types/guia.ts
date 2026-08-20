@@ -20,10 +20,14 @@ export interface InsuranceGuidePlanRef extends InsuranceGuideRef {
 export interface InsuranceGuideProcedureRef {
   id: number
   name: string
-  tissCode: string
   value: string | number
   specialtyId: number
   specialty?: InsuranceGuideRef
+  healthPlanPrices?: Array<{
+    healthPlanId: number
+    tissCode: string
+    value: string | number
+  }>
 }
 
 export interface InsuranceGuideProcedure {
@@ -32,12 +36,14 @@ export interface InsuranceGuideProcedure {
   procedureId: number
   authorizedQuantity: number
   usedQuantity: number
+  value: string | number
   procedure?: InsuranceGuideProcedureRef
 }
 
 export interface InsuranceGuideProcedureInput {
   procedureId: number
   authorizedQuantity: number
+  value?: number
 }
 
 export interface InsuranceGuide {
@@ -80,6 +86,8 @@ export interface ListarGuiasParams {
   patientId?: number
   healthProfessionalId?: number
   healthPlanId?: number
+  page?: number
+  limit?: number
 }
 
 export function saldoGuiaProcedimento(item: Pick<InsuranceGuideProcedure, 'authorizedQuantity' | 'usedQuantity'>): number {

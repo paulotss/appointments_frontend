@@ -9,9 +9,12 @@ import {
 } from '@mui/material'
 import type { InsuranceGuideProcedure } from '../types/guia'
 import { saldoGuiaProcedimento } from '../types/guia'
+import { tissCodeDoPlano } from '../types/procedimento'
+import { formatarMoedaBRL } from '../utils/moedaBRL'
 
 export type GuiaProcedimentoLinha = InsuranceGuideProcedure & {
   guiaLabel?: string
+  healthPlanId?: number
 }
 
 interface GuiaProcedimentosTabelaProps {
@@ -41,6 +44,7 @@ export function GuiaProcedimentosTabela({
             {mostrarGuia ? <TableCell>Guia</TableCell> : null}
             <TableCell>Procedimento</TableCell>
             <TableCell>TISS</TableCell>
+            <TableCell align="right">Valor</TableCell>
             <TableCell align="right">Autorizado</TableCell>
             <TableCell align="right">Utilizado</TableCell>
             <TableCell align="right">Saldo</TableCell>
@@ -51,7 +55,17 @@ export function GuiaProcedimentosTabela({
             <TableRow key={`${item.insuranceGuideId}-${item.id || item.procedureId}-${index}`}>
               {mostrarGuia ? <TableCell>{item.guiaLabel ?? '—'}</TableCell> : null}
               <TableCell>{item.procedure?.name ?? `Procedimento ${item.procedureId}`}</TableCell>
-              <TableCell>{item.procedure?.tissCode ?? '—'}</TableCell>
+              <TableCell>
+                {item.healthPlanId != null
+                  ? tissCodeDoPlano(
+                      item.procedure
+                        ? { healthPlanPrices: item.procedure.healthPlanPrices ?? [] }
+                        : undefined,
+                      item.healthPlanId,
+                    ) ?? '—'
+                  : '—'}
+              </TableCell>
+              <TableCell align="right">{formatarMoedaBRL(item.value) || '—'}</TableCell>
               <TableCell align="right">{item.authorizedQuantity}</TableCell>
               <TableCell align="right">{item.usedQuantity}</TableCell>
               <TableCell align="right">{saldoGuiaProcedimento(item)}</TableCell>

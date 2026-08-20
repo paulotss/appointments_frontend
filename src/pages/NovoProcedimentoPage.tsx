@@ -45,7 +45,6 @@ export function NovoProcedimentoPage() {
     try {
       await criarProcedimento({
         specialtyId: values.specialtyId,
-        tissCode: values.tissCode.trim(),
         name: values.name.trim(),
         value: values.value,
         healthPlanPrices: values.healthPlanPrices.length > 0 ? values.healthPlanPrices : undefined,
@@ -91,7 +90,6 @@ export function NovoProcedimentoPage() {
           <ProcedimentoForm
             defaultValues={{
               specialtyId: undefined,
-              tissCode: '',
               name: '',
               value: undefined,
               healthPlanPrices: [],

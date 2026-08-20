@@ -20,9 +20,13 @@ import { INSURANCE_GUIDE_STATUSES, INSURANCE_GUIDE_STATUS_LABELS } from '../type
 import type { Patient } from '../types/paciente'
 import type { HealthPlan } from '../types/planoSaude'
 import type { Procedure } from '../types/procedimento'
+import { tissCodeDoPlano, valorDoPlano } from '../types/procedimento'
 import type { HealthProfessional } from '../types/profissional'
 import { mensagemErroApi } from '../utils/apiError'
 import { adicionarDiasISO } from '../utils/dataISO'
+import { CampoValorMoeda } from './CampoValorMoeda'
+import { PacienteBuscaAutocomplete } from './PacienteBuscaAutocomplete'
+import { ProfissionalBuscaAutocomplete } from './ProfissionalBuscaAutocomplete'
 
 interface GuiaFormProps {
   defaultValues: DefaultValues<GuiaFormInput>
@@ -53,6 +57,7 @@ export function GuiaForm({
     control,
     handleSubmit,
     setValue,
+    getValues,
     formState: { errors },
   } = useForm<GuiaFormInput, unknown, GuiaFormValues>({
     resolver: zodResolver(guiaSchema),
@@ -69,15 +74,18 @@ export function GuiaForm({
   const [loadingProcedimentos, setLoadingProcedimentos] = useState(false)
   const [errorProcedimentos, setErrorProcedimentos] = useState<string | null>(null)
 
-  const profissionaisAtivos = useMemo(
-    () => profissionais.filter((item) => item.isActive || item.id === healthProfessionalId),
-    [profissionais, healthProfessionalId],
+  const [pacienteSelecionado, setPacienteSelecionado] = useState<Patient | null>(
+    () => pacientes.find((item) => item.id === defaultValues.patientId) ?? null,
+  )
+  const [profissionalSelecionado, setProfissionalSelecionado] = useState<HealthProfessional | null>(
+    () => profissionais.find((item) => item.id === defaultValues.healthProfessionalId) ?? null,
   )
 
   const especialidadeIdsDoProfissional = useMemo(() => {
-    const profissional = profissionaisAtivos.find((item) => item.id === healthProfessionalId)
+    const profissional =
+      profissionalSelecionado ?? profissionais.find((item) => item.id === healthProfessionalId)
     return new Set((profissional?.specialties ?? []).map((item) => item.specialtyId))
-  }, [profissionaisAtivos, healthProfessionalId])
+  }, [profissionalSelecionado, profissionais, healthProfessionalId])
 
   const procedimentosElegiveis = useMemo(() => {
     if (especialidadeIdsDoProfissional.size === 0) return []
@@ -94,6 +102,10 @@ export function GuiaForm({
   }, [startDate, healthPlanId, planos, setValue])
 
   useEffect(() => {
+    const atuais = getValues('procedures') ?? []
+    atuais.forEach((_, index) => {
+      setValue(`procedures.${index}.value`, undefined as unknown as number)
+    })
     async function carregarProcedimentos() {
       if (healthPlanId == null) {
         setProcedimentosPlano([])
@@ -112,7 +124,20 @@ export function GuiaForm({
       }
     }
     void carregarProcedimentos()
-  }, [healthPlanId])
+  }, [healthPlanId, getValues, setValue])
+
+  useEffect(() => {
+    if (healthPlanId == null) return
+    const atuais = getValues('procedures') ?? []
+    atuais.forEach((item, index) => {
+      if (item?.procedureId == null) return
+      const atual = getValues(`procedures.${index}.value`)
+      if (atual != null) return
+      const proc = procedimentosPlano.find((p) => p.id === item.procedureId)
+      const valor = valorDoPlano(proc, healthPlanId)
+      if (valor != null) setValue(`procedures.${index}.value`, valor)
+    })
+  }, [healthPlanId, procedimentosPlano, getValues, setValue])
 
   return (
     <Stack component="form" spacing={2} onSubmit={handleSubmit(onSubmit)}>
@@ -120,23 +145,17 @@ export function GuiaForm({
         name="patientId"
         control={control}
         render={({ field: { onChange, value, ref, onBlur } }) => (
-          <Autocomplete
-            options={pacientes}
-            getOptionLabel={(paciente) => paciente.name}
-            isOptionEqualToValue={(option, selected) => option.id === selected.id}
-            value={pacientes.find((paciente) => paciente.id === value) ?? null}
-            onChange={(_, paciente) => onChange(paciente?.id)}
+          <PacienteBuscaAutocomplete
+            value={pacienteSelecionado?.id === value ? pacienteSelecionado : pacientes.find((item) => item.id === value) ?? null}
+            onChange={(paciente) => {
+              setPacienteSelecionado(paciente)
+              onChange(paciente?.id)
+            }}
             onBlur={onBlur}
+            inputRef={ref}
             disabled={patientLocked}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                inputRef={ref}
-                label="Paciente"
-                error={Boolean(errors.patientId)}
-                helperText={errors.patientId?.message}
-              />
-            )}
+            error={Boolean(errors.patientId)}
+            helperText={errors.patientId?.message}
           />
         )}
       />
@@ -167,23 +186,22 @@ export function GuiaForm({
         name="healthProfessionalId"
         control={control}
         render={({ field: { onChange, value, ref, onBlur } }) => (
-          <Autocomplete
-            options={profissionaisAtivos}
-            getOptionLabel={(profissional) => profissional.name}
-            isOptionEqualToValue={(option, selected) => option.id === selected.id}
-            value={profissionaisAtivos.find((profissional) => profissional.id === value) ?? null}
-            onChange={(_, profissional) => onChange(profissional?.id)}
+          <ProfissionalBuscaAutocomplete
+            value={
+              profissionalSelecionado?.id === value
+                ? profissionalSelecionado
+                : profissionais.find((item) => item.id === value) ?? null
+            }
+            onChange={(profissional) => {
+              setProfissionalSelecionado(profissional)
+              onChange(profissional?.id)
+            }}
             onBlur={onBlur}
+            inputRef={ref}
             disabled={professionalLocked}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                inputRef={ref}
-                label="Profissional"
-                error={Boolean(errors.healthProfessionalId)}
-                helperText={errors.healthProfessionalId?.message}
-              />
-            )}
+            somenteAtivos
+            error={Boolean(errors.healthProfessionalId)}
+            helperText={errors.healthProfessionalId?.message}
           />
         )}
       />
@@ -284,7 +302,15 @@ export function GuiaForm({
                   select
                   label="Procedimento"
                   value={procedureField.value ?? ''}
-                  onChange={(event) => procedureField.onChange(Number(event.target.value))}
+                  onChange={(event) => {
+                    const id = Number(event.target.value)
+                    procedureField.onChange(id)
+                    if (healthPlanId != null) {
+                      const proc = opcoes.find((item) => item.id === id)
+                      const valor = valorDoPlano(proc, healthPlanId)
+                      if (valor != null) setValue(`procedures.${index}.value`, valor)
+                    }
+                  }}
                   error={Boolean(itemError?.procedureId)}
                   helperText={itemError?.procedureId?.message ?? ' '}
                   sx={{ flex: 1, minWidth: 240 }}
@@ -293,11 +319,14 @@ export function GuiaForm({
                   <MenuItem value="" disabled>
                     Selecione um procedimento
                   </MenuItem>
-                  {opcoes.map((item) => (
-                    <MenuItem key={item.id} value={item.id}>
-                      {item.name} ({item.tissCode})
-                    </MenuItem>
-                  ))}
+                  {opcoes.map((item) => {
+                    const tiss = healthPlanId != null ? tissCodeDoPlano(item, healthPlanId) : undefined
+                    return (
+                      <MenuItem key={item.id} value={item.id}>
+                        {tiss ? `${item.name} (${tiss})` : item.name}
+                      </MenuItem>
+                    )
+                  })}
                 </TextField>
               )}
             />
@@ -313,7 +342,22 @@ export function GuiaForm({
                   onChange={(event) => qtyField.onChange(Number(event.target.value))}
                   error={Boolean(itemError?.authorizedQuantity)}
                   helperText={itemError?.authorizedQuantity?.message ?? ' '}
-                  sx={{ width: { xs: '100%', sm: 160 } }}
+                  sx={{ width: { xs: '100%', sm: 140 } }}
+                />
+              )}
+            />
+            <Controller
+              name={`procedures.${index}.value`}
+              control={control}
+              render={({ field: valueField }) => (
+                <CampoValorMoeda
+                  label="Valor"
+                  value={valueField.value}
+                  onChange={valueField.onChange}
+                  onBlur={valueField.onBlur}
+                  inputRef={valueField.ref}
+                  error={Boolean(itemError?.value)}
+                  helperText={itemError?.value?.message ?? ' '}
                 />
               )}
             />
@@ -332,7 +376,13 @@ export function GuiaForm({
         type="button"
         variant="outlined"
         startIcon={<AddIcon />}
-        onClick={() => append({ procedureId: undefined as unknown as number, authorizedQuantity: 1 })}
+        onClick={() =>
+          append({
+            procedureId: undefined as unknown as number,
+            authorizedQuantity: 1,
+            value: undefined as unknown as number,
+          })
+        }
         disabled={procedimentosElegiveis.length === 0 || fields.length >= procedimentosElegiveis.length}
         sx={{ alignSelf: 'flex-start' }}
       >

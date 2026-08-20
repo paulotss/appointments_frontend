@@ -72,12 +72,6 @@ export function ProcedimentoForm({
         )}
       />
       <TextField
-        label="Código TISS"
-        error={Boolean(errors.tissCode)}
-        helperText={errors.tissCode?.message}
-        {...register('tissCode')}
-      />
-      <TextField
         label="Nome"
         error={Boolean(errors.name)}
         helperText={errors.name?.message ?? 'O backend grava o nome em maiúsculas.'}
@@ -144,6 +138,22 @@ export function ProcedimentoForm({
               )}
             />
             <Controller
+              name={`healthPlanPrices.${index}.tissCode`}
+              control={control}
+              render={({ field: tissField }) => (
+                <TextField
+                  label="Código TISS"
+                  value={tissField.value ?? ''}
+                  onChange={tissField.onChange}
+                  onBlur={tissField.onBlur}
+                  inputRef={tissField.ref}
+                  error={Boolean(itemError?.tissCode)}
+                  helperText={itemError?.tissCode?.message ?? ' '}
+                  sx={{ width: { xs: '100%', sm: 160 } }}
+                />
+              )}
+            />
+            <Controller
               name={`healthPlanPrices.${index}.value`}
               control={control}
               render={({ field: valueField }) => (
@@ -172,6 +182,7 @@ export function ProcedimentoForm({
         onClick={() =>
           append({
             healthPlanId: undefined as unknown as number,
+            tissCode: '',
             value: undefined as unknown as number,
           })
         }

@@ -7,6 +7,7 @@ const procedimentoGuiaSchema = z.object({
     .number({ error: 'Informe a quantidade autorizada' })
     .int('Informe um número inteiro')
     .min(1, 'Quantidade autorizada deve ser no mínimo 1'),
+  value: z.number({ error: 'Informe o valor' }).min(0, 'Informe o valor'),
 })
 
 export const guiaSchema = z.object({

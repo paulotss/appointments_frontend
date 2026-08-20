@@ -20,8 +20,11 @@ export type AppointmentListCounts = {
   total: number
 }
 
-export type ListEnvelope<T, C = RecordStatusCounts> = {
+export type PagedList<T> = {
   data: T[]
   meta: ListMeta
+}
+
+export type ListEnvelope<T, C = RecordStatusCounts> = PagedList<T> & {
   counts: C
 }

@@ -1,6 +1,15 @@
 import type { CreatePatientRequest, Patient, UpdatePatientRequest } from '../types/paciente'
+import type { ListMeta, PagedList } from '../types/listEnvelope'
 import { isoDatePrefix } from '../utils/dataISO'
 import { apiClient } from './apiClient'
+
+const META_VAZIA: ListMeta = { page: 1, limit: 50, total: 0, totalPages: 1 }
+
+export interface ListarPacientesParams {
+  name?: string
+  page?: number
+  limit?: number
+}
 
 interface BackendPatient {
   id: number
@@ -22,9 +31,24 @@ function mapBackendPatient(item: BackendPatient): Patient {
   }
 }
 
-export async function listarPacientes(): Promise<Patient[]> {
-  const response = await apiClient.get<BackendPatient[]>('/patients')
-  return response.data.map(mapBackendPatient)
+export async function listarPacientes(params?: ListarPacientesParams): Promise<PagedList<Patient>> {
+  const name = params?.name?.trim()
+  const response = await apiClient.get<PagedList<BackendPatient>>('/patients', {
+    params: {
+      ...(name ? { name } : {}),
+      ...(params?.page != null ? { page: params.page } : {}),
+      ...(params?.limit != null ? { limit: params.limit } : {}),
+    },
+  })
+  return {
+    data: (response.data.data ?? []).map(mapBackendPatient),
+    meta: response.data.meta ?? META_VAZIA,
+  }
+}
+
+export async function buscarPaciente(id: number): Promise<Patient> {
+  const response = await apiClient.get<BackendPatient>(`/patients/${id}`)
+  return mapBackendPatient(response.data)
 }
 
 export async function criarPaciente(payload: CreatePatientRequest): Promise<Patient> {

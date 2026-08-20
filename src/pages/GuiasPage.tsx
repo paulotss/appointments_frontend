@@ -16,16 +16,20 @@ import {
   Paper,
   Stack,
   Switch,
+  TablePagination,
   TextField,
   Typography,
 } from '@mui/material'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { CampoValorMoeda } from '../components/CampoValorMoeda'
 import { GuiasTable } from '../components/GuiasTable'
+import { PacienteBuscaAutocomplete } from '../components/PacienteBuscaAutocomplete'
+import { ProfissionalBuscaAutocomplete } from '../components/ProfissionalBuscaAutocomplete'
 import { listarPlanosSaude } from '../services/health-plans.service'
-import { listarProfissionais } from '../services/health-professionals.service'
+import { buscarProfissional } from '../services/health-professionals.service'
 import { atualizarGuia, excluirGuia, listarGuias } from '../services/insurance-guides.service'
-import { listarPacientes } from '../services/patients.service'
+import { buscarPaciente } from '../services/patients.service'
 import { listarProcedimentos } from '../services/procedures.service'
 import {
   INSURANCE_GUIDE_STATUSES,
@@ -33,12 +37,18 @@ import {
   type InsuranceGuide,
   type InsuranceGuideStatus,
 } from '../types/guia'
+import type { ListMeta } from '../types/listEnvelope'
 import type { Patient } from '../types/paciente'
 import type { HealthPlan } from '../types/planoSaude'
 import type { Procedure } from '../types/procedimento'
+import { tissCodeDoPlano, valorDoPlano } from '../types/procedimento'
 import type { HealthProfessional } from '../types/profissional'
 import { mensagemErroApi } from '../utils/apiError'
 import { adicionarDiasISO, statusPrazoGuia } from '../utils/dataISO'
+import { parseValorDecimal } from '../utils/moedaBRL'
+
+const PAGE_SIZE_OPTIONS = [25, 50, 100]
+const META_VAZIA: ListMeta = { page: 1, limit: 50, total: 0, totalPages: 1 }
 
 function prazoDoPlano(guia: InsuranceGuide, planos: HealthPlan[]): number | undefined {
   return (
@@ -51,21 +61,20 @@ type ProcedimentoEdicao = {
   procedureId: number | ''
   authorizedQuantity: string
   usedQuantity: number
+  value: number | undefined
 }
 
 export function GuiasPage() {
   const navigate = useNavigate()
   const [guias, setGuias] = useState<InsuranceGuide[]>([])
-  const [pacientes, setPacientes] = useState<Patient[]>([])
   const [planos, setPlanos] = useState<HealthPlan[]>([])
-  const [profissionais, setProfissionais] = useState<HealthProfessional[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [editando, setEditando] = useState<InsuranceGuide | null>(null)
-  const [patientIdEdicao, setPatientIdEdicao] = useState<number | ''>('')
+  const [pacienteEdicao, setPacienteEdicao] = useState<Patient | null>(null)
+  const [profissionalEdicao, setProfissionalEdicao] = useState<HealthProfessional | null>(null)
   const [healthPlanIdEdicao, setHealthPlanIdEdicao] = useState<number | ''>('')
-  const [healthProfessionalIdEdicao, setHealthProfessionalIdEdicao] = useState<number | ''>('')
   const [statusEdicao, setStatusEdicao] = useState<InsuranceGuideStatus>('pending')
   const [startDateEdicao, setStartDateEdicao] = useState('')
   const [expirationDateEdicao, setExpirationDateEdicao] = useState('')
@@ -74,20 +83,21 @@ export function GuiasPage() {
   const [savingEdit, setSavingEdit] = useState(false)
   const [faturando, setFaturando] = useState<InsuranceGuide | null>(null)
   const [savingFaturar, setSavingFaturar] = useState(false)
-  const [filtroPacienteId, setFiltroPacienteId] = useState<number | ''>('')
+  const [filtroPaciente, setFiltroPaciente] = useState<Patient | null>(null)
   const [filtroPlanoId, setFiltroPlanoId] = useState<number | ''>('')
   const [filtroStatus, setFiltroStatus] = useState<InsuranceGuideStatus | ''>('')
   const [filtroPertoVencer, setFiltroPertoVencer] = useState(false)
   const [filtroMostrarFaturadas, setFiltroMostrarFaturadas] = useState(false)
+  const [page, setPage] = useState(0)
+  const [rowsPerPage, setRowsPerPage] = useState(50)
+  const [meta, setMeta] = useState<ListMeta>(META_VAZIA)
 
-  const profissionaisEdicao = useMemo(() => {
-    return profissionais.filter((item) => item.isActive || item.id === healthProfessionalIdEdicao)
-  }, [profissionais, healthProfessionalIdEdicao])
+  const patientIdEdicao = pacienteEdicao?.id ?? ''
+  const healthProfessionalIdEdicao = profissionalEdicao?.id ?? ''
 
   const especialidadeIdsDoProfissional = useMemo(() => {
-    const profissional = profissionais.find((item) => item.id === healthProfessionalIdEdicao)
-    return new Set((profissional?.specialties ?? []).map((item) => item.specialtyId))
-  }, [profissionais, healthProfessionalIdEdicao])
+    return new Set((profissionalEdicao?.specialties ?? []).map((item) => item.specialtyId))
+  }, [profissionalEdicao])
 
   const procedimentosElegiveis = useMemo(() => {
     if (especialidadeIdsDoProfissional.size === 0) return procedimentosPlano
@@ -107,9 +117,20 @@ export function GuiasPage() {
   function abrirEdicao(guia: InsuranceGuide) {
     const prazo = prazoDoPlano(guia, planos)
     setEditando(guia)
-    setPatientIdEdicao(guia.patientId)
+    setPacienteEdicao(
+      guia.patient
+        ? {
+            id: guia.patient.id,
+            name: guia.patient.name,
+            phone: '',
+            email: null,
+            birthDate: null,
+            cpf: null,
+          }
+        : null,
+    )
+    setProfissionalEdicao(null)
     setHealthPlanIdEdicao(guia.healthPlanId)
-    setHealthProfessionalIdEdicao(guia.healthProfessionalId)
     setStatusEdicao(guia.status)
     setExpirationDateEdicao(guia.expirationDate)
     setStartDateEdicao(prazo != null ? adicionarDiasISO(guia.expirationDate, -prazo) : '')
@@ -119,16 +140,23 @@ export function GuiasPage() {
             procedureId: item.procedureId,
             authorizedQuantity: String(item.authorizedQuantity),
             usedQuantity: item.usedQuantity,
+            value: parseValorDecimal(item.value),
           }))
-        : [{ procedureId: '', authorizedQuantity: '1', usedQuantity: 0 }],
+        : [{ procedureId: '', authorizedQuantity: '1', usedQuantity: 0, value: undefined }],
     )
+    void buscarPaciente(guia.patientId)
+      .then(setPacienteEdicao)
+      .catch(() => undefined)
+    void buscarProfissional(guia.healthProfessionalId)
+      .then(setProfissionalEdicao)
+      .catch(() => undefined)
   }
 
   function fecharEdicao() {
     setEditando(null)
-    setPatientIdEdicao('')
+    setPacienteEdicao(null)
+    setProfissionalEdicao(null)
     setHealthPlanIdEdicao('')
-    setHealthProfessionalIdEdicao('')
     setStatusEdicao('pending')
     setStartDateEdicao('')
     setExpirationDateEdicao('')
@@ -159,6 +187,7 @@ export function GuiasPage() {
         procedureId: item.procedureId as number,
         authorizedQuantity: Number(item.authorizedQuantity),
         usedQuantity: item.usedQuantity,
+        value: item.value,
       }))
     if (procedures.length < 1) {
       setError('Informe ao menos um procedimento.')
@@ -176,6 +205,10 @@ export function GuiasPage() {
       setError('A quantidade autorizada não pode ser menor que a quantidade já utilizada.')
       return
     }
+    if (procedures.some((item) => item.value == null || Number.isNaN(item.value) || item.value < 0)) {
+      setError('Informe o valor de cada procedimento.')
+      return
+    }
     setSavingEdit(true)
     setError(null)
     setSuccess(null)
@@ -189,6 +222,7 @@ export function GuiasPage() {
         procedures: procedures.map((item) => ({
           procedureId: item.procedureId,
           authorizedQuantity: item.authorizedQuantity,
+          value: item.value,
         })),
       })
       setGuias((prev) => prev.map((item) => (item.id === atualizado.id ? atualizado : item)))
@@ -251,6 +285,9 @@ export function GuiasPage() {
       const qtd = Number(item.authorizedQuantity)
       return (
         item.procedureId === '' ||
+        item.value == null ||
+        Number.isNaN(item.value) ||
+        item.value < 0 ||
         !Number.isInteger(qtd) ||
         qtd < 1 ||
         qtd < item.usedQuantity
@@ -268,39 +305,50 @@ export function GuiasPage() {
 
   const guiasFiltradas = useMemo(() => {
     return guias.filter((guia) => {
-      if (!filtroMostrarFaturadas && guia.isBilled) return false
-      if (filtroPacienteId !== '' && guia.patientId !== filtroPacienteId) return false
-      if (filtroPlanoId !== '' && guia.healthPlanId !== filtroPlanoId) return false
-      if (filtroStatus !== '' && guia.status !== filtroStatus) return false
+      if (guia.isBilled !== filtroMostrarFaturadas) return false
       if (filtroPertoVencer && statusPrazoGuia(guia.expirationDate) !== 'proxima') return false
       return true
     })
-  }, [guias, filtroPacienteId, filtroPlanoId, filtroStatus, filtroPertoVencer, filtroMostrarFaturadas])
+  }, [guias, filtroMostrarFaturadas, filtroPertoVencer])
+
+  const carregarGuias = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const resultado = await listarGuias({
+        page: page + 1,
+        limit: rowsPerPage,
+        ...(filtroPaciente ? { patientId: filtroPaciente.id } : {}),
+        ...(filtroPlanoId === '' ? {} : { healthPlanId: filtroPlanoId }),
+        ...(filtroStatus === '' ? {} : { status: filtroStatus }),
+      })
+      setGuias(resultado.data)
+      setMeta(resultado.meta)
+    } catch (err) {
+      setError(mensagemErroApi(err, 'Não foi possível carregar as guias.'))
+    } finally {
+      setLoading(false)
+    }
+  }, [page, rowsPerPage, filtroPaciente, filtroPlanoId, filtroStatus])
 
   useEffect(() => {
-    async function carregarDados() {
-      setLoading(true)
-      setError(null)
+    void carregarGuias()
+  }, [carregarGuias])
+
+  useEffect(() => {
+    async function carregarPlanos() {
       try {
-        const [guiasData, pacientesData, planosData, profissionaisData] = await Promise.all([
-          listarGuias(),
-          listarPacientes(),
-          listarPlanosSaude(),
-          listarProfissionais(),
-        ])
-        setGuias(guiasData)
-        setPacientes(pacientesData)
-        setPlanos(planosData)
-        setProfissionais(profissionaisData)
-      } catch (err) {
-        setError(mensagemErroApi(err, 'Não foi possível carregar as guias.'))
-      } finally {
-        setLoading(false)
+        setPlanos(await listarPlanosSaude())
+      } catch {
+        /* filtros de plano ficam vazios */
       }
     }
-
-    void carregarDados()
+    void carregarPlanos()
   }, [])
+
+  useEffect(() => {
+    setPage(0)
+  }, [filtroPaciente, filtroPlanoId, filtroStatus])
 
   useEffect(() => {
     async function carregarProcedimentos() {
@@ -319,6 +367,18 @@ export function GuiasPage() {
       void carregarProcedimentos()
     }
   }, [healthPlanIdEdicao, editando])
+
+  useEffect(() => {
+    if (healthPlanIdEdicao === '') return
+    setProcedimentosEdicao((prev) =>
+      prev.map((row) => {
+        if (row.procedureId === '' || (row.value != null && !Number.isNaN(row.value))) return row
+        const proc = procedimentosPlano.find((item) => item.id === row.procedureId)
+        const preco = valorDoPlano(proc, healthPlanIdEdicao)
+        return preco == null ? row : { ...row, value: preco }
+      }),
+    )
+  }, [healthPlanIdEdicao, procedimentosPlano])
 
   return (
     <Stack spacing={2}>
@@ -342,17 +402,13 @@ export function GuiasPage() {
 
       {!loading && !error ? (
         <Stack spacing={1.5}>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }} flexWrap="wrap">
-            <Autocomplete
-              options={pacientes}
-              getOptionLabel={(paciente) => paciente.name}
-              isOptionEqualToValue={(option, selected) => option.id === selected.id}
-              value={pacientes.find((paciente) => paciente.id === filtroPacienteId) ?? null}
-              onChange={(_, paciente) => setFiltroPacienteId(paciente?.id ?? '')}
-              sx={{ minWidth: { xs: '100%', md: 240 } }}
-              renderInput={(params) => (
-                <TextField {...params} label="Paciente" size="small" placeholder="Todos" />
-              )}
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
+            <PacienteBuscaAutocomplete
+              value={filtroPaciente}
+              onChange={setFiltroPaciente}
+              size="small"
+              fullWidth
+              sx={{ flex: 1, minWidth: { xs: '100%', md: 280 } }}
             />
             <Autocomplete
               options={planos}
@@ -360,7 +416,7 @@ export function GuiasPage() {
               isOptionEqualToValue={(option, selected) => option.id === selected.id}
               value={planos.find((plano) => plano.id === filtroPlanoId) ?? null}
               onChange={(_, plano) => setFiltroPlanoId(plano?.id ?? '')}
-              sx={{ minWidth: { xs: '100%', md: 240 } }}
+              sx={{ minWidth: { xs: '100%', md: 240 }, flex: { md: 1 } }}
               renderInput={(params) => (
                 <TextField {...params} label="Plano de saúde" size="small" placeholder="Todos" />
               )}
@@ -380,6 +436,8 @@ export function GuiasPage() {
                 </MenuItem>
               ))}
             </TextField>
+          </Stack>
+          <Stack direction="row" spacing={2} flexWrap="wrap" alignItems="center">
             <FormControlLabel
               control={
                 <Switch
@@ -440,6 +498,22 @@ export function GuiasPage() {
             onFaturar={abrirFaturar}
             onExcluir={(guia) => void excluir(guia)}
           />
+          <TablePagination
+            component="div"
+            count={meta.total}
+            page={page}
+            onPageChange={(_, nextPage) => setPage(nextPage)}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={(event) => {
+              setRowsPerPage(Number(event.target.value))
+              setPage(0)
+            }}
+            rowsPerPageOptions={PAGE_SIZE_OPTIONS}
+            labelRowsPerPage="Por página"
+            labelDisplayedRows={({ from, to, count }) =>
+              `${from}–${to} de ${count !== -1 ? count : `mais de ${to}`}`
+            }
+          />
         </Paper>
       ) : null}
 
@@ -447,20 +521,11 @@ export function GuiasPage() {
         <DialogTitle>Editar guia</DialogTitle>
         <DialogContent>
           <Stack spacing={1.5} sx={{ mt: 0.5 }}>
-            <Autocomplete
-              options={pacientes}
-              getOptionLabel={(paciente) => paciente.name}
-              isOptionEqualToValue={(option, selected) => option.id === selected.id}
-              value={pacientes.find((paciente) => paciente.id === patientIdEdicao) ?? null}
-              onChange={(_, paciente) => setPatientIdEdicao(paciente?.id ?? '')}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Paciente"
-                  error={patientIdEdicao === ''}
-                  helperText={patientIdEdicao === '' ? 'Selecione o paciente' : ' '}
-                />
-              )}
+            <PacienteBuscaAutocomplete
+              value={pacienteEdicao}
+              onChange={setPacienteEdicao}
+              error={patientIdEdicao === ''}
+              helperText={patientIdEdicao === '' ? 'Selecione o paciente' : ' '}
             />
             <Autocomplete
               options={planos}
@@ -470,6 +535,7 @@ export function GuiasPage() {
               onChange={(_, plano) => {
                 setHealthPlanIdEdicao(plano?.id ?? '')
                 if (plano) recalcularValidade(startDateEdicao, plano.submissionDeadlineDays)
+                setProcedimentosEdicao((prev) => prev.map((row) => ({ ...row, value: undefined })))
               }}
               renderInput={(params) => (
                 <TextField
@@ -480,23 +546,12 @@ export function GuiasPage() {
                 />
               )}
             />
-            <Autocomplete
-              options={profissionaisEdicao}
-              getOptionLabel={(profissional) => profissional.name}
-              isOptionEqualToValue={(option, selected) => option.id === selected.id}
-              value={
-                profissionaisEdicao.find((profissional) => profissional.id === healthProfessionalIdEdicao) ??
-                null
-              }
-              onChange={(_, profissional) => setHealthProfessionalIdEdicao(profissional?.id ?? '')}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Profissional"
-                  error={healthProfessionalIdEdicao === ''}
-                  helperText={healthProfessionalIdEdicao === '' ? 'Selecione o profissional' : ' '}
-                />
-              )}
+            <ProfissionalBuscaAutocomplete
+              value={profissionalEdicao}
+              onChange={setProfissionalEdicao}
+              somenteAtivos
+              error={healthProfessionalIdEdicao === ''}
+              helperText={healthProfessionalIdEdicao === '' ? 'Selecione o profissional' : ' '}
             />
             <TextField
               select
@@ -561,9 +616,14 @@ export function GuiasPage() {
                     value={item.procedureId}
                     onChange={(event) => {
                       const value = Number(event.target.value)
+                      const proc = opcoes.find((item) => item.id === value)
+                      const preco =
+                        healthPlanIdEdicao === '' ? undefined : valorDoPlano(proc, healthPlanIdEdicao)
                       setProcedimentosEdicao((prev) =>
                         prev.map((row, rowIndex) =>
-                          rowIndex === index ? { ...row, procedureId: value } : row,
+                          rowIndex === index
+                            ? { ...row, procedureId: value, value: preco }
+                            : row,
                         ),
                       )
                     }}
@@ -575,11 +635,15 @@ export function GuiasPage() {
                     <MenuItem value="" disabled>
                       Selecione
                     </MenuItem>
-                    {opcoes.map((proc) => (
-                      <MenuItem key={proc.id} value={proc.id}>
-                        {proc.name} ({proc.tissCode})
-                      </MenuItem>
-                    ))}
+                    {opcoes.map((proc) => {
+                      const tiss =
+                        healthPlanIdEdicao === '' ? undefined : tissCodeDoPlano(proc, healthPlanIdEdicao)
+                      return (
+                        <MenuItem key={proc.id} value={proc.id}>
+                          {tiss ? `${proc.name} (${tiss})` : proc.name}
+                        </MenuItem>
+                      )
+                    })}
                   </TextField>
                   <TextField
                     label="Autorizado"
@@ -603,6 +667,23 @@ export function GuiasPage() {
                         : ' '
                     }
                     sx={{ width: { xs: '100%', sm: 140 } }}
+                  />
+                  <CampoValorMoeda
+                    label="Valor"
+                    value={item.value}
+                    onChange={(value) => {
+                      setProcedimentosEdicao((prev) =>
+                        prev.map((row, rowIndex) =>
+                          rowIndex === index ? { ...row, value } : row,
+                        ),
+                      )
+                    }}
+                    error={item.value == null || Number.isNaN(item.value) || item.value < 0}
+                    helperText={
+                      item.value == null || Number.isNaN(item.value) || item.value < 0
+                        ? 'Informe o valor'
+                        : ' '
+                    }
                   />
                   <TextField
                     label="Utilizado"
@@ -641,7 +722,7 @@ export function GuiasPage() {
               onClick={() =>
                 setProcedimentosEdicao((prev) => [
                   ...prev,
-                  { procedureId: '', authorizedQuantity: '1', usedQuantity: 0 },
+                  { procedureId: '', authorizedQuantity: '1', usedQuantity: 0, value: undefined },
                 ])
               }
               sx={{ alignSelf: 'flex-start' }}

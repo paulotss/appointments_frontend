@@ -39,6 +39,7 @@ function ProcedimentoConveniosTabela({ procedimento }: { procedimento: Procedure
         <TableHead>
           <TableRow>
             <TableCell>Convênio</TableCell>
+            <TableCell>TISS</TableCell>
             <TableCell align="right">Valor</TableCell>
           </TableRow>
         </TableHead>
@@ -46,6 +47,7 @@ function ProcedimentoConveniosTabela({ procedimento }: { procedimento: Procedure
           {procedimento.healthPlanPrices.map((item) => (
             <TableRow key={item.id}>
               <TableCell>{item.healthPlan?.name ?? `Plano ${item.healthPlanId}`}</TableCell>
+              <TableCell>{item.tissCode || '—'}</TableCell>
               <TableCell align="right">{formatarMoedaBRL(item.value) || '—'}</TableCell>
             </TableRow>
           ))}
@@ -78,7 +80,6 @@ function ProcedimentoRow({
             {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
           </IconButton>
         </TableCell>
-        <TableCell>{procedimento.tissCode}</TableCell>
         <TableCell>{procedimento.name}</TableCell>
         <TableCell>{procedimento.specialty?.name ?? '—'}</TableCell>
         <TableCell>{formatarMoedaBRL(procedimento.value) || '—'}</TableCell>
@@ -101,7 +102,7 @@ function ProcedimentoRow({
         </TableCell>
       </TableRow>
       <TableRow>
-        <TableCell colSpan={6} sx={{ py: 0, px: 0 }}>
+        <TableCell colSpan={5} sx={{ py: 0, px: 0 }}>
           <Collapse in={open} timeout="auto" unmountOnExit>
             <Box sx={{ py: 1.5, px: 2 }}>
               <ProcedimentoConveniosTabela procedimento={procedimento} />
@@ -120,7 +121,6 @@ export function ProcedimentosTable({ procedimentos, onEditar, onExcluir }: Proce
         <TableHead>
           <TableRow>
             <TableCell width={48} />
-            <TableCell>TISS</TableCell>
             <TableCell>Nome</TableCell>
             <TableCell>Especialidade</TableCell>
             <TableCell>Valor particular</TableCell>
