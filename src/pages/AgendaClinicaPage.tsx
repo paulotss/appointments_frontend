@@ -3,7 +3,6 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import {
   Alert,
-  Autocomplete,
   Box,
   Button,
   CircularProgress,
@@ -23,6 +22,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AgendaClinicaCalendario, type VisaoAgenda } from '../components/AgendaClinicaCalendario'
 import { AgendamentoClinicoForm } from '../components/AgendamentoClinicoForm'
 import { AgendamentosClinicosTable } from '../components/AgendamentosClinicosTable'
+import { PacienteBuscaAutocomplete } from '../components/PacienteBuscaAutocomplete'
+import { ProfissionalBuscaAutocomplete } from '../components/ProfissionalBuscaAutocomplete'
 import type { AgendamentoClinicoFormValues } from '../schemas/agendamentoClinico.schema'
 import {
   atualizarAgendamentoClinico,
@@ -31,12 +32,12 @@ import {
   excluirAgendamentoClinico,
   listarAgendamentosClinicos,
 } from '../services/clinical-appointments.service'
-import { listarProfissionais } from '../services/health-professionals.service'
-import { listarPacientes } from '../services/patients.service'
 import {
   CLINICAL_APPOINTMENT_STATUSES,
+  CLINICAL_APPOINTMENT_STATUS_CORES,
   CLINICAL_APPOINTMENT_STATUS_LABELS,
   CLINICAL_APPOINTMENT_TYPES,
+  CLINICAL_APPOINTMENT_TYPE_CORES,
   CLINICAL_APPOINTMENT_TYPE_LABELS,
   idsGuiasDoAgendamento,
   type ClinicalAppointment,
@@ -50,8 +51,10 @@ import type { HealthProfessional } from '../types/profissional'
 import { mensagemErroApi } from '../utils/apiError'
 import {
   adicionarDiasYmd,
+  adicionarMinutosIso,
   dataHoraSaoPauloParaIso,
   domingoDaSemana,
+  duracaoMinutosEntre,
   gradeDoMes,
   isoParaHmSaoPaulo,
   isoParaYmdSaoPaulo,
@@ -82,13 +85,22 @@ function tituloPeriodo(visao: VisaoTela, dataRef: string): string {
   return tituloMesPt(dataRef)
 }
 
-function montarPayloadCriacao(values: AgendamentoClinicoFormValues): CreateClinicalAppointmentRequest {
+function montarIntervalo(values: AgendamentoClinicoFormValues): { scheduledAt: string; endsAt: string } {
   const scheduledAt = dataHoraSaoPauloParaIso(values.scheduledDate, values.scheduledTime)
+  return {
+    scheduledAt,
+    endsAt: adicionarMinutosIso(scheduledAt, values.durationMinutes),
+  }
+}
+
+function montarPayloadCriacao(values: AgendamentoClinicoFormValues): CreateClinicalAppointmentRequest {
+  const { scheduledAt, endsAt } = montarIntervalo(values)
   if (values.type === 'private') {
     return {
       patientId: values.patientId,
       healthProfessionalId: values.healthProfessionalId,
       scheduledAt,
+      endsAt,
       type: 'private',
       status: values.status,
       procedureIds: values.procedureIds,
@@ -98,6 +110,7 @@ function montarPayloadCriacao(values: AgendamentoClinicoFormValues): CreateClini
     patientId: values.patientId,
     healthProfessionalId: values.healthProfessionalId,
     scheduledAt,
+    endsAt,
     type: 'health_plan',
     status: values.status,
     insuranceGuideIds: values.insuranceGuideIds,
@@ -105,12 +118,13 @@ function montarPayloadCriacao(values: AgendamentoClinicoFormValues): CreateClini
 }
 
 function montarPayloadAtualizacao(values: AgendamentoClinicoFormValues): UpdateClinicalAppointmentRequest {
-  const scheduledAt = dataHoraSaoPauloParaIso(values.scheduledDate, values.scheduledTime)
+  const { scheduledAt, endsAt } = montarIntervalo(values)
   if (values.type === 'private') {
     return {
       patientId: values.patientId,
       healthProfessionalId: values.healthProfessionalId,
       scheduledAt,
+      endsAt,
       type: 'private',
       status: values.status,
       procedureIds: values.procedureIds,
@@ -120,6 +134,7 @@ function montarPayloadAtualizacao(values: AgendamentoClinicoFormValues): UpdateC
     patientId: values.patientId,
     healthProfessionalId: values.healthProfessionalId,
     scheduledAt,
+    endsAt,
     type: 'health_plan',
     status: values.status,
     insuranceGuideIds: values.insuranceGuideIds,
@@ -130,15 +145,13 @@ export function AgendaClinicaPage() {
   const [visao, setVisao] = useState<VisaoTela>('semana')
   const [dataRef, setDataRef] = useState(() => ymdEmSaoPaulo())
   const [agendamentos, setAgendamentos] = useState<ClinicalAppointment[]>([])
-  const [pacientes, setPacientes] = useState<Patient[]>([])
-  const [profissionais, setProfissionais] = useState<HealthProfessional[]>([])
+  const [filtroPaciente, setFiltroPaciente] = useState<Patient | null>(null)
+  const [filtroProfissional, setFiltroProfissional] = useState<HealthProfessional | null>(null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
-  const [filtroPacienteId, setFiltroPacienteId] = useState<number | ''>('')
-  const [filtroProfissionalId, setFiltroProfissionalId] = useState<number | ''>('')
   const [filtroTipo, setFiltroTipo] = useState<ClinicalAppointmentType | ''>('')
   const [filtroStatus, setFiltroStatus] = useState<ClinicalAppointmentStatus | ''>('')
 
@@ -148,6 +161,8 @@ export function AgendaClinicaPage() {
   const [horaPreenchida, setHoraPreenchida] = useState('08:00')
 
   const { from, to } = useMemo(() => intervaloVisivel(visao, dataRef), [visao, dataRef])
+  const filtroPacienteId = filtroPaciente?.id ?? ''
+  const filtroProfissionalId = filtroProfissional?.id ?? ''
   const filtroAgendaAtivo = filtroPacienteId !== '' || filtroProfissionalId !== ''
 
   const carregarAgendamentos = useCallback(async () => {
@@ -178,22 +193,6 @@ export function AgendaClinicaPage() {
   useEffect(() => {
     void carregarAgendamentos()
   }, [carregarAgendamentos])
-
-  useEffect(() => {
-    async function carregarCadastros() {
-      try {
-        const [pacientesData, profissionaisData] = await Promise.all([
-          listarPacientes(),
-          listarProfissionais(),
-        ])
-        setPacientes(pacientesData)
-        setProfissionais(profissionaisData)
-      } catch (err) {
-        setError(mensagemErroApi(err, 'Não foi possível carregar pacientes e profissionais.'))
-      }
-    }
-    void carregarCadastros()
-  }, [])
 
   function irHoje() {
     setDataRef(ymdEmSaoPaulo())
@@ -330,28 +329,20 @@ export function AgendaClinicaPage() {
           </Stack>
 
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
-            <Autocomplete
-              options={pacientes}
-              getOptionLabel={(item) => item.name}
-              isOptionEqualToValue={(option, selected) => option.id === selected.id}
-              value={pacientes.find((item) => item.id === filtroPacienteId) ?? null}
-              onChange={(_, item) => setFiltroPacienteId(item?.id ?? '')}
-              sx={{ minWidth: 220, flex: 1 }}
-              renderInput={(params) => (
-                <TextField {...params} label="Paciente" size="small" placeholder="Selecione" />
-              )}
-            />
-            <Autocomplete
-              options={profissionais}
-              getOptionLabel={(item) => item.name}
-              isOptionEqualToValue={(option, selected) => option.id === selected.id}
-              value={profissionais.find((item) => item.id === filtroProfissionalId) ?? null}
-              onChange={(_, item) => setFiltroProfissionalId(item?.id ?? '')}
-              sx={{ minWidth: 220, flex: 1 }}
-              renderInput={(params) => (
-                <TextField {...params} label="Profissional" size="small" placeholder="Selecione" />
-              )}
-            />
+            <Box sx={{ minWidth: 220, flex: 1 }}>
+              <PacienteBuscaAutocomplete
+                value={filtroPaciente}
+                onChange={setFiltroPaciente}
+                size="small"
+              />
+            </Box>
+            <Box sx={{ minWidth: 220, flex: 1 }}>
+              <ProfissionalBuscaAutocomplete
+                value={filtroProfissional}
+                onChange={setFiltroProfissional}
+                size="small"
+              />
+            </Box>
             <TextField
               select
               size="small"
@@ -404,18 +395,41 @@ export function AgendaClinicaPage() {
         <AgendamentosClinicosTable agendamentos={agendamentos} onAbrir={abrirEvento} />
       ) : (
         <Paper sx={{ p: 1, overflow: 'hidden' }}>
-          <Stack direction="row" spacing={2} sx={{ px: 1, py: 0.5 }} flexWrap="wrap">
-            <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-              <Box sx={{ width: 12, height: 12, bgcolor: '#1f8f66', borderRadius: 0.5 }} />
-              Particular
-            </Typography>
-            <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-              <Box sx={{ width: 12, height: 12, bgcolor: '#1565c0', borderRadius: 0.5 }} />
-              Plano de saúde
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              A barra lateral indica o status (marcado, confirmado, em espera, atendido, finalizado).
-            </Typography>
+          <Stack direction="row" spacing={2} sx={{ px: 1, py: 0.5 }} flexWrap="wrap" useFlexGap>
+            {CLINICAL_APPOINTMENT_STATUSES.map((status) => (
+              <Typography
+                key={status}
+                variant="caption"
+                sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}
+              >
+                <Box
+                  sx={{
+                    width: 12,
+                    height: 12,
+                    bgcolor: CLINICAL_APPOINTMENT_STATUS_CORES[status],
+                    borderRadius: 0.5,
+                  }}
+                />
+                {CLINICAL_APPOINTMENT_STATUS_LABELS[status]}
+              </Typography>
+            ))}
+            {CLINICAL_APPOINTMENT_TYPES.map((tipo) => (
+              <Typography
+                key={tipo}
+                variant="caption"
+                sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}
+              >
+                <Box
+                  sx={{
+                    width: 4,
+                    height: 12,
+                    bgcolor: CLINICAL_APPOINTMENT_TYPE_CORES[tipo],
+                    borderRadius: 0.25,
+                  }}
+                />
+                {CLINICAL_APPOINTMENT_TYPE_LABELS[tipo]}
+              </Typography>
+            ))}
           </Stack>
           <AgendaClinicaCalendario
             visao={visaoCalendario}
@@ -451,6 +465,7 @@ export function AgendaClinicaPage() {
                         healthProfessionalId: editando.healthProfessionalId,
                         scheduledDate: isoParaYmdSaoPaulo(editando.scheduledAt),
                         scheduledTime: isoParaHmSaoPaulo(editando.scheduledAt),
+                        durationMinutes: duracaoMinutosEntre(editando.scheduledAt, editando.endsAt),
                         status: editando.status,
                         type: editando.type,
                         procedureIds: editando.procedures.map((item) => item.procedureId),
@@ -461,14 +476,15 @@ export function AgendaClinicaPage() {
                         healthProfessionalId: undefined,
                         scheduledDate: dataPreenchida,
                         scheduledTime: horaPreenchida,
+                        durationMinutes: 30,
                         status: 'marked',
                         type: 'private',
                         procedureIds: [],
                         insuranceGuideIds: [],
                       }
                 }
-                pacientes={pacientes}
-                profissionais={profissionais}
+                pacientes={filtroPaciente ? [filtroPaciente] : []}
+                profissionais={filtroProfissional ? [filtroProfissional] : []}
                 loading={saving}
                 submitLabel={editando ? 'Salvar' : 'Agendar'}
                 agendamentoAtual={editando}

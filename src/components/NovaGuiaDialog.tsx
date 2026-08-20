@@ -65,6 +65,7 @@ export function NovaGuiaDialog({
         procedures: values.procedures.map((item) => ({
           procedureId: item.procedureId,
           authorizedQuantity: item.authorizedQuantity,
+          value: item.value,
         })),
       })
       const completa =
@@ -105,7 +106,7 @@ export function NovaGuiaDialog({
                 status: 'pending',
                 startDate: hojeLocalISO(),
                 expirationDate: '',
-                procedures: [{ procedureId: undefined, authorizedQuantity: 1 }],
+                procedures: [{ procedureId: undefined, authorizedQuantity: 1, value: undefined }],
               }}
               pacientes={pacientes}
               profissionais={profissionais}

@@ -86,6 +86,15 @@ export function formatarDataHoraSaoPaulo(iso: string): string {
 }
 
 /** Converte data+hora de parede em America/Sao_Paulo para ISO 8601 UTC. */
+export function adicionarMinutosIso(iso: string, minutos: number): string {
+  return new Date(new Date(iso).getTime() + minutos * 60 * 1000).toISOString()
+}
+
+export function duracaoMinutosEntre(startIso: string, endIso: string): number {
+  const minutos = Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 60_000)
+  return Number.isFinite(minutos) && minutos > 0 ? minutos : 30
+}
+
 export function dataHoraSaoPauloParaIso(ymd: string, hm: string): string {
   const parsed = parseYmd(ymd)
   if (!parsed || !/^\d{2}:\d{2}$/.test(hm)) return ''

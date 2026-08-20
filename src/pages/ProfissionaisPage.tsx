@@ -15,17 +15,22 @@ import {
   Paper,
   Stack,
   Switch,
+  TablePagination,
   TextField,
   Typography,
 } from '@mui/material'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CampoValorMoeda } from '../components/CampoValorMoeda'
 import { ProfissionaisTable } from '../components/ProfissionaisTable'
 import { listarEspecialidades } from '../services/especialidades.service'
 import { atualizarProfissional, listarProfissionais } from '../services/health-professionals.service'
+import type { ListMeta } from '../types/listEnvelope'
 import type { Especialidade } from '../types/registro'
 import { COUNCIL_TYPES, type CouncilType, type HealthProfessional } from '../types/profissional'
+
+const PAGE_SIZE_OPTIONS = [25, 50, 100]
+const META_VAZIA: ListMeta = { page: 1, limit: 50, total: 0, totalPages: 1 }
 
 type EspecialidadePrecoEdicao = {
   specialtyId: number | ''
@@ -49,6 +54,20 @@ export function ProfissionaisPage() {
   const [emailEdicao, setEmailEdicao] = useState('')
   const [isActiveEdicao, setIsActiveEdicao] = useState(true)
   const [savingEdit, setSavingEdit] = useState(false)
+  const [filtroNome, setFiltroNome] = useState('')
+  const [filtroNomeDebounced, setFiltroNomeDebounced] = useState('')
+  const [page, setPage] = useState(0)
+  const [rowsPerPage, setRowsPerPage] = useState(50)
+  const [meta, setMeta] = useState<ListMeta>(META_VAZIA)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setFiltroNomeDebounced(filtroNome.trim()), 300)
+    return () => window.clearTimeout(timer)
+  }, [filtroNome])
+
+  useEffect(() => {
+    setPage(0)
+  }, [filtroNomeDebounced])
 
   function abrirEdicao(profissional: HealthProfessional) {
     setEditando(profissional)
@@ -135,26 +154,31 @@ export function ProfissionaisPage() {
     ) ||
     new Set(specialtyIds).size !== specialtyIds.length
 
-  useEffect(() => {
-    async function carregarDados() {
-      setLoading(true)
-      setError(null)
-      try {
-        const [profissionaisData, especialidadesData] = await Promise.all([
-          listarProfissionais(),
-          listarEspecialidades(),
-        ])
-        setProfissionais(profissionaisData)
-        setEspecialidades(especialidadesData)
-      } catch {
-        setError('Nao foi possivel carregar os profissionais.')
-      } finally {
-        setLoading(false)
-      }
+  const carregarDados = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const [profissionaisData, especialidadesData] = await Promise.all([
+        listarProfissionais({
+          ...(filtroNomeDebounced ? { name: filtroNomeDebounced } : {}),
+          page: page + 1,
+          limit: rowsPerPage,
+        }),
+        listarEspecialidades(),
+      ])
+      setProfissionais(profissionaisData.data)
+      setMeta(profissionaisData.meta)
+      setEspecialidades(especialidadesData)
+    } catch {
+      setError('Nao foi possivel carregar os profissionais.')
+    } finally {
+      setLoading(false)
     }
+  }, [filtroNomeDebounced, page, rowsPerPage])
 
+  useEffect(() => {
     void carregarDados()
-  }, [])
+  }, [carregarDados])
 
   return (
     <Stack spacing={2}>
@@ -171,14 +195,23 @@ export function ProfissionaisPage() {
         </Button>
       </Box>
 
+      {error ? <Alert severity="error">{error}</Alert> : null}
+      {success ? <Alert severity="success">{success}</Alert> : null}
+
+      <TextField
+        label="Buscar por nome"
+        value={filtroNome}
+        onChange={(event) => setFiltroNome(event.target.value)}
+        size="small"
+        sx={{ maxWidth: 360 }}
+      />
+
       {loading ? (
         <Paper sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <CircularProgress size={20} />
           <Typography>Carregando profissionais...</Typography>
         </Paper>
       ) : null}
-      {error ? <Alert severity="error">{error}</Alert> : null}
-      {success ? <Alert severity="success">{success}</Alert> : null}
 
       {!loading && !error && profissionais.length === 0 ? (
         <Paper sx={{ p: 3 }}>
@@ -189,6 +222,22 @@ export function ProfissionaisPage() {
       {!loading && !error && profissionais.length > 0 ? (
         <Paper sx={{ p: 0 }}>
           <ProfissionaisTable profissionais={profissionais} onEditar={abrirEdicao} />
+          <TablePagination
+            component="div"
+            count={meta.total}
+            page={page}
+            onPageChange={(_, nextPage) => setPage(nextPage)}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={(event) => {
+              setRowsPerPage(Number(event.target.value))
+              setPage(0)
+            }}
+            rowsPerPageOptions={PAGE_SIZE_OPTIONS}
+            labelRowsPerPage="Por página"
+            labelDisplayedRows={({ from, to, count }) =>
+              `${from}–${to} de ${count !== -1 ? count : `mais de ${to}`}`
+            }
+          />
         </Paper>
       ) : null}
 

@@ -16,9 +16,18 @@ export type VisaoAgenda = 'dia' | 'semana' | 'mes'
 
 const HORA_INICIO = 7
 const HORA_FIM = 21
-const PX_POR_HORA = 56
-const DURACAO_MIN = 45
-const HORAS = Array.from({ length: HORA_FIM - HORA_INICIO }, (_, i) => HORA_INICIO + i)
+const PX_POR_HORA = 112
+const SLOT_MIN = 30
+const SLOTS = Array.from(
+  { length: ((HORA_FIM - HORA_INICIO) * 60) / SLOT_MIN },
+  (_, i) => HORA_INICIO * 60 + i * SLOT_MIN,
+)
+
+function formatarMinutosDoDia(minutos: number): string {
+  const hora = Math.floor(minutos / 60)
+  const minuto = minutos % 60
+  return `${String(hora).padStart(2, '0')}:${String(minuto).padStart(2, '0')}`
+}
 
 interface AgendaClinicaCalendarioProps {
   visao: VisaoAgenda
@@ -47,7 +56,8 @@ function posicionarEventos(items: ClinicalAppointment[]): EventoPosicionado[] {
   const preparados = items
     .map((item) => {
       const startMin = minutosDoIso(item.scheduledAt)
-      return { item, startMin, endMin: startMin + DURACAO_MIN }
+      const endMin = Math.max(minutosDoIso(item.endsAt), startMin + SLOT_MIN)
+      return { item, startMin, endMin }
     })
     .sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin)
 
@@ -86,7 +96,7 @@ function posicionarEventos(items: ClinicalAppointment[]): EventoPosicionado[] {
         item: alocado.ev.item,
         startMin: alocado.ev.startMin,
         top: ((alocado.ev.startMin - HORA_INICIO * 60) / 60) * PX_POR_HORA,
-        height: Math.max((DURACAO_MIN / 60) * PX_POR_HORA, 28),
+        height: Math.max(((alocado.ev.endMin - alocado.ev.startMin) / 60) * PX_POR_HORA, 56),
         col: alocado.col,
         colCount,
       })
@@ -144,21 +154,24 @@ function GradeHorarios({
       })}
 
       <Box sx={{ position: 'relative', height: altura }}>
-        {HORAS.map((hora) => (
-          <Box
-            key={hora}
-            sx={{
-              height: PX_POR_HORA,
-              pr: 1,
-              textAlign: 'right',
-              fontSize: 12,
-              color: 'text.secondary',
-              transform: 'translateY(-8px)',
-            }}
-          >
-            {String(hora).padStart(2, '0')}:00
-          </Box>
-        ))}
+        {SLOTS.map((minutos) => {
+          const ehHoraCheia = minutos % 60 === 0
+          return (
+            <Box
+              key={minutos}
+              sx={{
+                height: PX_POR_HORA / 2,
+                pr: 1,
+                textAlign: 'right',
+                fontSize: ehHoraCheia ? 12 : 10,
+                color: 'text.secondary',
+                transform: 'translateY(-8px)',
+              }}
+            >
+              {formatarMinutosDoDia(minutos)}
+            </Box>
+          )
+        })}
       </Box>
 
       {dias.map((ymd) => {
@@ -174,19 +187,22 @@ function GradeHorarios({
               bgcolor: ymd === hoje ? 'rgba(31, 143, 102, 0.04)' : '#fff',
             }}
           >
-            {HORAS.map((hora) => (
-              <Box
-                key={`${ymd}-${hora}`}
-                onClick={() => onSlotClick(ymd, `${String(hora).padStart(2, '0')}:00`)}
-                sx={{
-                  height: PX_POR_HORA,
-                  borderBottom: '1px solid',
-                  borderColor: 'grey.200',
-                  cursor: 'pointer',
-                  '&:hover': { bgcolor: 'action.hover' },
-                }}
-              />
-            ))}
+            {SLOTS.map((minutos) => {
+              const ehHoraCheia = minutos % 60 === 0
+              return (
+                <Box
+                  key={`${ymd}-${minutos}`}
+                  onClick={() => onSlotClick(ymd, formatarMinutosDoDia(minutos))}
+                  sx={{
+                    height: PX_POR_HORA / 2,
+                    borderBottom: '1px solid',
+                    borderColor: ehHoraCheia ? 'grey.200' : 'grey.100',
+                    cursor: 'pointer',
+                    '&:hover': { bgcolor: 'action.hover' },
+                  }}
+                />
+              )
+            })}
             {eventos.map((ev) => (
               <Box
                 key={ev.item.id}

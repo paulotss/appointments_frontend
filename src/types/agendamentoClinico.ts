@@ -6,6 +6,7 @@ export const CLINICAL_APPOINTMENT_STATUSES = [
   'waiting',
   'attended',
   'finished',
+  'absent',
 ] as const
 
 export type ClinicalAppointmentStatus = (typeof CLINICAL_APPOINTMENT_STATUSES)[number]
@@ -16,6 +17,7 @@ export const CLINICAL_APPOINTMENT_STATUS_LABELS: Record<ClinicalAppointmentStatu
   waiting: 'Em espera',
   attended: 'Atendido',
   finished: 'Finalizado',
+  absent: 'Falta',
 }
 
 export const CLINICAL_APPOINTMENT_TYPES = ['private', 'health_plan'] as const
@@ -25,6 +27,20 @@ export type ClinicalAppointmentType = (typeof CLINICAL_APPOINTMENT_TYPES)[number
 export const CLINICAL_APPOINTMENT_TYPE_LABELS: Record<ClinicalAppointmentType, string> = {
   private: 'Particular',
   health_plan: 'Plano de saúde',
+}
+
+export const CLINICAL_APPOINTMENT_STATUS_CORES: Record<ClinicalAppointmentStatus, string> = {
+  marked: '#90a4ae',
+  confirmed: '#2e7d32',
+  waiting: '#ed6c02',
+  attended: '#0277bd',
+  finished: '#616161',
+  absent: '#c62828',
+}
+
+export const CLINICAL_APPOINTMENT_TYPE_CORES: Record<ClinicalAppointmentType, string> = {
+  private: '#1f8f66',
+  health_plan: '#1565c0',
 }
 
 export interface ClinicalAppointmentProcedure {
@@ -46,6 +62,7 @@ export interface ClinicalAppointment {
   patientId: number
   healthProfessionalId: number
   scheduledAt: string
+  endsAt: string
   status: ClinicalAppointmentStatus
   type: ClinicalAppointmentType
   patient?: InsuranceGuideRef
@@ -58,6 +75,7 @@ export interface CreateClinicalAppointmentRequest {
   patientId: number
   healthProfessionalId: number
   scheduledAt: string
+  endsAt: string
   type: ClinicalAppointmentType
   status?: ClinicalAppointmentStatus
   insuranceGuideIds?: number[]
@@ -68,6 +86,7 @@ export interface UpdateClinicalAppointmentRequest {
   patientId?: number
   healthProfessionalId?: number
   scheduledAt?: string
+  endsAt?: string
   type?: ClinicalAppointmentType
   status?: ClinicalAppointmentStatus
   insuranceGuideIds?: number[]

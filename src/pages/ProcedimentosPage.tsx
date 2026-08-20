@@ -88,7 +88,6 @@ export function ProcedimentosPage() {
     try {
       const atualizado = await atualizarProcedimento(editando.id, {
         specialtyId: values.specialtyId,
-        tissCode: values.tissCode.trim(),
         name: values.name.trim(),
         value: values.value,
         healthPlanPrices: values.healthPlanPrices,
@@ -180,11 +179,11 @@ export function ProcedimentosPage() {
                 key={editando.id}
                 defaultValues={{
                   specialtyId: editando.specialtyId,
-                  tissCode: editando.tissCode,
                   name: editando.name,
                   value: parseValorDecimal(editando.value),
                   healthPlanPrices: editando.healthPlanPrices.map((item) => ({
                     healthPlanId: item.healthPlanId,
+                    tissCode: item.tissCode,
                     value: parseValorDecimal(item.value),
                   })),
                 }}

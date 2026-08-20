@@ -22,6 +22,7 @@ interface BackendHealthPlanPrice {
   id: number
   healthPlanId: number
   procedureId: number
+  tissCode: string
   value: string | number
   healthPlan?: BackendHealthPlanRef
 }
@@ -29,7 +30,6 @@ interface BackendHealthPlanPrice {
 interface BackendProcedure {
   id: number
   specialtyId: number
-  tissCode: string
   name: string
   value: string | number
   specialty?: BackendSpecialtyRef
@@ -41,6 +41,7 @@ function mapHealthPlanPrice(item: BackendHealthPlanPrice): ProcedureHealthPlanPr
     id: item.id,
     healthPlanId: item.healthPlanId,
     procedureId: item.procedureId,
+    tissCode: item.tissCode,
     value: item.value,
     healthPlan: item.healthPlan,
   }
@@ -50,7 +51,6 @@ function mapBackendProcedure(item: BackendProcedure): Procedure {
   return {
     id: item.id,
     specialtyId: item.specialtyId,
-    tissCode: item.tissCode,
     name: item.name,
     value: item.value,
     specialty: item.specialty,

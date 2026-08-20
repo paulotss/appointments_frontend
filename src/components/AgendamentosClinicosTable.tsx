@@ -1,7 +1,9 @@
 import { Box, Chip, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@mui/material'
 import type { ClinicalAppointment } from '../types/agendamentoClinico'
 import {
+  CLINICAL_APPOINTMENT_STATUS_CORES,
   CLINICAL_APPOINTMENT_STATUS_LABELS,
+  CLINICAL_APPOINTMENT_TYPE_CORES,
   CLINICAL_APPOINTMENT_TYPE_LABELS,
 } from '../types/agendamentoClinico'
 import { formatarDataHoraSaoPaulo, formatarHoraSaoPaulo } from '../utils/dataHoraSaoPaulo'
@@ -32,7 +34,9 @@ export function AgendamentosClinicosTable({ agendamentos, onAbrir }: Agendamento
         <TableBody>
           {ordenados.map((item) => (
             <TableRow key={item.id} hover sx={{ cursor: 'pointer' }} onClick={() => onAbrir(item)}>
-              <TableCell>{formatarDataHoraSaoPaulo(item.scheduledAt)}</TableCell>
+              <TableCell>
+                {formatarDataHoraSaoPaulo(item.scheduledAt)} – {formatarHoraSaoPaulo(item.endsAt)}
+              </TableCell>
               <TableCell>{item.patient?.name ?? '—'}</TableCell>
               <TableCell>{item.healthProfessional?.name ?? '—'}</TableCell>
               <TableCell>
@@ -75,16 +79,7 @@ interface EventoChipProps {
   onClick: (item: ClinicalAppointment) => void
 }
 
-const STATUS_COR: Record<ClinicalAppointment['status'], string> = {
-  marked: '#90a4ae',
-  confirmed: '#2e7d32',
-  waiting: '#ed6c02',
-  attended: '#0277bd',
-  finished: '#616161',
-}
-
 export function EventoAgendaChip({ item, compact = false, onClick }: EventoChipProps) {
-  const cor = item.type === 'private' ? '#1f8f66' : '#1565c0'
   return (
     <Box
       onClick={(event) => {
@@ -92,9 +87,9 @@ export function EventoAgendaChip({ item, compact = false, onClick }: EventoChipP
         onClick(item)
       }}
       sx={{
-        bgcolor: cor,
+        bgcolor: CLINICAL_APPOINTMENT_STATUS_CORES[item.status],
         color: '#fff',
-        borderLeft: `4px solid ${STATUS_COR[item.status]}`,
+        borderLeft: `4px solid ${CLINICAL_APPOINTMENT_TYPE_CORES[item.type]}`,
         borderRadius: 0.75,
         px: 0.75,
         py: compact ? 0.15 : 0.4,

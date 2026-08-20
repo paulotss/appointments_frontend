@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient'
+import type { ListMeta, PagedList } from '../types/listEnvelope'
 import type {
   CouncilType,
   CreateHealthProfessionalRequest,
@@ -6,6 +7,14 @@ import type {
   HealthProfessionalSpecialtyLink,
   UpdateHealthProfessionalRequest,
 } from '../types/profissional'
+
+const META_VAZIA: ListMeta = { page: 1, limit: 50, total: 0, totalPages: 1 }
+
+export interface ListarProfissionaisParams {
+  name?: string
+  page?: number
+  limit?: number
+}
 
 interface BackendSpecialtyRef {
   id: number
@@ -57,9 +66,26 @@ function mapBackendHealthProfessional(item: BackendHealthProfessional): HealthPr
   }
 }
 
-export async function listarProfissionais(): Promise<HealthProfessional[]> {
-  const response = await apiClient.get<BackendHealthProfessional[]>('/health-professionals')
-  return response.data.map(mapBackendHealthProfessional)
+export async function listarProfissionais(
+  params?: ListarProfissionaisParams,
+): Promise<PagedList<HealthProfessional>> {
+  const name = params?.name?.trim()
+  const response = await apiClient.get<PagedList<BackendHealthProfessional>>('/health-professionals', {
+    params: {
+      ...(name ? { name } : {}),
+      ...(params?.page != null ? { page: params.page } : {}),
+      ...(params?.limit != null ? { limit: params.limit } : {}),
+    },
+  })
+  return {
+    data: (response.data.data ?? []).map(mapBackendHealthProfessional),
+    meta: response.data.meta ?? META_VAZIA,
+  }
+}
+
+export async function buscarProfissional(id: number): Promise<HealthProfessional> {
+  const response = await apiClient.get<BackendHealthProfessional>(`/health-professionals/${id}`)
+  return mapBackendHealthProfessional(response.data)
 }
 
 export async function criarProfissional(

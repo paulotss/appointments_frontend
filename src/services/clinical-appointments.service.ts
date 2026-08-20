@@ -16,13 +16,19 @@ interface BackendRef {
   name: string
 }
 
+interface BackendHealthPlanPrice {
+  healthPlanId: number
+  tissCode: string
+  value: string | number
+}
+
 interface BackendProcedureRef {
   id: number
   name: string
-  tissCode: string
   value: string | number
   specialtyId: number
   specialty?: BackendRef
+  healthPlanPrices?: BackendHealthPlanPrice[]
 }
 
 interface BackendAppointmentProcedure {
@@ -44,6 +50,7 @@ interface BackendClinicalAppointment {
   patientId: number
   healthProfessionalId: number
   scheduledAt: string
+  endsAt: string
   status: ClinicalAppointmentStatus
   type: ClinicalAppointmentType
   patient?: BackendRef
@@ -76,6 +83,7 @@ function mapBackendAppointment(item: BackendClinicalAppointment): ClinicalAppoin
     patientId: item.patientId,
     healthProfessionalId: item.healthProfessionalId,
     scheduledAt: item.scheduledAt,
+    endsAt: item.endsAt,
     status: item.status,
     type: item.type,
     patient: item.patient,

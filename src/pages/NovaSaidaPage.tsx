@@ -60,11 +60,11 @@ export function NovaSaidaPage() {
         const [produtosData, lotesData, profissionaisData] = await Promise.all([
           listarProdutos(),
           listarLotes(),
-          listarProfissionais(),
+          listarProfissionais({ limit: 100 }),
         ])
         setProdutos(produtosData.filter((produto) => produto.isActive))
         setLotes(lotesData.filter((lote) => lote.currentQuantity > 0))
-        setProfissionais(profissionaisData.filter((profissional) => profissional.isActive))
+        setProfissionais(profissionaisData.data.filter((profissional) => profissional.isActive))
       } catch {
         setError('Nao foi possivel carregar os dados do formulario.')
       } finally {
