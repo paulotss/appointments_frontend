@@ -81,8 +81,6 @@ export function GuiasPage() {
   const [procedimentosEdicao, setProcedimentosEdicao] = useState<ProcedimentoEdicao[]>([])
   const [procedimentosPlano, setProcedimentosPlano] = useState<Procedure[]>([])
   const [savingEdit, setSavingEdit] = useState(false)
-  const [faturando, setFaturando] = useState<InsuranceGuide | null>(null)
-  const [savingFaturar, setSavingFaturar] = useState(false)
   const [filtroPaciente, setFiltroPaciente] = useState<Patient | null>(null)
   const [filtroPlanoId, setFiltroPlanoId] = useState<number | ''>('')
   const [filtroStatus, setFiltroStatus] = useState<InsuranceGuideStatus | ''>('')
@@ -232,32 +230,6 @@ export function GuiasPage() {
       setError(mensagemErroApi(err, 'Não foi possível editar a guia.'))
     } finally {
       setSavingEdit(false)
-    }
-  }
-
-  function abrirFaturar(guia: InsuranceGuide) {
-    setFaturando(guia)
-  }
-
-  function fecharFaturar() {
-    if (savingFaturar) return
-    setFaturando(null)
-  }
-
-  async function confirmarFaturar() {
-    if (!faturando) return
-    setSavingFaturar(true)
-    setError(null)
-    setSuccess(null)
-    try {
-      const atualizado = await atualizarGuia(faturando.id, { isBilled: true })
-      setGuias((prev) => prev.map((item) => (item.id === atualizado.id ? atualizado : item)))
-      setFaturando(null)
-      setSuccess('Guia faturada com sucesso.')
-    } catch (err) {
-      setError(mensagemErroApi(err, 'Não foi possível faturar a guia.'))
-    } finally {
-      setSavingFaturar(false)
     }
   }
 
@@ -495,7 +467,6 @@ export function GuiasPage() {
           <GuiasTable
             guias={guiasFiltradas}
             onEditar={abrirEdicao}
-            onFaturar={abrirFaturar}
             onExcluir={(guia) => void excluir(guia)}
           />
           <TablePagination
@@ -735,23 +706,6 @@ export function GuiasPage() {
           <Button onClick={fecharEdicao}>Cancelar</Button>
           <Button onClick={() => void salvarEdicao()} variant="contained" disabled={savingEdit || formInvalido}>
             Salvar
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={Boolean(faturando)} onClose={fecharFaturar} fullWidth maxWidth="sm">
-        <DialogTitle>Faturar guia</DialogTitle>
-        <DialogContent>
-          <Alert severity="warning" sx={{ mt: 0.5 }}>
-            Confirma o faturamento desta guia? Guias faturadas não podem ser associadas a novos agendamentos.
-          </Alert>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={fecharFaturar} disabled={savingFaturar}>
-            Cancelar
-          </Button>
-          <Button onClick={() => void confirmarFaturar()} variant="contained" disabled={savingFaturar}>
-            {savingFaturar ? 'Faturando...' : 'Confirmar'}
           </Button>
         </DialogActions>
       </Dialog>

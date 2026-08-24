@@ -3,7 +3,6 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import EditIcon from '@mui/icons-material/Edit'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
-import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
 import {
   Box,
   Chip,
@@ -25,7 +24,6 @@ import { GuiaProcedimentosTabela } from './GuiaProcedimentosTabela'
 interface GuiasTableProps {
   guias: InsuranceGuide[]
   onEditar: (guia: InsuranceGuide) => void
-  onFaturar: (guia: InsuranceGuide) => void
   onExcluir: (guia: InsuranceGuide) => void
 }
 
@@ -81,12 +79,10 @@ function corLinhaGuia(guia: InsuranceGuide) {
 function GuiaRow({
   guia,
   onEditar,
-  onFaturar,
   onExcluir,
 }: {
   guia: InsuranceGuide
   onEditar: (guia: InsuranceGuide) => void
-  onFaturar: (guia: InsuranceGuide) => void
   onExcluir: (guia: InsuranceGuide) => void
 }) {
   const [open, setOpen] = useState(false)
@@ -135,11 +131,6 @@ function GuiaRow({
             <IconButton size="small" aria-label="Editar guia" onClick={() => onEditar(guia)}>
               <EditIcon fontSize="small" />
             </IconButton>
-            {!guia.isBilled ? (
-              <IconButton size="small" aria-label="Faturar guia" onClick={() => onFaturar(guia)}>
-                <ReceiptLongIcon fontSize="small" />
-              </IconButton>
-            ) : null}
             <IconButton
               size="small"
               color="error"
@@ -164,7 +155,7 @@ function GuiaRow({
   )
 }
 
-export function GuiasTable({ guias, onEditar, onFaturar, onExcluir }: GuiasTableProps) {
+export function GuiasTable({ guias, onEditar, onExcluir }: GuiasTableProps) {
   return (
     <TableContainer>
       <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
@@ -187,7 +178,6 @@ export function GuiasTable({ guias, onEditar, onFaturar, onExcluir }: GuiasTable
               key={guia.id}
               guia={guia}
               onEditar={onEditar}
-              onFaturar={onFaturar}
               onExcluir={onExcluir}
             />
           ))}

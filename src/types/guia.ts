@@ -86,6 +86,7 @@ export interface ListarGuiasParams {
   patientId?: number
   healthProfessionalId?: number
   healthPlanId?: number
+  availableForBilling?: boolean
   page?: number
   limit?: number
 }

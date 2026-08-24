@@ -27,10 +27,19 @@ import { NovoRegistroPage } from './pages/NovoRegistroPage'
 import { RegistrosPage } from './pages/RegistrosPage'
 import { NovoUsuarioPage } from './pages/NovoUsuarioPage'
 import { AgendaClinicaPage } from './pages/AgendaClinicaPage'
+import { FinanceiroEntradasPage } from './pages/FinanceiroEntradasPage'
+import { FinanceiroPagamentosPage } from './pages/FinanceiroPagamentosPage'
+import { FinanceiroSaidasPage } from './pages/FinanceiroSaidasPage'
 import { GuiasPage } from './pages/GuiasPage'
+import { LoteTissDetalhePage } from './pages/LoteTissDetalhePage'
+import { NovaEntradaFinanceiraPage } from './pages/NovaEntradaFinanceiraPage'
 import { NovaGuiaPage } from './pages/NovaGuiaPage'
+import { NovoLoteTissPage } from './pages/NovoLoteTissPage'
+import { NovoPagamentoPage } from './pages/NovoPagamentoPage'
 import { NovoProcedimentoPage } from './pages/NovoProcedimentoPage'
+import { PagamentoDetalhePage } from './pages/PagamentoDetalhePage'
 import { ProcedimentosPage } from './pages/ProcedimentosPage'
+import { TissLotesPage } from './pages/TissLotesPage'
 import { NovoPacientePage } from './pages/NovoPacientePage'
 import { NovoPlanoSaudePage } from './pages/NovoPlanoSaudePage'
 import { NovoProfissionalPage } from './pages/NovoProfissionalPage'
@@ -289,6 +298,78 @@ function App() {
           element={
             <AdminRoute>
               <NovaGuiaPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/tiss/lotes"
+          element={
+            <AdminRoute>
+              <TissLotesPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/tiss/lotes/novo"
+          element={
+            <AdminRoute>
+              <NovoLoteTissPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/tiss/lotes/:id"
+          element={
+            <AdminRoute>
+              <LoteTissDetalhePage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/financeiro/entradas"
+          element={
+            <AdminRoute>
+              <FinanceiroEntradasPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/financeiro/entradas/nova"
+          element={
+            <AdminRoute>
+              <NovaEntradaFinanceiraPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/financeiro/saidas"
+          element={
+            <AdminRoute>
+              <FinanceiroSaidasPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/financeiro/pagamentos"
+          element={
+            <AdminRoute>
+              <FinanceiroPagamentosPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/financeiro/pagamentos/novo"
+          element={
+            <AdminRoute>
+              <NovoPagamentoPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/financeiro/pagamentos/:id"
+          element={
+            <AdminRoute>
+              <PagamentoDetalhePage />
             </AdminRoute>
           }
         />

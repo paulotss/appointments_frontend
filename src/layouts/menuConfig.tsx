@@ -1,4 +1,5 @@
 import AssessmentIcon from '@mui/icons-material/Assessment'
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
 import DescriptionIcon from '@mui/icons-material/Description'
 import DeskIcon from '@mui/icons-material/Desk'
@@ -54,7 +55,20 @@ const allMenuItems: MenuItem[] = [
     items: [
       { kind: 'link', label: 'Guias', to: '/guias' },
       { kind: 'link', label: 'Procedimentos', to: '/procedimentos' },
+      { kind: 'link', label: 'Lotes', to: '/tiss/lotes' },
       { kind: 'link', label: 'Planos de saúde', to: '/planos-saude' },
+    ],
+  },
+  {
+    kind: 'submenu',
+    id: 'financeiro',
+    label: 'Financeiro',
+    icon: <AttachMoneyIcon />,
+    adminOnly: true,
+    items: [
+      { kind: 'link', label: 'Entradas', to: '/financeiro/entradas' },
+      { kind: 'link', label: 'Saídas', to: '/financeiro/saidas' },
+      { kind: 'link', label: 'Pagamentos', to: '/financeiro/pagamentos' },
     ],
   },
   {
