@@ -29,6 +29,13 @@ interface GuiasTableProps {
   onExcluir: (guia: InsuranceGuide) => void
 }
 
+const sxTextoTruncado = {
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  maxWidth: 0,
+} as const
+
 function corChipStatusGuia(status: InsuranceGuideStatus) {
   if (status === 'pending') {
     return { bgcolor: 'error.light', color: '#fff' }
@@ -97,11 +104,17 @@ function GuiaRow({
             {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
           </IconButton>
         </TableCell>
-        <TableCell>{guia.patient?.name ?? '—'}</TableCell>
-        <TableCell>{guia.healthPlan?.name ?? '—'}</TableCell>
-        <TableCell>{guia.healthProfessional?.name ?? '—'}</TableCell>
-        <TableCell>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+        <TableCell sx={sxTextoTruncado} title={guia.patient?.name ?? undefined}>
+          {guia.patient?.name ?? '—'}
+        </TableCell>
+        <TableCell sx={sxTextoTruncado} title={guia.healthPlan?.name ?? undefined}>
+          {guia.healthPlan?.name ?? '—'}
+        </TableCell>
+        <TableCell sx={sxTextoTruncado} title={guia.healthProfessional?.name ?? undefined}>
+          {guia.healthProfessional?.name ?? '—'}
+        </TableCell>
+        <TableCell sx={{ whiteSpace: 'nowrap' }}>
+          <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, flexWrap: 'nowrap' }}>
             <Chip
               size="small"
               label={INSURANCE_GUIDE_STATUS_LABELS[guia.status] ?? guia.status}
@@ -116,24 +129,26 @@ function GuiaRow({
             ) : null}
           </Box>
         </TableCell>
-        <TableCell>{formatarDataISO(guia.expirationDate)}</TableCell>
-        <TableCell align="right">
-          <IconButton size="small" aria-label="Editar guia" onClick={() => onEditar(guia)}>
-            <EditIcon fontSize="small" />
-          </IconButton>
-          {!guia.isBilled ? (
-            <IconButton size="small" aria-label="Faturar guia" onClick={() => onFaturar(guia)}>
-              <ReceiptLongIcon fontSize="small" />
+        <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatarDataISO(guia.expirationDate)}</TableCell>
+        <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+          <Box sx={{ display: 'inline-flex', flexWrap: 'nowrap', justifyContent: 'flex-end' }}>
+            <IconButton size="small" aria-label="Editar guia" onClick={() => onEditar(guia)}>
+              <EditIcon fontSize="small" />
             </IconButton>
-          ) : null}
-          <IconButton
-            size="small"
-            color="error"
-            aria-label="Excluir guia"
-            onClick={() => onExcluir(guia)}
-          >
-            <DeleteOutlineIcon fontSize="small" />
-          </IconButton>
+            {!guia.isBilled ? (
+              <IconButton size="small" aria-label="Faturar guia" onClick={() => onFaturar(guia)}>
+                <ReceiptLongIcon fontSize="small" />
+              </IconButton>
+            ) : null}
+            <IconButton
+              size="small"
+              color="error"
+              aria-label="Excluir guia"
+              onClick={() => onExcluir(guia)}
+            >
+              <DeleteOutlineIcon fontSize="small" />
+            </IconButton>
+          </Box>
         </TableCell>
       </TableRow>
       <TableRow>
@@ -152,16 +167,18 @@ function GuiaRow({
 export function GuiasTable({ guias, onEditar, onFaturar, onExcluir }: GuiasTableProps) {
   return (
     <TableContainer>
-      <Table size="small">
+      <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
         <TableHead>
           <TableRow>
-            <TableCell width={48} />
-            <TableCell>Paciente</TableCell>
-            <TableCell>Plano</TableCell>
-            <TableCell>Profissional</TableCell>
-            <TableCell>Status</TableCell>
-            <TableCell>Validade</TableCell>
-            <TableCell align="right">Ações</TableCell>
+            <TableCell sx={{ width: 48 }} />
+            <TableCell sx={{ width: '32%' }}>Paciente</TableCell>
+            <TableCell sx={{ width: '20%' }}>Plano</TableCell>
+            <TableCell sx={{ width: '24%' }}>Profissional</TableCell>
+            <TableCell sx={{ width: 160, whiteSpace: 'nowrap' }}>Status</TableCell>
+            <TableCell sx={{ width: 110, whiteSpace: 'nowrap' }}>Validade</TableCell>
+            <TableCell align="right" sx={{ width: 136, whiteSpace: 'nowrap' }}>
+              Ações
+            </TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
