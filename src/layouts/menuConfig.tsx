@@ -1,8 +1,8 @@
 import AssessmentIcon from '@mui/icons-material/Assessment'
-import AssignmentIcon from '@mui/icons-material/Assignment'
-import EventNoteIcon from '@mui/icons-material/EventNote'
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
+import DescriptionIcon from '@mui/icons-material/Description'
+import DeskIcon from '@mui/icons-material/Desk'
 import Inventory2Icon from '@mui/icons-material/Inventory2'
-import MedicalServicesIcon from '@mui/icons-material/MedicalServices'
 import SettingsIcon from '@mui/icons-material/Settings'
 import type { ReactNode } from 'react'
 
@@ -28,32 +28,34 @@ export type MenuItem = MenuSubmenu | MenuTopLink
 
 const allMenuItems: MenuItem[] = [
   {
+    kind: 'link',
+    id: 'agenda-clinica',
+    label: 'Agenda clínica',
+    to: '/clinical-appointments',
+    icon: <CalendarMonthIcon />,
+  },
+  {
     kind: 'submenu',
-    id: 'agendamentos',
-    label: 'Agendamentos',
-    icon: <EventNoteIcon />,
+    id: 'recepcao',
+    label: 'Recepção',
+    icon: <DeskIcon />,
     items: [
       { kind: 'link', label: 'Registros', to: '/registros' },
-      { kind: 'link', label: 'Agenda clínica', to: '/clinical-appointments' },
       { kind: 'link', label: 'Chamadas', to: '/chamadas' },
       { kind: 'link', label: 'Mensagens', to: '/mensagens' },
     ],
   },
   {
-    kind: 'link',
-    id: 'guias',
-    label: 'Guias',
-    to: '/guias',
-    icon: <AssignmentIcon />,
+    kind: 'submenu',
+    id: 'tiss',
+    label: 'TISS',
+    icon: <DescriptionIcon />,
     adminOnly: true,
-  },
-  {
-    kind: 'link',
-    id: 'procedimentos',
-    label: 'Procedimentos',
-    to: '/procedimentos',
-    icon: <MedicalServicesIcon />,
-    adminOnly: true,
+    items: [
+      { kind: 'link', label: 'Guias', to: '/guias' },
+      { kind: 'link', label: 'Procedimentos', to: '/procedimentos' },
+      { kind: 'link', label: 'Planos de saúde', to: '/planos-saude' },
+    ],
   },
   {
     kind: 'submenu',
@@ -96,7 +98,6 @@ const allMenuItems: MenuItem[] = [
       { kind: 'link', label: 'Profissionais', to: '/profissionais' },
       { kind: 'link', label: 'Especialidades', to: '/especialidades' },
       { kind: 'link', label: 'Pacientes', to: '/pacientes' },
-      { kind: 'link', label: 'Planos de saúde', to: '/planos-saude' },
       { kind: 'divider', label: 'Estoque' },
       { kind: 'link', label: 'Categorias', to: '/configuracoes/estoque/categorias' },
       { kind: 'link', label: 'Produtos', to: '/configuracoes/estoque/produtos' },
