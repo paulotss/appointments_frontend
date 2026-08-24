@@ -109,6 +109,83 @@ function agendamentosDoDia(agendamentos: ClinicalAppointment[], ymd: string): Cl
   return agendamentos.filter((item) => isoParaYmdSaoPaulo(item.scheduledAt) === ymd)
 }
 
+function sxGradeColunas(qtdDias: number) {
+  return {
+    display: 'grid',
+    gridTemplateColumns: `56px repeat(${qtdDias}, minmax(0, 1fr))`,
+    minWidth: qtdDias > 1 ? 720 : 360,
+    width: '100%',
+  } as const
+}
+
+function CabecalhoDias({ dias }: { dias: string[] }) {
+  const hoje = ymdEmSaoPaulo()
+  return (
+    <Box sx={sxGradeColunas(dias.length)}>
+      <Box sx={{ borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }} />
+      {dias.map((ymd) => {
+        const [y, m, d] = ymd.split('-')
+        const isHoje = ymd === hoje
+        return (
+          <Box
+            key={`cab-${ymd}`}
+            sx={{
+              textAlign: 'center',
+              py: 1,
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+              bgcolor: isHoje ? 'primary.light' : 'background.paper',
+            }}
+          >
+            <Typography variant="caption" sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 700 }}>
+              {DIAS_SEMANA_CURTOS[indiceSemanaSegunda(ymd)]}
+            </Typography>
+            <Typography variant="h6" fontWeight={700} color={isHoje ? 'primary.dark' : 'text.primary'}>
+              {Number(d)}/{m}
+            </Typography>
+            <Typography variant="caption" sx={{ display: 'none' }}>
+              {y}
+            </Typography>
+          </Box>
+        )
+      })}
+    </Box>
+  )
+}
+
+function CabecalhoMes() {
+  return (
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
+      {DIAS_SEMANA_CURTOS.map((dia) => (
+        <Box
+          key={dia}
+          sx={{
+            textAlign: 'center',
+            py: 1,
+            textTransform: 'uppercase',
+            fontSize: 12,
+            fontWeight: 700,
+            color: 'text.secondary',
+            bgcolor: 'background.paper',
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          {dia}
+        </Box>
+      ))}
+    </Box>
+  )
+}
+
+export function AgendaClinicaCabecalho({ visao, dataRef }: { visao: VisaoAgenda; dataRef: string }) {
+  if (visao === 'mes') {
+    return <CabecalhoMes />
+  }
+  const dias = visao === 'dia' ? [dataRef] : diasDaSemana(dataRef)
+  return <CabecalhoDias dias={dias} />
+}
+
 function GradeHorarios({
   dias,
   agendamentos,
@@ -124,38 +201,11 @@ function GradeHorarios({
   const altura = (HORA_FIM - HORA_INICIO) * PX_POR_HORA
 
   return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: `56px repeat(${dias.length}, minmax(0, 1fr))`, minWidth: dias.length > 1 ? 720 : 360 }}>
-      <Box />
-      {dias.map((ymd) => {
-        const [y, m, d] = ymd.split('-')
-        const isHoje = ymd === hoje
-        return (
-          <Box
-            key={`cab-${ymd}`}
-            sx={{
-              textAlign: 'center',
-              py: 1,
-              borderBottom: '1px solid',
-              borderColor: 'divider',
-              bgcolor: isHoje ? 'primary.light' : 'transparent',
-            }}
-          >
-            <Typography variant="caption" sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 700 }}>
-              {DIAS_SEMANA_CURTOS[indiceSemanaSegunda(ymd)]}
-            </Typography>
-            <Typography variant="h6" fontWeight={700} color={isHoje ? 'primary.dark' : 'text.primary'}>
-              {Number(d)}/{m}
-            </Typography>
-            <Typography variant="caption" sx={{ display: 'none' }}>
-              {y}
-            </Typography>
-          </Box>
-        )
-      })}
-
+    <Box sx={sxGradeColunas(dias.length)}>
       <Box sx={{ position: 'relative', height: altura }}>
         {SLOTS.map((minutos) => {
           const ehHoraCheia = minutos % 60 === 0
+          const ehPrimeiro = minutos === SLOTS[0]
           return (
             <Box
               key={minutos}
@@ -165,7 +215,9 @@ function GradeHorarios({
                 textAlign: 'right',
                 fontSize: ehHoraCheia ? 12 : 10,
                 color: 'text.secondary',
-                transform: 'translateY(-8px)',
+                transform: ehPrimeiro ? 'none' : 'translateY(-8px)',
+                lineHeight: 1.2,
+                pt: ehPrimeiro ? 0.25 : 0,
               }}
             >
               {formatarMinutosDoDia(minutos)}
@@ -247,11 +299,6 @@ function VisaoMes({
   return (
     <Box>
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
-        {DIAS_SEMANA_CURTOS.map((dia) => (
-          <Box key={dia} sx={{ textAlign: 'center', py: 1, textTransform: 'uppercase', fontSize: 12, fontWeight: 700, color: 'text.secondary' }}>
-            {dia}
-          </Box>
-        ))}
         {dias.map((ymd) => {
           const doMes = mesmoMes(ymd, dataRef)
           const eventos = agendamentosDoDia(agendamentos, ymd)
@@ -328,13 +375,11 @@ export function AgendaClinicaCalendario({
 
   const dias = visao === 'dia' ? [dataRef] : diasDaSemana(dataRef)
   return (
-    <Box sx={{ overflowX: 'auto' }}>
-      <GradeHorarios
-        dias={dias}
-        agendamentos={agendamentos}
-        onSlotClick={onSlotClick}
-        onEventoClick={onEventoClick}
-      />
-    </Box>
+    <GradeHorarios
+      dias={dias}
+      agendamentos={agendamentos}
+      onSlotClick={onSlotClick}
+      onEventoClick={onEventoClick}
+    />
   )
 }
