@@ -1,8 +1,8 @@
 import AssessmentIcon from '@mui/icons-material/Assessment'
-import AssignmentIcon from '@mui/icons-material/Assignment'
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
+import DescriptionIcon from '@mui/icons-material/Description'
 import EventNoteIcon from '@mui/icons-material/EventNote'
 import Inventory2Icon from '@mui/icons-material/Inventory2'
-import MedicalServicesIcon from '@mui/icons-material/MedicalServices'
 import SettingsIcon from '@mui/icons-material/Settings'
 import type { ReactNode } from 'react'
 
@@ -40,20 +40,28 @@ const allMenuItems: MenuItem[] = [
     ],
   },
   {
-    kind: 'link',
-    id: 'guias',
-    label: 'Guias',
-    to: '/guias',
-    icon: <AssignmentIcon />,
+    kind: 'submenu',
+    id: 'tiss',
+    label: 'TISS',
+    icon: <DescriptionIcon />,
     adminOnly: true,
+    items: [
+      { kind: 'link', label: 'Guias', to: '/guias' },
+      { kind: 'link', label: 'Procedimentos', to: '/procedimentos' },
+      { kind: 'link', label: 'Lotes', to: '/tiss/lotes' },
+    ],
   },
   {
-    kind: 'link',
-    id: 'procedimentos',
-    label: 'Procedimentos',
-    to: '/procedimentos',
-    icon: <MedicalServicesIcon />,
+    kind: 'submenu',
+    id: 'financeiro',
+    label: 'Financeiro',
+    icon: <AttachMoneyIcon />,
     adminOnly: true,
+    items: [
+      { kind: 'link', label: 'Entradas', to: '/financeiro/entradas' },
+      { kind: 'link', label: 'Saídas', to: '/financeiro/saidas' },
+      { kind: 'link', label: 'Pagamentos', to: '/financeiro/pagamentos' },
+    ],
   },
   {
     kind: 'submenu',

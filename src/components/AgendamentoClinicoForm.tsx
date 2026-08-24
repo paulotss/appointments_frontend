@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import AddIcon from '@mui/icons-material/Add'
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
 import {
   Alert,
   Autocomplete,
@@ -13,6 +14,7 @@ import {
 } from '@mui/material'
 import { useEffect, useMemo, useState } from 'react'
 import { Controller, useForm, useWatch, type DefaultValues } from 'react-hook-form'
+import { useNavigate } from 'react-router-dom'
 import { GuiaProcedimentosTabela } from './GuiaProcedimentosTabela'
 import { NovaGuiaDialog } from './NovaGuiaDialog'
 import { PacienteBuscaAutocomplete } from './PacienteBuscaAutocomplete'
@@ -63,6 +65,7 @@ export function AgendamentoClinicoForm({
   onCancel,
   onExcluir,
 }: AgendamentoClinicoFormProps) {
+  const navigate = useNavigate()
   const {
     control,
     handleSubmit,
@@ -515,6 +518,18 @@ export function AgendamentoClinicoForm({
         {onExcluir ? (
           <Button color="error" onClick={onExcluir} disabled={loading} sx={{ mr: 'auto' }}>
             Excluir
+          </Button>
+        ) : null}
+        {agendamentoAtual?.type === 'private' && agendamentoAtual.status === 'finished' ? (
+          <Button
+            startIcon={<ReceiptLongIcon />}
+            onClick={() =>
+              navigate(`/financeiro/entradas/nova?agendamentoId=${agendamentoAtual.id}`)
+            }
+            disabled={loading}
+            sx={onExcluir ? undefined : { mr: 'auto' }}
+          >
+            Registrar entrada
           </Button>
         ) : null}
         {onCancel ? (

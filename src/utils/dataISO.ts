@@ -26,6 +26,12 @@ export function hojeLocalISO(): string {
   return formatarDateLocal(date)
 }
 
+export function primeiroDiaDoMesLocalISO(ref = hojeLocalISO()): string {
+  const prefix = isoDatePrefix(ref)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(prefix)) return prefix
+  return `${prefix.slice(0, 7)}-01`
+}
+
 export function hojeMaisDiasLocal(dias: number): string {
   return adicionarDiasISO(hojeLocalISO(), dias)
 }
@@ -35,6 +41,16 @@ export function formatarDataISO(value: string | null | undefined): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(prefix)) return value ?? '—'
   const [year, month, day] = prefix.split('-')
   return `${day}/${month}/${year}`
+}
+
+export function formatarDataHoraISO(value: string | null | undefined): string {
+  if (!value) return '—'
+  const data = new Date(value)
+  if (Number.isNaN(data.getTime())) return value
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(data)
 }
 
 /** Diferenca em dias civis (local): positivo = futuro, 0 = hoje, negativo = atrasado. */

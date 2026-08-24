@@ -95,6 +95,7 @@ export async function listarGuias(params?: ListarGuiasParams): Promise<PagedList
         ...(params.patientId != null ? { patientId: params.patientId } : {}),
         ...(params.healthProfessionalId != null ? { healthProfessionalId: params.healthProfessionalId } : {}),
         ...(params.healthPlanId != null ? { healthPlanId: params.healthPlanId } : {}),
+        ...(params.availableForBilling != null ? { availableForBilling: params.availableForBilling } : {}),
         ...(params.page != null ? { page: params.page } : {}),
         ...(params.limit != null ? { limit: params.limit } : {}),
       }
@@ -135,4 +136,19 @@ export async function atualizarGuia(
 
 export async function excluirGuia(id: number): Promise<void> {
   await apiClient.delete(`/insurance-guides/${id}`)
+}
+
+export async function listarTodasGuias(params?: ListarGuiasParams): Promise<InsuranceGuide[]> {
+  const limit = params?.limit ?? 100
+  let page = 1
+  const todas: InsuranceGuide[] = []
+
+  while (true) {
+    const resultado = await listarGuias({ ...params, page, limit })
+    todas.push(...resultado.data)
+    if (page >= resultado.meta.totalPages || resultado.data.length === 0) break
+    page += 1
+  }
+
+  return todas
 }
