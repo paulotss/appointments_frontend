@@ -1,13 +1,15 @@
-import type { PagedList } from '../types/listEnvelope'
+import type { ListEnvelope } from '../types/listEnvelope'
 import {
   mapMoney,
   type FinancialExit,
+  type FinancialExitListCounts,
   type ListarFinancialExitsParams,
 } from '../types/financeiro'
 import { isoDatePrefix } from '../utils/dataISO'
 import { apiClient } from './apiClient'
 
 const META_VAZIA = { page: 1, limit: 50, total: 0, totalPages: 1 }
+const COUNTS_VAZIOS: FinancialExitListCounts = { amount: 0 }
 
 interface BackendSupplierRef {
   id: number
@@ -51,9 +53,23 @@ export function mapBackendFinancialExit(item: BackendFinancialExit): FinancialEx
   }
 }
 
+function somarTotaisSaidas(saidas: FinancialExit[]): FinancialExitListCounts {
+  return saidas.reduce((acc, item) => ({ amount: acc.amount + item.amount }), { ...COUNTS_VAZIOS })
+}
+
+function mapCountsSaidas(
+  counts: Partial<FinancialExitListCounts> | undefined,
+  saidas: FinancialExit[],
+): FinancialExitListCounts {
+  if (counts?.amount == null) {
+    return somarTotaisSaidas(saidas)
+  }
+  return { amount: mapMoney(counts.amount) }
+}
+
 export async function listarSaidasFinanceiras(
   params?: ListarFinancialExitsParams,
-): Promise<PagedList<FinancialExit>> {
+): Promise<ListEnvelope<FinancialExit, FinancialExitListCounts>> {
   const query = params
     ? {
         ...(params.supplierId != null ? { supplierId: params.supplierId } : {}),
@@ -65,12 +81,17 @@ export async function listarSaidasFinanceiras(
       }
     : undefined
 
-  const response = await apiClient.get<PagedList<BackendFinancialExit>>('/financial-exits', {
-    params: query && Object.keys(query).length > 0 ? query : undefined,
-  })
+  const response = await apiClient.get<ListEnvelope<BackendFinancialExit, FinancialExitListCounts>>(
+    '/financial-exits',
+    {
+      params: query && Object.keys(query).length > 0 ? query : undefined,
+    },
+  )
+  const data = (response.data.data ?? []).map(mapBackendFinancialExit)
   return {
-    data: (response.data.data ?? []).map(mapBackendFinancialExit),
+    data,
     meta: response.data.meta ?? META_VAZIA,
+    counts: mapCountsSaidas(response.data.counts, data),
   }
 }
 

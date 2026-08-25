@@ -1,15 +1,17 @@
-import type { PagedList } from '../types/listEnvelope'
+import type { ListEnvelope } from '../types/listEnvelope'
 import {
   mapMoney,
   type CreatePrivateFinancialEntryRequest,
   type FinancialEntry,
   type FinancialEntryItem,
+  type FinancialEntryListCounts,
   type ListarFinancialEntriesParams,
 } from '../types/financeiro'
 import { isoDatePrefix } from '../utils/dataISO'
 import { apiClient } from './apiClient'
 
 const META_VAZIA = { page: 1, limit: 50, total: 0, totalPages: 1 }
+const COUNTS_VAZIOS: FinancialEntryListCounts = { amount: 0, receivedAmount: 0 }
 
 interface BackendRef {
   id: number
@@ -94,9 +96,32 @@ export function mapBackendFinancialEntry(item: BackendFinancialEntry): Financial
   }
 }
 
+function somarTotaisEntradas(entradas: FinancialEntry[]): FinancialEntryListCounts {
+  return entradas.reduce(
+    (acc, item) => ({
+      amount: acc.amount + item.amount,
+      receivedAmount: acc.receivedAmount + item.receivedAmount,
+    }),
+    { ...COUNTS_VAZIOS },
+  )
+}
+
+function mapCountsEntradas(
+  counts: Partial<FinancialEntryListCounts> | undefined,
+  entradas: FinancialEntry[],
+): FinancialEntryListCounts {
+  if (counts?.amount == null && counts?.receivedAmount == null) {
+    return somarTotaisEntradas(entradas)
+  }
+  return {
+    amount: mapMoney(counts.amount),
+    receivedAmount: mapMoney(counts.receivedAmount),
+  }
+}
+
 export async function listarEntradasFinanceiras(
   params?: ListarFinancialEntriesParams,
-): Promise<PagedList<FinancialEntry>> {
+): Promise<ListEnvelope<FinancialEntry, FinancialEntryListCounts>> {
   const query = params
     ? {
         ...(params.type != null ? { type: params.type } : {}),
@@ -108,12 +133,17 @@ export async function listarEntradasFinanceiras(
       }
     : undefined
 
-  const response = await apiClient.get<PagedList<BackendFinancialEntry>>('/financial-entries', {
-    params: query && Object.keys(query).length > 0 ? query : undefined,
-  })
+  const response = await apiClient.get<ListEnvelope<BackendFinancialEntry, FinancialEntryListCounts>>(
+    '/financial-entries',
+    {
+      params: query && Object.keys(query).length > 0 ? query : undefined,
+    },
+  )
+  const data = (response.data.data ?? []).map(mapBackendFinancialEntry)
   return {
-    data: (response.data.data ?? []).map(mapBackendFinancialEntry),
+    data,
     meta: response.data.meta ?? META_VAZIA,
+    counts: mapCountsEntradas(response.data.counts, data),
   }
 }
 

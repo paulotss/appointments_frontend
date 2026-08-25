@@ -129,6 +129,13 @@ export interface ListarFinancialEntriesParams {
   limit?: number
 }
 
+export type FiltroStatusEntrada = 'all' | Extract<FinancialEntryStatus, 'pending' | 'paid'>
+
+export type FinancialEntryListCounts = {
+  amount: number
+  receivedAmount: number
+}
+
 export interface FinancialExitPayableRef {
   id: number
   description: string
@@ -153,6 +160,10 @@ export interface ListarFinancialExitsParams {
   paymentMethod?: PaymentMethod
   page?: number
   limit?: number
+}
+
+export type FinancialExitListCounts = {
+  amount: number
 }
 
 export const PAYABLE_DOCUMENT_MAX_FILES = 3
