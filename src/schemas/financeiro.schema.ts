@@ -29,5 +29,33 @@ export const entradaParticularSchema = z.object({
   notes: z.string().optional(),
 })
 
+export const receberLoteItemSchema = z
+  .object({
+    insuranceGuideId: z.number().int().positive(),
+    billedAmount: z.number(),
+    receivedAmount: z
+      .number({ error: 'Informe o valor recebido' })
+      .min(0, 'Valor recebido não pode ser negativo'),
+    glosaReason: z.string().optional(),
+  })
+  .superRefine((item, ctx) => {
+    if (item.receivedAmount < item.billedAmount && !item.glosaReason?.trim()) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Informe o motivo da glosa',
+        path: ['glosaReason'],
+      })
+    }
+  })
+
+export const receberLoteSchema = z.object({
+  paymentMethod: z.enum(PAYMENT_METHODS, { error: 'Selecione a forma de pagamento' }),
+  paidAt: z.string().optional(),
+  items: z.array(receberLoteItemSchema).min(1, 'O lote não possui guias'),
+})
+
+export type ReceberLoteFormInput = z.input<typeof receberLoteSchema>
+export type ReceberLoteFormValues = z.infer<typeof receberLoteSchema>
+
 export type EntradaParticularFormInput = z.input<typeof entradaParticularSchema>
 export type EntradaParticularFormValues = z.infer<typeof entradaParticularSchema>

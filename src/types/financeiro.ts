@@ -248,6 +248,19 @@ export interface BillingBatch {
   financialEntry?: Pick<FinancialEntry, 'id' | 'status' | 'amount' | 'receivedAmount'> | null
 }
 
+export interface ReceiveBillingBatchItemRequest {
+  insuranceGuideId: number
+  receivedAmount: number
+  glosaReason?: string
+}
+
+export interface ReceiveBillingBatchRequest {
+  receivedAmount: number
+  paymentMethod?: PaymentMethod
+  paidAt?: string
+  items?: ReceiveBillingBatchItemRequest[]
+}
+
 export interface CreateBillingBatchRequest {
   healthPlanId: number
   insuranceGuideIds: number[]

@@ -5,6 +5,7 @@ import {
   type BillingBatchGuide,
   type CreateBillingBatchRequest,
   type ListarBillingBatchesParams,
+  type ReceiveBillingBatchRequest,
 } from '../types/financeiro'
 import { isoDatePrefix } from '../utils/dataISO'
 import { apiClient } from './apiClient'
@@ -141,5 +142,13 @@ export async function criarLoteTiss(payload: CreateBillingBatchRequest): Promise
 
 export async function faturarLoteTiss(id: number): Promise<BillingBatch> {
   const response = await apiClient.post<BackendBillingBatch>(`/billing-batches/${id}/bill`)
+  return mapBackendBillingBatch(response.data)
+}
+
+export async function receberLoteTiss(
+  id: number,
+  payload: ReceiveBillingBatchRequest,
+): Promise<BillingBatch> {
+  const response = await apiClient.post<BackendBillingBatch>(`/billing-batches/${id}/receive`, payload)
   return mapBackendBillingBatch(response.data)
 }

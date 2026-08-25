@@ -1,5 +1,7 @@
 import {
+  Button,
   Chip,
+  Link,
   Table,
   TableBody,
   TableCell,
@@ -7,6 +9,7 @@ import {
   TableHead,
   TableRow,
 } from '@mui/material'
+import { Link as RouterLink } from 'react-router-dom'
 import type { FinancialEntry, FinancialEntryStatus } from '../types/financeiro'
 import {
   FINANCIAL_ENTRY_STATUS_LABELS,
@@ -28,6 +31,10 @@ function corStatus(status: FinancialEntryStatus) {
   return 'default'
 }
 
+function loteIdDaEntrada(item: FinancialEntry): number | null {
+  return item.billingBatchId ?? item.billingBatch?.id ?? null
+}
+
 export function FinanceiroEntradasTable({ entradas }: FinanceiroEntradasTableProps) {
   return (
     <TableContainer>
@@ -41,28 +48,52 @@ export function FinanceiroEntradasTable({ entradas }: FinanceiroEntradasTablePro
             <TableCell align="right">Recebido</TableCell>
             <TableCell>Status</TableCell>
             <TableCell>Pagamento</TableCell>
+            <TableCell align="right">Ações</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {entradas.map((item) => (
-            <TableRow key={item.id} hover>
-              <TableCell>{formatarDataHoraISO(item.paidAt ?? item.createdAt)}</TableCell>
-              <TableCell>{FINANCIAL_ENTRY_TYPE_LABELS[item.type]}</TableCell>
-              <TableCell>{origemEntrada(item)}</TableCell>
-              <TableCell align="right">{formatarMoedaBRL(item.amount)}</TableCell>
-              <TableCell align="right">{formatarMoedaBRL(item.receivedAmount)}</TableCell>
-              <TableCell>
-                <Chip
-                  size="small"
-                  label={FINANCIAL_ENTRY_STATUS_LABELS[item.status]}
-                  color={corStatus(item.status)}
-                />
-              </TableCell>
-              <TableCell>
-                {item.paymentMethod ? PAYMENT_METHOD_LABELS[item.paymentMethod] : '—'}
-              </TableCell>
-            </TableRow>
-          ))}
+          {entradas.map((item) => {
+            const loteId = loteIdDaEntrada(item)
+            const podeConcluir = item.type === 'health_plan' && item.status === 'pending' && loteId != null
+            return (
+              <TableRow key={item.id} hover>
+                <TableCell>{formatarDataHoraISO(item.paidAt ?? item.createdAt)}</TableCell>
+                <TableCell>{FINANCIAL_ENTRY_TYPE_LABELS[item.type]}</TableCell>
+                <TableCell>
+                  {item.type === 'health_plan' && loteId != null ? (
+                    <Link component={RouterLink} to={`/tiss/lotes/${loteId}`}>
+                      {origemEntrada(item)}
+                    </Link>
+                  ) : (
+                    origemEntrada(item)
+                  )}
+                </TableCell>
+                <TableCell align="right">{formatarMoedaBRL(item.amount)}</TableCell>
+                <TableCell align="right">{formatarMoedaBRL(item.receivedAmount)}</TableCell>
+                <TableCell>
+                  <Chip
+                    size="small"
+                    label={FINANCIAL_ENTRY_STATUS_LABELS[item.status]}
+                    color={corStatus(item.status)}
+                  />
+                </TableCell>
+                <TableCell>
+                  {item.paymentMethod ? PAYMENT_METHOD_LABELS[item.paymentMethod] : '—'}
+                </TableCell>
+                <TableCell align="right">
+                  {podeConcluir ? (
+                    <Button
+                      component={RouterLink}
+                      to={`/tiss/lotes/${loteId}?receber=1`}
+                      size="small"
+                    >
+                      Concluir
+                    </Button>
+                  ) : null}
+                </TableCell>
+              </TableRow>
+            )
+          })}
         </TableBody>
       </Table>
     </TableContainer>

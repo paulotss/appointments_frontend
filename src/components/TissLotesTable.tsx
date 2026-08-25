@@ -36,6 +36,7 @@ export function TissLotesTable({ lotes }: TissLotesTableProps) {
             <TableCell>Protocolo</TableCell>
             <TableCell>Guias</TableCell>
             <TableCell align="right">Valor</TableCell>
+            <TableCell align="right">Recebido</TableCell>
             <TableCell>Status</TableCell>
             <TableCell>Criado em</TableCell>
           </TableRow>
@@ -52,6 +53,7 @@ export function TissLotesTable({ lotes }: TissLotesTableProps) {
               <TableCell>{item.protocolNumber ?? '—'}</TableCell>
               <TableCell>{item.guides.length}</TableCell>
               <TableCell align="right">{formatarMoedaBRL(item.billedAmount)}</TableCell>
+              <TableCell align="right">{formatarMoedaBRL(item.receivedAmount)}</TableCell>
               <TableCell>
                 <Chip
                   size="small"

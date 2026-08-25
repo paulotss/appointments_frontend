@@ -14,7 +14,9 @@ interface CampoValorMoedaProps {
   inputRef?: React.Ref<HTMLInputElement>
   error?: boolean
   helperText?: string
-  label: string
+  label?: string
+  size?: 'small' | 'medium'
+  fullWidth?: boolean
 }
 
 export function CampoValorMoeda({
@@ -25,6 +27,8 @@ export function CampoValorMoeda({
   error,
   helperText,
   label,
+  size,
+  fullWidth,
 }: CampoValorMoedaProps) {
   const [digitos, setDigitos] = useState(() => numeroParaDigitosMoedaBRL(value))
 
@@ -35,6 +39,8 @@ export function CampoValorMoeda({
   return (
     <TextField
       label={label}
+      size={size}
+      fullWidth={fullWidth}
       value={digitos === '' ? '' : formatarMoedaBRL(digitosParaNumeroMoedaBRL(digitos))}
       onChange={(event) => {
         const novosDigitos = normalizarDigitosMoedaBRL(digitos, event.target.value)

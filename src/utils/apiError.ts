@@ -44,6 +44,11 @@ const MENSAGENS_EXATAS: Record<string, string> = {
   'Cannot bill a batch without guides': 'Não é possível faturar um lote sem guias.',
   'Cannot bill a batch with zero amount': 'Não é possível faturar um lote com valor zero.',
   'Only billed batches can receive payment': 'Somente lotes faturados podem registrar recebimento.',
+  'receivedAmount cannot be greater than billedAmount':
+    'O valor recebido não pode ser maior que o valor faturado.',
+  'receivedAmount must be >= 0': 'O valor recebido não pode ser negativo.',
+  'Items received amounts must equal receivedAmount':
+    'A soma dos valores recebidos das guias deve ser igual ao valor recebido do lote.',
   'Settled billing batches cannot be cancelled': 'Lotes quitados não podem ser cancelados.',
   'Billing batch is already cancelled': 'O lote já está cancelado.',
   'Cannot cancel a billed batch after payment was received':
