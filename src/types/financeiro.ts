@@ -199,6 +199,8 @@ export interface CreatePayableRequest {
   notes?: string
 }
 
+export type UpdatePayableRequest = Partial<CreatePayableRequest>
+
 export interface PayPayableRequest {
   paymentMethod: PaymentMethod
   paidAt?: string

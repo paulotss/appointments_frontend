@@ -1,4 +1,5 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Alert,
   Button,
@@ -14,13 +15,25 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useForm } from 'react-hook-form'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { PagamentoForm } from '../components/PagamentoForm'
 import {
+  pagamentoSchema,
+  type PagamentoFormInput,
+  type PagamentoFormValues,
+} from '../schemas/financeiro.schema'
+import {
+  atualizarPagamento,
   baixarDocumentoPagamento,
   buscarPagamento,
+  enviarDocumentoPagamento,
   faturarPagamento,
+  removerDocumentoPagamento,
 } from '../services/payables.service'
+import { listarFornecedores } from '../services/suppliers.service'
+import type { Fornecedor } from '../types/estoque'
 import {
   PAYABLE_KIND_LABELS,
   PAYABLE_STATUS_LABELS,
@@ -32,6 +45,7 @@ import {
 import { mensagemErroApi } from '../utils/apiError'
 import { formatarDataHoraISO, formatarDataISO } from '../utils/dataISO'
 import { formatarMoedaBRL } from '../utils/moedaBRL'
+import { formatarTamanhoArquivo, validarArquivosPagamento } from '../utils/pagamentoArquivos'
 
 function agoraDatetimeLocal(): string {
   const data = new Date()
@@ -52,10 +66,13 @@ function corStatus(status: Payable['status']) {
   return 'default'
 }
 
-function formatarTamanhoArquivo(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1).replace('.', ',')} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`
+function estadoNavegacao(state: unknown): { warning?: string; editar?: boolean } {
+  if (!state || typeof state !== 'object') return {}
+  const registro = state as { warning?: unknown; editar?: unknown }
+  return {
+    warning: typeof registro.warning === 'string' ? registro.warning : undefined,
+    editar: registro.editar === true,
+  }
 }
 
 export function PagamentoDetalhePage() {
@@ -63,20 +80,47 @@ export function PagamentoDetalhePage() {
   const location = useLocation()
   const { id: idParam } = useParams<{ id: string }>()
   const id = idParam != null && idParam !== '' ? Number.parseInt(idParam, 10) : Number.NaN
-  const avisoNavegacao =
-    location.state && typeof location.state === 'object' && 'warning' in location.state
-      ? String((location.state as { warning?: string }).warning ?? '')
-      : ''
+  const navegacao = estadoNavegacao(location.state)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const editouPorNavegacao = useRef(false)
 
   const [pagamento, setPagamento] = useState<Payable | null>(null)
+  const [fornecedores, setFornecedores] = useState<Fornecedor[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const aviso = avisoNavegacao || null
-  const [dialogAberto, setDialogAberto] = useState(false)
+  const aviso = navegacao.warning ?? null
+  const [editando, setEditando] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [dialogAberto, setDialogAberto] = useState(false)
+  const [faturando, setFaturando] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix')
   const [paidAt, setPaidAt] = useState(agoraDatetimeLocal())
+  const [arquivosNovos, setArquivosNovos] = useState<File[]>([])
+  const [idsRemovidos, setIdsRemovidos] = useState<number[]>([])
+  const [fileError, setFileError] = useState<string | null>(null)
+
+  const {
+    control,
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<PagamentoFormInput, unknown, PagamentoFormValues>({
+    resolver: zodResolver(pagamentoSchema),
+    defaultValues: {
+      supplierId: undefined,
+      kind: 'material',
+      description: '',
+      amount: undefined,
+      dueDate: '',
+      invoiceNumber: '',
+      notes: '',
+    },
+  })
+
+  const documentosVisiveis =
+    pagamento?.documents.filter((documento) => !idsRemovidos.includes(documento.id)) ?? []
 
   useEffect(() => {
     if (!Number.isFinite(id)) {
@@ -91,7 +135,16 @@ export function PagamentoDetalhePage() {
       setError(null)
       try {
         const data = await buscarPagamento(id)
-        if (!cancelado) setPagamento(data)
+        if (cancelado) return
+        setPagamento(data)
+        try {
+          const listaFornecedores = await listarFornecedores()
+          if (!cancelado) setFornecedores(listaFornecedores)
+        } catch (err) {
+          if (!cancelado) {
+            setError(mensagemErroApi(err, 'Não foi possível carregar os fornecedores.'))
+          }
+        }
       } catch (err) {
         if (!cancelado) setError(mensagemErroApi(err, 'Não foi possível carregar o pagamento.'))
       } finally {
@@ -103,6 +156,50 @@ export function PagamentoDetalhePage() {
       cancelado = true
     }
   }, [id])
+
+  const iniciarEdicao = useCallback(
+    (item: Payable) => {
+      reset({
+        supplierId: item.supplierId,
+        kind: item.kind,
+        description: item.description,
+        amount: item.amount,
+        dueDate: item.dueDate,
+        invoiceNumber: item.invoiceNumber ?? '',
+        notes: item.notes ?? '',
+      })
+      setArquivosNovos([])
+      setIdsRemovidos([])
+      setFileError(null)
+      setSuccess(null)
+      setEditando(true)
+    },
+    [reset],
+  )
+
+  useEffect(() => {
+    if (!pagamento || !navegacao.editar || editouPorNavegacao.current) return
+    if (pagamento.status !== 'pending') return
+    editouPorNavegacao.current = true
+    iniciarEdicao(pagamento)
+  }, [pagamento, navegacao.editar, iniciarEdicao])
+
+  function cancelarEdicao() {
+    setEditando(false)
+    setArquivosNovos([])
+    setIdsRemovidos([])
+    setFileError(null)
+  }
+
+  function selecionarArquivos(lista: FileList | null) {
+    if (!lista || lista.length === 0) return
+    const { aceitos, erro } = validarArquivosPagamento(arquivosNovos, lista, documentosVisiveis.length)
+    if (aceitos.length > 0) {
+      setArquivosNovos((atuais) => [...atuais, ...aceitos])
+    }
+    setFileError(erro)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   async function baixarDocumento(documentId: number, nome: string) {
     setError(null)
@@ -119,9 +216,61 @@ export function PagamentoDetalhePage() {
     }
   }
 
-  async function confirmarFaturar() {
+  async function onSalvarEdicao(values: PagamentoFormValues) {
     if (!pagamento) return
     setSaving(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const invoiceNumber = values.invoiceNumber?.trim()
+      const notes = values.notes?.trim()
+      await atualizarPagamento(pagamento.id, {
+        supplierId: values.supplierId,
+        kind: values.kind,
+        description: values.description.trim(),
+        amount: values.amount,
+        dueDate: values.dueDate,
+        invoiceNumber: invoiceNumber ?? '',
+        notes: notes ?? '',
+      })
+
+      const falhas: string[] = []
+      for (const documentId of idsRemovidos) {
+        try {
+          await removerDocumentoPagamento(pagamento.id, documentId)
+        } catch (err) {
+          falhas.push(mensagemErroApi(err, 'Não foi possível remover um documento.'))
+        }
+      }
+      for (const arquivo of arquivosNovos) {
+        try {
+          await enviarDocumentoPagamento(pagamento.id, arquivo)
+        } catch (err) {
+          falhas.push(mensagemErroApi(err, `Não foi possível enviar ${arquivo.name}.`))
+        }
+      }
+
+      const atualizado = await buscarPagamento(pagamento.id)
+      setPagamento(atualizado)
+      setEditando(false)
+      setArquivosNovos([])
+      setIdsRemovidos([])
+      setFileError(null)
+      if (falhas.length > 0) {
+        setError(`Pagamento atualizado, mas houve falha nos documentos: ${falhas.join(' ')}`)
+      } else {
+        setSuccess('Pagamento atualizado.')
+      }
+    } catch (err) {
+      setError(mensagemErroApi(err, 'Não foi possível atualizar o pagamento.'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function confirmarFaturar() {
+    if (!pagamento) return
+    setFaturando(true)
     setError(null)
     setSuccess(null)
     try {
@@ -135,7 +284,7 @@ export function PagamentoDetalhePage() {
     } catch (err) {
       setError(mensagemErroApi(err, 'Não foi possível faturar o pagamento.'))
     } finally {
-      setSaving(false)
+      setFaturando(false)
     }
   }
 
@@ -143,7 +292,7 @@ export function PagamentoDetalhePage() {
     <Stack spacing={2}>
       <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
         <Typography variant="h5" fontWeight={700}>
-          Pagamento
+          {editando ? 'Editar pagamento' : 'Pagamento'}
         </Typography>
         <Button
           variant="outlined"
@@ -165,7 +314,35 @@ export function PagamentoDetalhePage() {
         </Paper>
       ) : null}
 
-      {!loading && pagamento ? (
+      {!loading && pagamento && editando ? (
+        <Stack component="form" onSubmit={handleSubmit(onSalvarEdicao)}>
+          <PagamentoForm
+            control={control}
+            register={register}
+            errors={errors}
+            fornecedores={fornecedores}
+            loading={saving}
+            submitLabel="Salvar alterações"
+            fileInputRef={fileInputRef}
+            arquivosNovos={arquivosNovos}
+            fileError={fileError}
+            onSelecionarArquivos={selecionarArquivos}
+            onRemoverArquivoNovo={(indice) => {
+              setArquivosNovos((atuais) => atuais.filter((_, i) => i !== indice))
+              setFileError(null)
+            }}
+            documentosExistentes={documentosVisiveis}
+            onBaixarDocumento={(documentId, nome) => void baixarDocumento(documentId, nome)}
+            onRemoverDocumentoExistente={(documentId) => {
+              setIdsRemovidos((atuais) => [...atuais, documentId])
+              setFileError(null)
+            }}
+            onCancelar={cancelarEdicao}
+          />
+        </Stack>
+      ) : null}
+
+      {!loading && pagamento && !editando ? (
         <Paper sx={{ p: 3 }}>
           <Stack spacing={1.5}>
             <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
@@ -227,22 +404,26 @@ export function PagamentoDetalhePage() {
               </Alert>
             ) : null}
             {pagamento.status === 'pending' ? (
-              <Button
-                variant="contained"
-                onClick={() => {
-                  setPaidAt(agoraDatetimeLocal())
-                  setDialogAberto(true)
-                }}
-                sx={{ alignSelf: 'flex-start' }}
-              >
-                Faturar
-              </Button>
+              <Stack direction="row" gap={1} flexWrap="wrap">
+                <Button variant="outlined" onClick={() => iniciarEdicao(pagamento)}>
+                  Editar
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => {
+                    setPaidAt(agoraDatetimeLocal())
+                    setDialogAberto(true)
+                  }}
+                >
+                  Faturar
+                </Button>
+              </Stack>
             ) : null}
           </Stack>
         </Paper>
       ) : null}
 
-      <Dialog open={dialogAberto} onClose={() => !saving && setDialogAberto(false)} fullWidth maxWidth="sm">
+      <Dialog open={dialogAberto} onClose={() => !faturando && setDialogAberto(false)} fullWidth maxWidth="sm">
         <DialogTitle>Faturar pagamento</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -268,11 +449,11 @@ export function PagamentoDetalhePage() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogAberto(false)} disabled={saving}>
+          <Button onClick={() => setDialogAberto(false)} disabled={faturando}>
             Cancelar
           </Button>
-          <Button variant="contained" onClick={() => void confirmarFaturar()} disabled={saving}>
-            {saving ? 'Faturando...' : 'Confirmar'}
+          <Button variant="contained" onClick={() => void confirmarFaturar()} disabled={faturando}>
+            {faturando ? 'Faturando...' : 'Confirmar'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -1,5 +1,7 @@
+import EditIcon from '@mui/icons-material/Edit'
 import {
   Chip,
+  IconButton,
   Link,
   Table,
   TableBody,
@@ -16,6 +18,7 @@ import { formatarMoedaBRL } from '../utils/moedaBRL'
 
 interface PagamentosTableProps {
   pagamentos: Payable[]
+  onEditar: (pagamento: Payable) => void
 }
 
 function corStatus(status: PayableStatus) {
@@ -24,7 +27,7 @@ function corStatus(status: PayableStatus) {
   return 'default'
 }
 
-export function PagamentosTable({ pagamentos }: PagamentosTableProps) {
+export function PagamentosTable({ pagamentos, onEditar }: PagamentosTableProps) {
   return (
     <TableContainer>
       <Table size="small">
@@ -36,6 +39,7 @@ export function PagamentosTable({ pagamentos }: PagamentosTableProps) {
             <TableCell align="right">Valor</TableCell>
             <TableCell>Vencimento</TableCell>
             <TableCell>Status</TableCell>
+            <TableCell align="right">Ações</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -56,6 +60,17 @@ export function PagamentosTable({ pagamentos }: PagamentosTableProps) {
                   label={PAYABLE_STATUS_LABELS[item.status]}
                   color={corStatus(item.status)}
                 />
+              </TableCell>
+              <TableCell align="right">
+                {item.status === 'pending' ? (
+                  <IconButton
+                    size="small"
+                    aria-label="Editar pagamento"
+                    onClick={() => onEditar(item)}
+                  >
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                ) : null}
               </TableCell>
             </TableRow>
           ))}

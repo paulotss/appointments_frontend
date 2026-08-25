@@ -146,7 +146,12 @@ export function FinanceiroPagamentosPage() {
 
       {!loading && !error && pagamentos.length > 0 ? (
         <Paper sx={{ p: 0 }}>
-          <PagamentosTable pagamentos={pagamentos} />
+          <PagamentosTable
+            pagamentos={pagamentos}
+            onEditar={(item) =>
+              navigate(`/financeiro/pagamentos/${item.id}`, { state: { editar: true } })
+            }
+          />
           <TablePagination
             component="div"
             count={meta.total}

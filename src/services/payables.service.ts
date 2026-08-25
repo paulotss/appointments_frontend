@@ -7,6 +7,7 @@ import {
   type Payable,
   type PayableDocument,
   type PaymentMethod,
+  type UpdatePayableRequest,
 } from '../types/financeiro'
 import { isoDatePrefix } from '../utils/dataISO'
 import { apiClient } from './apiClient'
@@ -114,6 +115,14 @@ export async function criarPagamento(payload: CreatePayableRequest): Promise<Pay
   return mapPayable(response.data)
 }
 
+export async function atualizarPagamento(
+  id: number,
+  payload: UpdatePayableRequest,
+): Promise<Payable> {
+  const response = await apiClient.patch<BackendPayable>(`/payables/${id}`, payload)
+  return mapPayable(response.data)
+}
+
 export async function faturarPagamento(id: number, payload: PayPayableRequest): Promise<Payable> {
   const response = await apiClient.post<BackendPayable>(`/payables/${id}/pay`, payload)
   return mapPayable(response.data)
@@ -137,4 +146,11 @@ export async function baixarDocumentoPagamento(payableId: number, documentId: nu
     responseType: 'blob',
   })
   return response.data
+}
+
+export async function removerDocumentoPagamento(
+  payableId: number,
+  documentId: number,
+): Promise<void> {
+  await apiClient.delete(`/payables/${payableId}/documents/${documentId}`)
 }
