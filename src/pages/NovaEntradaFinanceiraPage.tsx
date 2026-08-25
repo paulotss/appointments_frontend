@@ -26,12 +26,11 @@ import {
 } from '../schemas/financeiro.schema'
 import { buscarAgendamentoClinico } from '../services/clinical-appointments.service'
 import { criarEntradaParticular } from '../services/financial-entries.service'
-import { buscarProfissional } from '../services/health-professionals.service'
 import type { ClinicalAppointment } from '../types/agendamentoClinico'
 import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from '../types/financeiro'
-import type { HealthProfessional } from '../types/profissional'
+import { valorParticular } from '../types/procedimento'
 import { mensagemErroApi } from '../utils/apiError'
-import { formatarMoedaBRL, parseValorDecimal } from '../utils/moedaBRL'
+import { formatarMoedaBRL } from '../utils/moedaBRL'
 
 function agoraDatetimeLocal(): string {
   const data = new Date()
@@ -46,25 +45,12 @@ function datetimeLocalParaIso(value: string | undefined): string | undefined {
   return data.toISOString()
 }
 
-function valorUnitarioProcedimento(
-  specialtyId: number,
-  valorProcedimento: string | number | undefined,
-  profissional: HealthProfessional | null,
-): number {
-  const precoParticular = profissional?.specialties.find((item) => item.specialtyId === specialtyId)
-    ?.privatePrice
-  if (precoParticular != null && Number.isFinite(precoParticular)) return precoParticular
-  const n = parseValorDecimal(valorProcedimento)
-  return Number.isNaN(n) ? 0 : n
-}
-
 export function NovaEntradaFinanceiraPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const agendamentoId = Number.parseInt(searchParams.get('agendamentoId') ?? '', 10)
 
   const [agendamento, setAgendamento] = useState<ClinicalAppointment | null>(null)
-  const [profissional, setProfissional] = useState<HealthProfessional | null>(null)
   const [loadingDados, setLoadingDados] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -101,11 +87,6 @@ export function NovaEntradaFinanceiraPage() {
       try {
         const item = await buscarAgendamentoClinico(agendamentoId)
         setAgendamento(item)
-        try {
-          setProfissional(await buscarProfissional(item.healthProfessionalId))
-        } catch {
-          setProfissional(null)
-        }
       } catch (err) {
         setError(mensagemErroApi(err, 'Não foi possível carregar o agendamento.'))
       } finally {
@@ -117,19 +98,12 @@ export function NovaEntradaFinanceiraPage() {
 
   const linhas = useMemo(() => {
     if (!agendamento) return []
-    return agendamento.procedures.map((item) => {
-      const unitValue = valorUnitarioProcedimento(
-        item.procedure?.specialtyId ?? 0,
-        item.procedure?.value,
-        profissional,
-      )
-      return {
-        id: item.id,
-        nome: item.procedure?.name ?? `Procedimento #${item.procedureId}`,
-        unitValue,
-      }
-    })
-  }, [agendamento, profissional])
+    return agendamento.procedures.map((item) => ({
+      id: item.id,
+      nome: item.procedure?.name ?? `Procedimento #${item.procedureId}`,
+      unitValue: valorParticular(item.procedure) ?? 0,
+    }))
+  }, [agendamento])
 
   const grossAmount = linhas.reduce((total, item) => total + item.unitValue, 0)
   const liquido = Math.max(0, grossAmount - discountAmount + surchargeAmount)

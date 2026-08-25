@@ -23,7 +23,6 @@ interface BackendSpecialtyRef {
 
 interface BackendHealthProfessionalSpecialty {
   specialtyId: number
-  privatePrice: number | string
   specialty?: BackendSpecialtyRef
 }
 
@@ -39,15 +38,9 @@ interface BackendHealthProfessional {
   specialties?: BackendHealthProfessionalSpecialty[]
 }
 
-function parsePrivatePrice(value: number | string): number {
-  const n = typeof value === 'number' ? value : Number(value)
-  return Number.isFinite(n) ? n : 0
-}
-
 function mapSpecialtyLink(item: BackendHealthProfessionalSpecialty): HealthProfessionalSpecialtyLink {
   return {
     specialtyId: item.specialtyId,
-    privatePrice: parsePrivatePrice(item.privatePrice),
     specialty: item.specialty,
   }
 }
