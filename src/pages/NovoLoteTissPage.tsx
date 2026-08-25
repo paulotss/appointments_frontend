@@ -70,13 +70,14 @@ export function NovoLoteTissPage() {
       return
     }
 
+    const planoId = healthPlanId
     let cancelado = false
     async function carregarGuias() {
       setLoadingGuias(true)
       setError(null)
       try {
         const data = await listarTodasGuias({
-          healthPlanId,
+          healthPlanId: planoId,
           availableForBilling: true,
         })
         if (!cancelado) {
