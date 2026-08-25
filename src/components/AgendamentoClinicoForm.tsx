@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import AddIcon from '@mui/icons-material/Add'
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
 import {
   Alert,
   Autocomplete,
@@ -13,6 +14,7 @@ import {
 } from '@mui/material'
 import { useEffect, useMemo, useState } from 'react'
 import { Controller, useForm, useWatch, type DefaultValues } from 'react-hook-form'
+import { useNavigate } from 'react-router-dom'
 import { GuiaProcedimentosTabela } from './GuiaProcedimentosTabela'
 import { NovaGuiaDialog } from './NovaGuiaDialog'
 import { PacienteBuscaAutocomplete } from './PacienteBuscaAutocomplete'
@@ -22,6 +24,7 @@ import {
   type AgendamentoClinicoFormInput,
   type AgendamentoClinicoFormValues,
 } from '../schemas/agendamentoClinico.schema'
+import { listarAgendamentosClinicos } from '../services/clinical-appointments.service'
 import { buscarGuia, listarGuias } from '../services/insurance-guides.service'
 import { listarProcedimentosPorEspecialidades } from '../services/procedures.service'
 import { buscarPaciente } from '../services/patients.service'
@@ -38,7 +41,14 @@ import type { Patient } from '../types/paciente'
 import type { Procedure } from '../types/procedimento'
 import type { HealthProfessional } from '../types/profissional'
 import { formatarMoedaBRL } from '../utils/moedaBRL'
-import { linhasProcedimentosDasGuias } from '../utils/saldoGuia'
+import {
+  agendamentoReservaSaldoGuia,
+  guiaElegivelParaAgendamento,
+  guiaTemSaldoLivreParaAgendamento,
+  linhasProcedimentosDasGuias,
+  mensagemSaldoReservadoEmAgendamentos,
+  reservasPorGuiaAPartirDeIds,
+} from '../utils/saldoGuia'
 
 interface AgendamentoClinicoFormProps {
   defaultValues: DefaultValues<AgendamentoClinicoFormInput>
@@ -63,6 +73,7 @@ export function AgendamentoClinicoForm({
   onCancel,
   onExcluir,
 }: AgendamentoClinicoFormProps) {
+  const navigate = useNavigate()
   const {
     control,
     handleSubmit,
@@ -81,6 +92,7 @@ export function AgendamentoClinicoForm({
 
   const [procedimentos, setProcedimentos] = useState<Procedure[]>([])
   const [guias, setGuias] = useState<InsuranceGuide[]>([])
+  const [idsReservasPorGuia, setIdsReservasPorGuia] = useState<Record<number, number[]>>({})
   const [loadingListas, setLoadingListas] = useState(false)
   const [dialogNovaGuiaAberto, setDialogNovaGuiaAberto] = useState(false)
   const [pacienteSelecionado, setPacienteSelecionado] = useState<Patient | null>(
@@ -118,6 +130,27 @@ export function AgendamentoClinicoForm({
       .filter((guia): guia is InsuranceGuide => Boolean(guia))
   }, [guias, guiasDoAtual, insuranceGuideIds])
 
+  const reservasPorGuia = useMemo(
+    () => reservasPorGuiaAPartirDeIds(idsReservasPorGuia, agendamentoAtual?.id),
+    [idsReservasPorGuia, agendamentoAtual?.id],
+  )
+
+  const guiasComSaldoReservado = useMemo(
+    () =>
+      guias.filter(
+        (guia) =>
+          guiaElegivelParaAgendamento(guia) &&
+          !insuranceGuideIds.includes(guia.id) &&
+          !guiaTemSaldoLivreParaAgendamento(guia, reservasPorGuia),
+      ),
+    [guias, insuranceGuideIds, reservasPorGuia],
+  )
+
+  const avisoSaldoReservado = useMemo(
+    () => mensagemSaldoReservadoEmAgendamentos(guiasComSaldoReservado),
+    [guiasComSaldoReservado],
+  )
+
   const procedimentosSemSaldo = useMemo(() => {
     if (type !== 'health_plan' || guiasSelecionadas.length === 0) return []
     return linhasProcedimentosDasGuias(guiasSelecionadas).filter(
@@ -144,8 +177,12 @@ export function AgendamentoClinicoForm({
     for (const guia of [...guias, ...guiasSelecionadas]) {
       porId.set(guia.id, guia)
     }
-    return Array.from(porId.values())
-  }, [guias, guiasSelecionadas])
+    return Array.from(porId.values()).filter(
+      (guia) =>
+        insuranceGuideIds.includes(guia.id) ||
+        guiaTemSaldoLivreParaAgendamento(guia, reservasPorGuia),
+    )
+  }, [guias, guiasSelecionadas, insuranceGuideIds, reservasPorGuia])
 
   useEffect(() => {
     async function carregarProcedimentos() {
@@ -172,6 +209,7 @@ export function AgendamentoClinicoForm({
     async function carregarGuias() {
       if (type !== 'health_plan' || patientId == null || healthProfessionalId == null) {
         setGuias([])
+        setIdsReservasPorGuia({})
         return
       }
       setLoadingListas(true)
@@ -182,10 +220,9 @@ export function AgendamentoClinicoForm({
           isBilled: false,
           limit: 100,
         })
-        const elegiveis = data.data.filter(
-          (item) => item.isBilled === false && item.procedures.length > 0,
-        )
+        const elegiveis = data.data.filter(guiaElegivelParaAgendamento)
         const faltando = insuranceGuideIds.filter((id) => !elegiveis.some((item) => item.id === id))
+        let guiasCarregadas = elegiveis
         if (faltando.length > 0) {
           const extras = await Promise.all(
             faltando.map((id) => buscarGuia(id).catch(() => null)),
@@ -195,12 +232,28 @@ export function AgendamentoClinicoForm({
           for (const item of [...encontrados, ...elegiveis]) {
             porId.set(item.id, item)
           }
-          setGuias(Array.from(porId.values()))
-          return
+          guiasCarregadas = Array.from(porId.values())
         }
-        setGuias(elegiveis)
+        setGuias(guiasCarregadas)
+
+        const idsParaContar = [...new Set(guiasCarregadas.map((item) => item.id))]
+        const reservas: Record<number, number[]> = {}
+        await Promise.all(
+          idsParaContar.map(async (guiaId) => {
+            const agendamentos = await listarAgendamentosClinicos({
+              insuranceGuideId: guiaId,
+              from: '2000-01-01',
+              to: '2099-12-31',
+            }).catch(() => [] as ClinicalAppointment[])
+            reservas[guiaId] = agendamentos
+              .filter((item) => agendamentoReservaSaldoGuia(item))
+              .map((item) => item.id)
+          }),
+        )
+        setIdsReservasPorGuia(reservas)
       } catch {
         setGuias([])
+        setIdsReservasPorGuia({})
       } finally {
         setLoadingListas(false)
       }
@@ -454,8 +507,8 @@ export function AgendamentoClinicoForm({
                           : patientId == null || healthProfessionalId == null
                             ? 'Selecione paciente e profissional para listar as guias.'
                             : opcoesGuias.length === 0
-                              ? 'Nenhuma guia não faturada com procedimentos para este paciente e profissional. Use Nova guia para cadastrar.'
-                              : 'Somente guias não faturadas deste paciente e profissional. Os procedimentos são copiados de todas as guias.')
+                              ? 'Nenhuma guia com quantidade disponível para este paciente e profissional. Use Nova guia para cadastrar.'
+                              : 'Somente guias não faturadas com quantidade ainda não reservada em outros agendamentos.')
                       }
                     />
                   )}
@@ -473,6 +526,7 @@ export function AgendamentoClinicoForm({
               Nova guia
             </Button>
           </Stack>
+          {avisoSaldoReservado ? <Alert severity="warning">{avisoSaldoReservado}</Alert> : null}
           {patientId != null && healthProfessionalId != null ? (
             <NovaGuiaDialog
               open={dialogNovaGuiaAberto}
@@ -515,6 +569,18 @@ export function AgendamentoClinicoForm({
         {onExcluir ? (
           <Button color="error" onClick={onExcluir} disabled={loading} sx={{ mr: 'auto' }}>
             Excluir
+          </Button>
+        ) : null}
+        {agendamentoAtual?.type === 'private' && agendamentoAtual.status === 'finished' ? (
+          <Button
+            startIcon={<ReceiptLongIcon />}
+            onClick={() =>
+              navigate(`/financeiro/entradas/nova?agendamentoId=${agendamentoAtual.id}`)
+            }
+            disabled={loading}
+            sx={onExcluir ? undefined : { mr: 'auto' }}
+          >
+            Registrar entrada
           </Button>
         ) : null}
         {onCancel ? (

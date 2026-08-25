@@ -226,6 +226,21 @@ export function GuiaForm({
         )}
       />
       <Controller
+        name="guideNumber"
+        control={control}
+        render={({ field }) => (
+          <TextField
+            label="Número da guia"
+            value={field.value ?? ''}
+            onChange={field.onChange}
+            onBlur={field.onBlur}
+            inputRef={field.ref}
+            error={Boolean(errors.guideNumber)}
+            helperText={errors.guideNumber?.message ?? 'Opcional'}
+          />
+        )}
+      />
+      <Controller
         name="startDate"
         control={control}
         render={({ field }) => (

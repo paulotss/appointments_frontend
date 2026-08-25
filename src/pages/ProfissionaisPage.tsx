@@ -21,7 +21,6 @@ import {
 } from '@mui/material'
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CampoValorMoeda } from '../components/CampoValorMoeda'
 import { ProfissionaisTable } from '../components/ProfissionaisTable'
 import { listarEspecialidades } from '../services/especialidades.service'
 import { atualizarProfissional, listarProfissionais } from '../services/health-professionals.service'
@@ -32,9 +31,8 @@ import { COUNCIL_TYPES, type CouncilType, type HealthProfessional } from '../typ
 const PAGE_SIZE_OPTIONS = [25, 50, 100]
 const META_VAZIA: ListMeta = { page: 1, limit: 50, total: 0, totalPages: 1 }
 
-type EspecialidadePrecoEdicao = {
+type EspecialidadeEdicao = {
   specialtyId: number | ''
-  privatePrice: number | undefined
 }
 
 export function ProfissionaisPage() {
@@ -46,7 +44,7 @@ export function ProfissionaisPage() {
   const [success, setSuccess] = useState<string | null>(null)
   const [editando, setEditando] = useState<HealthProfessional | null>(null)
   const [nomeEdicao, setNomeEdicao] = useState('')
-  const [specialtiesEdicao, setSpecialtiesEdicao] = useState<EspecialidadePrecoEdicao[]>([])
+  const [specialtiesEdicao, setSpecialtiesEdicao] = useState<EspecialidadeEdicao[]>([])
   const [councilTypeEdicao, setCouncilTypeEdicao] = useState<CouncilType>('CRM')
   const [councilNumberEdicao, setCouncilNumberEdicao] = useState('')
   const [cpfEdicao, setCpfEdicao] = useState('')
@@ -76,9 +74,8 @@ export function ProfissionaisPage() {
       profissional.specialties.length > 0
         ? profissional.specialties.map((item) => ({
             specialtyId: item.specialtyId,
-            privatePrice: item.privatePrice,
           }))
-        : [{ specialtyId: '', privatePrice: undefined }],
+        : [{ specialtyId: '' }],
     )
     setCouncilTypeEdicao(profissional.councilType)
     setCouncilNumberEdicao(profissional.councilNumber)
@@ -108,13 +105,12 @@ export function ProfissionaisPage() {
       return
     }
     const specialties = specialtiesEdicao
-      .filter((item) => item.specialtyId !== '' && item.privatePrice != null && item.privatePrice > 0)
+      .filter((item) => item.specialtyId !== '')
       .map((item) => ({
         specialtyId: item.specialtyId as number,
-        privatePrice: item.privatePrice as number,
       }))
     if (specialties.length === 0) {
-      setError('Informe ao menos uma especialidade com preco particular.')
+      setError('Informe ao menos uma especialidade.')
       return
     }
     setSavingEdit(true)
@@ -149,9 +145,7 @@ export function ProfissionaisPage() {
     .filter((id): id is number => id !== '')
   const specialtiesInvalidas =
     specialtiesEdicao.length === 0 ||
-    specialtiesEdicao.some(
-      (item) => item.specialtyId === '' || item.privatePrice == null || item.privatePrice <= 0,
-    ) ||
+    specialtiesEdicao.some((item) => item.specialtyId === '') ||
     new Set(specialtyIds).size !== specialtyIds.length
 
   const carregarDados = useCallback(async () => {
@@ -263,7 +257,6 @@ export function ProfissionaisPage() {
                 (esp) => !selecionados.includes(esp.id) || esp.id === item.specialtyId,
               )
               const specialtyInvalida = item.specialtyId === ''
-              const precoInvalido = item.privatePrice == null || item.privatePrice <= 0
 
               return (
                 <Stack key={`${item.specialtyId}-${index}`} direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
@@ -292,19 +285,6 @@ export function ProfissionaisPage() {
                       </MenuItem>
                     ))}
                   </TextField>
-                  <CampoValorMoeda
-                    label="Preco particular"
-                    value={item.privatePrice}
-                    onChange={(value) => {
-                      setSpecialtiesEdicao((prev) =>
-                        prev.map((row, rowIndex) =>
-                          rowIndex === index ? { ...row, privatePrice: value } : row,
-                        ),
-                      )
-                    }}
-                    error={precoInvalido}
-                    helperText={precoInvalido ? 'Informe o preco particular' : ' '}
-                  />
                   <IconButton
                     aria-label="Remover especialidade"
                     onClick={() =>
@@ -323,7 +303,7 @@ export function ProfissionaisPage() {
               variant="outlined"
               startIcon={<AddIcon />}
               onClick={() =>
-                setSpecialtiesEdicao((prev) => [...prev, { specialtyId: '', privatePrice: undefined }])
+                setSpecialtiesEdicao((prev) => [...prev, { specialtyId: '' }])
               }
               disabled={specialtiesEdicao.length >= especialidades.length}
               sx={{ alignSelf: 'flex-start' }}

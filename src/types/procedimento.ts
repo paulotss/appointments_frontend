@@ -22,6 +22,7 @@ export interface Procedure {
   id: number
   specialtyId: number
   name: string
+  /** Preço padrão particular */
   value: string | number
   specialty?: ProcedureSpecialtyRef
   healthPlanPrices: ProcedureHealthPlanPrice[]
@@ -77,6 +78,15 @@ export function valorDoPlano(
   healthPlanId: number,
 ): number | undefined {
   const raw = precoDoPlano(procedure, healthPlanId)?.value
+  if (raw == null) return undefined
+  const n = typeof raw === 'number' ? raw : Number(raw)
+  return Number.isFinite(n) ? n : undefined
+}
+
+export function valorParticular(
+  procedure: { value?: string | number } | undefined,
+): number | undefined {
+  const raw = procedure?.value
   if (raw == null) return undefined
   const n = typeof raw === 'number' ? raw : Number(raw)
   return Number.isFinite(n) ? n : undefined

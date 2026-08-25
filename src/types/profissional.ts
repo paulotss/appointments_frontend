@@ -9,13 +9,11 @@ export interface HealthProfessionalSpecialtyRef {
 
 export interface HealthProfessionalSpecialtyLink {
   specialtyId: number
-  privatePrice: number
   specialty?: HealthProfessionalSpecialtyRef
 }
 
 export interface HealthProfessionalSpecialtyInput {
   specialtyId: number
-  privatePrice: number
 }
 
 export interface HealthProfessional {

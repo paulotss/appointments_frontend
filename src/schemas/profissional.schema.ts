@@ -10,7 +10,6 @@ const optionalText = z
 
 const specialtyItemSchema = z.object({
   specialtyId: z.number({ error: 'Selecione uma especialidade' }).int().positive('Selecione uma especialidade'),
-  privatePrice: z.number({ error: 'Informe o preco particular' }).positive('Informe o preco particular'),
 })
 
 export const profissionalSchema = z.object({

@@ -19,7 +19,11 @@ import {
   Typography,
 } from '@mui/material'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AgendaClinicaCalendario, type VisaoAgenda } from '../components/AgendaClinicaCalendario'
+import {
+  AgendaClinicaCabecalho,
+  AgendaClinicaCalendario,
+  type VisaoAgenda,
+} from '../components/AgendaClinicaCalendario'
 import { AgendamentoClinicoForm } from '../components/AgendamentoClinicoForm'
 import { AgendamentosClinicosTable } from '../components/AgendamentosClinicosTable'
 import { PacienteBuscaAutocomplete } from '../components/PacienteBuscaAutocomplete'
@@ -284,6 +288,7 @@ export function AgendaClinicaPage() {
   }
 
   const visaoCalendario: VisaoAgenda = visao === 'lista' ? 'semana' : visao
+  const calendarioVisivel = filtroAgendaAtivo && !loading && visao !== 'lista'
 
   return (
     <Stack spacing={2}>
@@ -296,154 +301,196 @@ export function AgendaClinicaPage() {
         </Button>
       </Box>
 
-      <Paper sx={{ p: 1.5 }}>
-        <Stack spacing={1.5}>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ md: 'center' }}>
-            <Stack direction="row" spacing={0.5} alignItems="center">
-              <Button size="small" variant="outlined" onClick={irHoje}>
-                Hoje
-              </Button>
-              <IconButton aria-label="Anterior" onClick={irAnterior} size="small">
-                <ChevronLeftIcon />
-              </IconButton>
-              <IconButton aria-label="Próximo" onClick={irProximo} size="small">
-                <ChevronRightIcon />
-              </IconButton>
+      <Box>
+        <Box
+          sx={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 12,
+            bgcolor: 'grey.100',
+          }}
+        >
+          <Paper sx={{ p: 1.5 }}>
+            <Stack spacing={1.5}>
+              <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ md: 'center' }}>
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  <Button size="small" variant="outlined" onClick={irHoje}>
+                    Hoje
+                  </Button>
+                  <IconButton aria-label="Anterior" onClick={irAnterior} size="small">
+                    <ChevronLeftIcon />
+                  </IconButton>
+                  <IconButton aria-label="Próximo" onClick={irProximo} size="small">
+                    <ChevronRightIcon />
+                  </IconButton>
+                </Stack>
+                <Typography variant="h6" fontWeight={700} sx={{ flex: 1, textTransform: 'capitalize' }}>
+                  {tituloPeriodo(visao, dataRef)}
+                </Typography>
+                <ToggleButtonGroup
+                  exclusive
+                  size="small"
+                  value={visao}
+                  onChange={(_, value: VisaoTela | null) => {
+                    if (value) setVisao(value)
+                  }}
+                >
+                  <ToggleButton value="dia">Dia</ToggleButton>
+                  <ToggleButton value="semana">Semana</ToggleButton>
+                  <ToggleButton value="mes">Mês</ToggleButton>
+                  <ToggleButton value="lista">Lista</ToggleButton>
+                </ToggleButtonGroup>
+              </Stack>
+
+              <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
+                <Box sx={{ minWidth: 220, flex: 1 }}>
+                  <PacienteBuscaAutocomplete
+                    value={filtroPaciente}
+                    onChange={setFiltroPaciente}
+                    size="small"
+                  />
+                </Box>
+                <Box sx={{ minWidth: 220, flex: 1 }}>
+                  <ProfissionalBuscaAutocomplete
+                    value={filtroProfissional}
+                    onChange={setFiltroProfissional}
+                    size="small"
+                  />
+                </Box>
+                <TextField
+                  select
+                  size="small"
+                  label="Tipo"
+                  value={filtroTipo}
+                  onChange={(event) => setFiltroTipo(event.target.value as ClinicalAppointmentType | '')}
+                  sx={{ minWidth: 180 }}
+                >
+                  <MenuItem value="">Todos</MenuItem>
+                  {CLINICAL_APPOINTMENT_TYPES.map((tipo) => (
+                    <MenuItem key={tipo} value={tipo}>
+                      {CLINICAL_APPOINTMENT_TYPE_LABELS[tipo]}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  select
+                  size="small"
+                  label="Status"
+                  value={filtroStatus}
+                  onChange={(event) => setFiltroStatus(event.target.value as ClinicalAppointmentStatus | '')}
+                  sx={{ minWidth: 180 }}
+                >
+                  <MenuItem value="">Todos</MenuItem>
+                  {CLINICAL_APPOINTMENT_STATUSES.map((status) => (
+                    <MenuItem key={status} value={status}>
+                      {CLINICAL_APPOINTMENT_STATUS_LABELS[status]}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Stack>
             </Stack>
-            <Typography variant="h6" fontWeight={700} sx={{ flex: 1, textTransform: 'capitalize' }}>
-              {tituloPeriodo(visao, dataRef)}
-            </Typography>
-            <ToggleButtonGroup
-              exclusive
-              size="small"
-              value={visao}
-              onChange={(_, value: VisaoTela | null) => {
-                if (value) setVisao(value)
+          </Paper>
+
+          {error ? (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {error}
+            </Alert>
+          ) : null}
+          {success ? (
+            <Alert severity="success" sx={{ mt: 2 }}>
+              {success}
+            </Alert>
+          ) : null}
+
+          {calendarioVisivel ? (
+            <Paper
+              sx={{
+                mt: 2,
+                p: 1,
+                pb: 0,
+                borderBottomLeftRadius: 0,
+                borderBottomRightRadius: 0,
               }}
             >
-              <ToggleButton value="dia">Dia</ToggleButton>
-              <ToggleButton value="semana">Semana</ToggleButton>
-              <ToggleButton value="mes">Mês</ToggleButton>
-              <ToggleButton value="lista">Lista</ToggleButton>
-            </ToggleButtonGroup>
-          </Stack>
+              <Stack direction="row" spacing={2} sx={{ px: 1, py: 0.5 }} flexWrap="wrap" useFlexGap>
+                {CLINICAL_APPOINTMENT_STATUSES.map((status) => (
+                  <Typography
+                    key={status}
+                    variant="caption"
+                    sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}
+                  >
+                    <Box
+                      sx={{
+                        width: 12,
+                        height: 12,
+                        bgcolor: CLINICAL_APPOINTMENT_STATUS_CORES[status],
+                        borderRadius: 0.5,
+                      }}
+                    />
+                    {CLINICAL_APPOINTMENT_STATUS_LABELS[status]}
+                  </Typography>
+                ))}
+                {CLINICAL_APPOINTMENT_TYPES.map((tipo) => (
+                  <Typography
+                    key={tipo}
+                    variant="caption"
+                    sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}
+                  >
+                    <Box
+                      sx={{
+                        width: 4,
+                        height: 12,
+                        bgcolor: CLINICAL_APPOINTMENT_TYPE_CORES[tipo],
+                        borderRadius: 0.25,
+                      }}
+                    />
+                    {CLINICAL_APPOINTMENT_TYPE_LABELS[tipo]}
+                  </Typography>
+                ))}
+              </Stack>
+              <AgendaClinicaCabecalho visao={visaoCalendario} dataRef={dataRef} />
+            </Paper>
+          ) : null}
+        </Box>
 
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
-            <Box sx={{ minWidth: 220, flex: 1 }}>
-              <PacienteBuscaAutocomplete
-                value={filtroPaciente}
-                onChange={setFiltroPaciente}
-                size="small"
-              />
-            </Box>
-            <Box sx={{ minWidth: 220, flex: 1 }}>
-              <ProfissionalBuscaAutocomplete
-                value={filtroProfissional}
-                onChange={setFiltroProfissional}
-                size="small"
-              />
-            </Box>
-            <TextField
-              select
-              size="small"
-              label="Tipo"
-              value={filtroTipo}
-              onChange={(event) => setFiltroTipo(event.target.value as ClinicalAppointmentType | '')}
-              sx={{ minWidth: 180 }}
-            >
-              <MenuItem value="">Todos</MenuItem>
-              {CLINICAL_APPOINTMENT_TYPES.map((tipo) => (
-                <MenuItem key={tipo} value={tipo}>
-                  {CLINICAL_APPOINTMENT_TYPE_LABELS[tipo]}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              select
-              size="small"
-              label="Status"
-              value={filtroStatus}
-              onChange={(event) => setFiltroStatus(event.target.value as ClinicalAppointmentStatus | '')}
-              sx={{ minWidth: 180 }}
-            >
-              <MenuItem value="">Todos</MenuItem>
-              {CLINICAL_APPOINTMENT_STATUSES.map((status) => (
-                <MenuItem key={status} value={status}>
-                  {CLINICAL_APPOINTMENT_STATUS_LABELS[status]}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Stack>
-        </Stack>
-      </Paper>
-
-      {error ? <Alert severity="error">{error}</Alert> : null}
-      {success ? <Alert severity="success">{success}</Alert> : null}
-
-      {!filtroAgendaAtivo ? (
-        <Paper sx={{ p: 3 }}>
-          <Typography color="text.secondary">
-            Selecione um paciente ou um profissional para visualizar a agenda.
-          </Typography>
-        </Paper>
-      ) : loading ? (
-        <Paper sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <CircularProgress size={20} />
-          <Typography>Carregando agenda clínica...</Typography>
-        </Paper>
-      ) : visao === 'lista' ? (
-        <AgendamentosClinicosTable agendamentos={agendamentos} onAbrir={abrirEvento} />
-      ) : (
-        <Paper sx={{ p: 1, overflow: 'hidden' }}>
-          <Stack direction="row" spacing={2} sx={{ px: 1, py: 0.5 }} flexWrap="wrap" useFlexGap>
-            {CLINICAL_APPOINTMENT_STATUSES.map((status) => (
-              <Typography
-                key={status}
-                variant="caption"
-                sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}
-              >
-                <Box
-                  sx={{
-                    width: 12,
-                    height: 12,
-                    bgcolor: CLINICAL_APPOINTMENT_STATUS_CORES[status],
-                    borderRadius: 0.5,
-                  }}
-                />
-                {CLINICAL_APPOINTMENT_STATUS_LABELS[status]}
-              </Typography>
-            ))}
-            {CLINICAL_APPOINTMENT_TYPES.map((tipo) => (
-              <Typography
-                key={tipo}
-                variant="caption"
-                sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}
-              >
-                <Box
-                  sx={{
-                    width: 4,
-                    height: 12,
-                    bgcolor: CLINICAL_APPOINTMENT_TYPE_CORES[tipo],
-                    borderRadius: 0.25,
-                  }}
-                />
-                {CLINICAL_APPOINTMENT_TYPE_LABELS[tipo]}
-              </Typography>
-            ))}
-          </Stack>
-          <AgendaClinicaCalendario
-            visao={visaoCalendario}
-            dataRef={dataRef}
-            agendamentos={agendamentos}
-            onSlotClick={(ymd, hm) => abrirNovo(ymd, hm)}
-            onEventoClick={abrirEvento}
-            onDiaClick={(ymd) => {
-              setDataRef(ymd)
-              setVisao('dia')
+        {!filtroAgendaAtivo ? (
+          <Paper sx={{ p: 3, mt: 2 }}>
+            <Typography color="text.secondary">
+              Selecione um paciente ou um profissional para visualizar a agenda.
+            </Typography>
+          </Paper>
+        ) : loading ? (
+          <Paper sx={{ p: 3, mt: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <CircularProgress size={20} />
+            <Typography>Carregando agenda clínica...</Typography>
+          </Paper>
+        ) : visao === 'lista' ? (
+          <Box sx={{ mt: 2 }}>
+            <AgendamentosClinicosTable agendamentos={agendamentos} onAbrir={abrirEvento} />
+          </Box>
+        ) : (
+          <Paper
+            sx={{
+              p: 1,
+              pt: 0.5,
+              borderTopLeftRadius: 0,
+              borderTopRightRadius: 0,
             }}
-          />
-        </Paper>
-      )}
+          >
+            <AgendaClinicaCalendario
+              visao={visaoCalendario}
+              dataRef={dataRef}
+              agendamentos={agendamentos}
+              onSlotClick={(ymd, hm) => abrirNovo(ymd, hm)}
+              onEventoClick={abrirEvento}
+              onDiaClick={(ymd) => {
+                setDataRef(ymd)
+                setVisao('dia')
+              }}
+            />
+          </Paper>
+        )}
+      </Box>
 
       <Dialog
         open={dialogAberto}

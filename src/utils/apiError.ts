@@ -26,6 +26,33 @@ const MENSAGENS_EXATAS: Record<string, string> = {
     'No plano de saúde os procedimentos vêm das guias e não devem ser enviados.',
   'procedureIds is required when changing type to private':
     'Selecione os procedimentos ao alterar o tipo para particular.',
+  'Financial entry of private procedures requires a private clinical appointment':
+    'A entrada de procedimento particular exige um agendamento particular.',
+  'Clinical appointment must be finished to register payment':
+    'O agendamento precisa estar finalizado para registrar a entrada.',
+  'Clinical appointment has no procedures to bill':
+    'O agendamento não possui procedimentos para faturar.',
+  'discountAmount and surchargeAmount must be >= 0':
+    'Desconto e acréscimo não podem ser negativos.',
+  'Charged amount cannot be negative': 'O valor líquido não pode ser negativo.',
+  'file is required': 'Envie um arquivo.',
+  'Only PDF, JPEG and PNG documents are allowed':
+    'Somente documentos PDF, JPEG e PNG são permitidos.',
+  'File too large': 'O arquivo excede o tamanho máximo permitido.',
+  'Only open billing batches can be updated': 'Somente lotes abertos podem ser atualizados.',
+  'Only open billing batches can be billed': 'Somente lotes abertos podem ser faturados.',
+  'Cannot bill a batch without guides': 'Não é possível faturar um lote sem guias.',
+  'Cannot bill a batch with zero amount': 'Não é possível faturar um lote com valor zero.',
+  'Only billed batches can receive payment': 'Somente lotes faturados podem registrar recebimento.',
+  'receivedAmount cannot be greater than billedAmount':
+    'O valor recebido não pode ser maior que o valor faturado.',
+  'receivedAmount must be >= 0': 'O valor recebido não pode ser negativo.',
+  'Items received amounts must equal receivedAmount':
+    'A soma dos valores recebidos das guias deve ser igual ao valor recebido do lote.',
+  'Settled billing batches cannot be cancelled': 'Lotes quitados não podem ser cancelados.',
+  'Billing batch is already cancelled': 'O lote já está cancelado.',
+  'Cannot cancel a billed batch after payment was received':
+    'Não é possível cancelar um lote depois do recebimento.',
 }
 
 const PADROES: Array<[RegExp, string]> = [
@@ -60,6 +87,24 @@ const PADROES: Array<[RegExp, string]> = [
   [
     /^Procedure \d+ has no remaining quantity on insurance guide \d+$/i,
     'Há procedimento sem quantidade disponível na guia.',
+  ],
+  [/^Financial entry \d+ not found$/i, 'Entrada financeira não encontrada.'],
+  [/^Financial exit \d+ not found$/i, 'Saída financeira não encontrada.'],
+  [/^Payable \d+ not found$/i, 'Pagamento não encontrado.'],
+  [/^Supplier \d+ not found$/i, 'Fornecedor não encontrado.'],
+  [/^Billing batch \d+ not found$/i, 'Lote não encontrado.'],
+  [/^Document \d+ not found$/i, 'Documento não encontrado.'],
+  [/^Clinical appointment \d+ already has a financial entry$/i, 'Este agendamento já possui uma entrada financeira.'],
+  [/^Only pending payables can be \w+$/i, 'Somente pagamentos pendentes podem ser alterados ou faturados.'],
+  [/^Billing batch \d+ has no pending financial entry$/i, 'O lote não possui entrada financeira pendente.'],
+  [
+    /^Insurance guide \d+ does not belong to health plan \d+$/i,
+    'A guia não pertence ao plano de saúde selecionado.',
+  ],
+  [/^Insurance guide \d+ is not eligible for billing$/i, 'A guia não está elegível para faturamento.'],
+  [
+    /^Insurance guide \d+ is not in billing batch \d+$/i,
+    'A guia não faz parte deste lote.',
   ],
 ]
 

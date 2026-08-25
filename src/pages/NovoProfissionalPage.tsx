@@ -17,7 +17,6 @@ import {
 import { useEffect, useState } from 'react'
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
-import { CampoValorMoeda } from '../components/CampoValorMoeda'
 import {
   profissionalSchema,
   type ProfissionalFormInput,
@@ -45,7 +44,7 @@ export function NovoProfissionalPage() {
     resolver: zodResolver(profissionalSchema),
     defaultValues: {
       name: '',
-      specialties: [{ specialtyId: undefined, privatePrice: undefined }],
+      specialties: [{ specialtyId: undefined }],
       councilType: 'CRM',
       councilNumber: '',
       cpf: '',
@@ -185,21 +184,6 @@ export function NovoProfissionalPage() {
                     </TextField>
                   )}
                 />
-                <Controller
-                  name={`specialties.${index}.privatePrice`}
-                  control={control}
-                  render={({ field: priceField }) => (
-                    <CampoValorMoeda
-                      label="Preco particular"
-                      value={priceField.value}
-                      onChange={priceField.onChange}
-                      onBlur={priceField.onBlur}
-                      inputRef={priceField.ref}
-                      error={Boolean(itemError?.privatePrice)}
-                      helperText={itemError?.privatePrice?.message ?? ' '}
-                    />
-                  )}
-                />
                 <IconButton
                   aria-label="Remover especialidade"
                   onClick={() => remove(index)}
@@ -215,7 +199,7 @@ export function NovoProfissionalPage() {
             type="button"
             variant="outlined"
             startIcon={<AddIcon />}
-            onClick={() => append({ specialtyId: undefined as unknown as number, privatePrice: undefined as unknown as number })}
+            onClick={() => append({ specialtyId: undefined as unknown as number })}
             disabled={fields.length >= especialidades.length}
             sx={{ alignSelf: 'flex-start' }}
           >

@@ -46,6 +46,7 @@ export function NovaGuiaPage() {
         healthProfessionalId: values.healthProfessionalId,
         expirationDate: values.expirationDate,
         status: values.status,
+        ...(values.guideNumber ? { guideNumber: values.guideNumber } : {}),
         procedures: values.procedures.map((item) => ({
           procedureId: item.procedureId,
           authorizedQuantity: item.authorizedQuantity,
@@ -94,6 +95,7 @@ export function NovaGuiaPage() {
               patientId: undefined,
               healthProfessionalId: undefined,
               status: 'pending',
+              guideNumber: '',
               startDate: hojeLocalISO(),
               expirationDate: '',
               procedures: [{ procedureId: undefined, authorizedQuantity: 1, value: undefined }],

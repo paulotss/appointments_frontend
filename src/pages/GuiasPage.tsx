@@ -32,6 +32,7 @@ import { atualizarGuia, excluirGuia, listarGuias } from '../services/insurance-g
 import { buscarPaciente } from '../services/patients.service'
 import { listarProcedimentos } from '../services/procedures.service'
 import {
+  guiaProcedimentosTotalmenteUtilizados,
   INSURANCE_GUIDE_STATUSES,
   INSURANCE_GUIDE_STATUS_LABELS,
   type InsuranceGuide,
@@ -76,18 +77,18 @@ export function GuiasPage() {
   const [profissionalEdicao, setProfissionalEdicao] = useState<HealthProfessional | null>(null)
   const [healthPlanIdEdicao, setHealthPlanIdEdicao] = useState<number | ''>('')
   const [statusEdicao, setStatusEdicao] = useState<InsuranceGuideStatus>('pending')
+  const [guideNumberEdicao, setGuideNumberEdicao] = useState('')
   const [startDateEdicao, setStartDateEdicao] = useState('')
   const [expirationDateEdicao, setExpirationDateEdicao] = useState('')
   const [procedimentosEdicao, setProcedimentosEdicao] = useState<ProcedimentoEdicao[]>([])
   const [procedimentosPlano, setProcedimentosPlano] = useState<Procedure[]>([])
   const [savingEdit, setSavingEdit] = useState(false)
-  const [faturando, setFaturando] = useState<InsuranceGuide | null>(null)
-  const [savingFaturar, setSavingFaturar] = useState(false)
   const [filtroPaciente, setFiltroPaciente] = useState<Patient | null>(null)
   const [filtroPlanoId, setFiltroPlanoId] = useState<number | ''>('')
   const [filtroStatus, setFiltroStatus] = useState<InsuranceGuideStatus | ''>('')
   const [filtroPertoVencer, setFiltroPertoVencer] = useState(false)
   const [filtroMostrarFaturadas, setFiltroMostrarFaturadas] = useState(false)
+  const [filtroSemSaldo, setFiltroSemSaldo] = useState(false)
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(50)
   const [meta, setMeta] = useState<ListMeta>(META_VAZIA)
@@ -132,6 +133,7 @@ export function GuiasPage() {
     setProfissionalEdicao(null)
     setHealthPlanIdEdicao(guia.healthPlanId)
     setStatusEdicao(guia.status)
+    setGuideNumberEdicao(guia.guideNumber ?? '')
     setExpirationDateEdicao(guia.expirationDate)
     setStartDateEdicao(prazo != null ? adicionarDiasISO(guia.expirationDate, -prazo) : '')
     setProcedimentosEdicao(
@@ -158,6 +160,7 @@ export function GuiasPage() {
     setProfissionalEdicao(null)
     setHealthPlanIdEdicao('')
     setStatusEdicao('pending')
+    setGuideNumberEdicao('')
     setStartDateEdicao('')
     setExpirationDateEdicao('')
     setProcedimentosEdicao([])
@@ -218,6 +221,7 @@ export function GuiasPage() {
         healthPlanId: healthPlanIdEdicao,
         healthProfessionalId: healthProfessionalIdEdicao,
         status: statusEdicao,
+        guideNumber: guideNumberEdicao.trim() ? guideNumberEdicao.trim() : null,
         expirationDate: expirationDateEdicao,
         procedures: procedures.map((item) => ({
           procedureId: item.procedureId,
@@ -232,32 +236,6 @@ export function GuiasPage() {
       setError(mensagemErroApi(err, 'Não foi possível editar a guia.'))
     } finally {
       setSavingEdit(false)
-    }
-  }
-
-  function abrirFaturar(guia: InsuranceGuide) {
-    setFaturando(guia)
-  }
-
-  function fecharFaturar() {
-    if (savingFaturar) return
-    setFaturando(null)
-  }
-
-  async function confirmarFaturar() {
-    if (!faturando) return
-    setSavingFaturar(true)
-    setError(null)
-    setSuccess(null)
-    try {
-      const atualizado = await atualizarGuia(faturando.id, { isBilled: true })
-      setGuias((prev) => prev.map((item) => (item.id === atualizado.id ? atualizado : item)))
-      setFaturando(null)
-      setSuccess('Guia faturada com sucesso.')
-    } catch (err) {
-      setError(mensagemErroApi(err, 'Não foi possível faturar a guia.'))
-    } finally {
-      setSavingFaturar(false)
     }
   }
 
@@ -307,9 +285,10 @@ export function GuiasPage() {
     return guias.filter((guia) => {
       if (guia.isBilled !== filtroMostrarFaturadas) return false
       if (filtroPertoVencer && statusPrazoGuia(guia.expirationDate) !== 'proxima') return false
+      if (filtroSemSaldo && !guiaProcedimentosTotalmenteUtilizados(guia.procedures)) return false
       return true
     })
-  }, [guias, filtroMostrarFaturadas, filtroPertoVencer])
+  }, [guias, filtroMostrarFaturadas, filtroPertoVencer, filtroSemSaldo])
 
   const carregarGuias = useCallback(async () => {
     setLoading(true)
@@ -456,6 +435,15 @@ export function GuiasPage() {
               }
               label="Mostrar faturadas"
             />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={filtroSemSaldo}
+                  onChange={(_, checked) => setFiltroSemSaldo(checked)}
+                />
+              }
+              label="Sem saldo"
+            />
           </Stack>
           <Stack direction="row" spacing={2} flexWrap="wrap">
             <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
@@ -495,7 +483,6 @@ export function GuiasPage() {
           <GuiasTable
             guias={guiasFiltradas}
             onEditar={abrirEdicao}
-            onFaturar={abrirFaturar}
             onExcluir={(guia) => void excluir(guia)}
           />
           <TablePagination
@@ -565,6 +552,12 @@ export function GuiasPage() {
                 </MenuItem>
               ))}
             </TextField>
+            <TextField
+              label="Número da guia"
+              value={guideNumberEdicao}
+              onChange={(event) => setGuideNumberEdicao(event.target.value)}
+              helperText="Opcional"
+            />
             <TextField
               label="Data de início"
               type="date"
@@ -735,23 +728,6 @@ export function GuiasPage() {
           <Button onClick={fecharEdicao}>Cancelar</Button>
           <Button onClick={() => void salvarEdicao()} variant="contained" disabled={savingEdit || formInvalido}>
             Salvar
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={Boolean(faturando)} onClose={fecharFaturar} fullWidth maxWidth="sm">
-        <DialogTitle>Faturar guia</DialogTitle>
-        <DialogContent>
-          <Alert severity="warning" sx={{ mt: 0.5 }}>
-            Confirma o faturamento desta guia? Guias faturadas não podem ser associadas a novos agendamentos.
-          </Alert>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={fecharFaturar} disabled={savingFaturar}>
-            Cancelar
-          </Button>
-          <Button onClick={() => void confirmarFaturar()} variant="contained" disabled={savingFaturar}>
-            {savingFaturar ? 'Faturando...' : 'Confirmar'}
           </Button>
         </DialogActions>
       </Dialog>

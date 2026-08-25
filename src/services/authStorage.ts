@@ -14,8 +14,30 @@ export function clearToken(): void {
   localStorage.removeItem(USER_KEY)
 }
 
+export function isAccessTokenExpired(token: string): boolean {
+  const payload = decodeJwtPayload(token)
+  if (!payload) {
+    return true
+  }
+
+  const exp = payload.exp
+  if (typeof exp !== 'number' || !Number.isFinite(exp)) {
+    return false
+  }
+
+  return Date.now() >= exp * 1000
+}
+
 export function isAuthenticated(): boolean {
-  return Boolean(getToken())
+  const token = getToken()
+  if (!token) {
+    return false
+  }
+  if (isAccessTokenExpired(token)) {
+    clearToken()
+    return false
+  }
+  return true
 }
 
 export interface StoredUser {
