@@ -146,7 +146,10 @@ function GuiaRow({
         <TableCell colSpan={7} sx={{ py: 0, px: 0 }}>
           <Collapse in={open} timeout="auto" unmountOnExit>
             <Box sx={{ py: 1.5, px: 2 }}>
-              <GuiaProcedimentosTabela procedimentos={guia.procedures} />
+              <GuiaProcedimentosTabela
+                procedimentos={guia.procedures}
+                healthPlanId={guia.healthPlanId}
+              />
             </Box>
           </Collapse>
         </TableCell>

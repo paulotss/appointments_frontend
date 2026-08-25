@@ -32,6 +32,7 @@ import { atualizarGuia, excluirGuia, listarGuias } from '../services/insurance-g
 import { buscarPaciente } from '../services/patients.service'
 import { listarProcedimentos } from '../services/procedures.service'
 import {
+  guiaProcedimentosTotalmenteUtilizados,
   INSURANCE_GUIDE_STATUSES,
   INSURANCE_GUIDE_STATUS_LABELS,
   type InsuranceGuide,
@@ -86,6 +87,7 @@ export function GuiasPage() {
   const [filtroStatus, setFiltroStatus] = useState<InsuranceGuideStatus | ''>('')
   const [filtroPertoVencer, setFiltroPertoVencer] = useState(false)
   const [filtroMostrarFaturadas, setFiltroMostrarFaturadas] = useState(false)
+  const [filtroSemSaldo, setFiltroSemSaldo] = useState(false)
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(50)
   const [meta, setMeta] = useState<ListMeta>(META_VAZIA)
@@ -279,9 +281,10 @@ export function GuiasPage() {
     return guias.filter((guia) => {
       if (guia.isBilled !== filtroMostrarFaturadas) return false
       if (filtroPertoVencer && statusPrazoGuia(guia.expirationDate) !== 'proxima') return false
+      if (filtroSemSaldo && !guiaProcedimentosTotalmenteUtilizados(guia.procedures)) return false
       return true
     })
-  }, [guias, filtroMostrarFaturadas, filtroPertoVencer])
+  }, [guias, filtroMostrarFaturadas, filtroPertoVencer, filtroSemSaldo])
 
   const carregarGuias = useCallback(async () => {
     setLoading(true)
@@ -427,6 +430,15 @@ export function GuiasPage() {
                 />
               }
               label="Mostrar faturadas"
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={filtroSemSaldo}
+                  onChange={(_, checked) => setFiltroSemSaldo(checked)}
+                />
+              }
+              label="Sem saldo"
             />
           </Stack>
           <Stack direction="row" spacing={2} flexWrap="wrap">

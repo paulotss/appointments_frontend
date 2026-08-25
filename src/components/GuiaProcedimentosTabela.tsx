@@ -19,11 +19,19 @@ export type GuiaProcedimentoLinha = InsuranceGuideProcedure & {
 
 interface GuiaProcedimentosTabelaProps {
   procedimentos: GuiaProcedimentoLinha[]
+  healthPlanId?: number
   emptyText?: string
+}
+
+function codigoTissLinha(item: GuiaProcedimentoLinha, healthPlanId?: number): string {
+  const planoId = item.healthPlanId ?? healthPlanId
+  if (planoId == null) return '—'
+  return tissCodeDoPlano(item.procedure, planoId) ?? '—'
 }
 
 export function GuiaProcedimentosTabela({
   procedimentos,
+  healthPlanId,
   emptyText = 'Nenhum procedimento nesta guia.',
 }: GuiaProcedimentosTabelaProps) {
   if (procedimentos.length === 0) {
@@ -55,11 +63,7 @@ export function GuiaProcedimentosTabela({
             <TableRow key={`${item.insuranceGuideId}-${item.id || item.procedureId}-${index}`}>
               {mostrarGuia ? <TableCell>{item.guiaLabel ?? '—'}</TableCell> : null}
               <TableCell>{item.procedure?.name ?? `Procedimento ${item.procedureId}`}</TableCell>
-              <TableCell>
-                {item.healthPlanId != null
-                  ? tissCodeDoPlano(item.procedure, item.healthPlanId) ?? '—'
-                  : '—'}
-              </TableCell>
+              <TableCell>{codigoTissLinha(item, healthPlanId)}</TableCell>
               <TableCell align="right">{formatarMoedaBRL(item.value) || '—'}</TableCell>
               <TableCell align="right">{item.authorizedQuantity}</TableCell>
               <TableCell align="right">{item.usedQuantity}</TableCell>
