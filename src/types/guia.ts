@@ -51,6 +51,7 @@ export interface InsuranceGuide {
   healthPlanId: number
   patientId: number
   healthProfessionalId: number
+  guideNumber: string | null
   expirationDate: string
   isBilled: boolean
   status: InsuranceGuideStatus
@@ -64,6 +65,7 @@ export interface CreateInsuranceGuideRequest {
   healthPlanId: number
   patientId: number
   healthProfessionalId: number
+  guideNumber?: string
   expirationDate?: string
   isBilled?: boolean
   status?: InsuranceGuideStatus
@@ -74,6 +76,7 @@ export interface UpdateInsuranceGuideRequest {
   healthPlanId?: number
   patientId?: number
   healthProfessionalId?: number
+  guideNumber?: string | null
   expirationDate?: string
   isBilled?: boolean
   status?: InsuranceGuideStatus

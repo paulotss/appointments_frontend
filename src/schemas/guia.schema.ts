@@ -18,6 +18,11 @@ export const guiaSchema = z.object({
     .int()
     .positive('Selecione o profissional'),
   status: z.enum(INSURANCE_GUIDE_STATUSES),
+  guideNumber: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => (value ? value : undefined)),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe a data de início'),
   expirationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe a data de validade'),
   procedures: z

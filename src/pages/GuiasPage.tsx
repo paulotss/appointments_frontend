@@ -77,6 +77,7 @@ export function GuiasPage() {
   const [profissionalEdicao, setProfissionalEdicao] = useState<HealthProfessional | null>(null)
   const [healthPlanIdEdicao, setHealthPlanIdEdicao] = useState<number | ''>('')
   const [statusEdicao, setStatusEdicao] = useState<InsuranceGuideStatus>('pending')
+  const [guideNumberEdicao, setGuideNumberEdicao] = useState('')
   const [startDateEdicao, setStartDateEdicao] = useState('')
   const [expirationDateEdicao, setExpirationDateEdicao] = useState('')
   const [procedimentosEdicao, setProcedimentosEdicao] = useState<ProcedimentoEdicao[]>([])
@@ -132,6 +133,7 @@ export function GuiasPage() {
     setProfissionalEdicao(null)
     setHealthPlanIdEdicao(guia.healthPlanId)
     setStatusEdicao(guia.status)
+    setGuideNumberEdicao(guia.guideNumber ?? '')
     setExpirationDateEdicao(guia.expirationDate)
     setStartDateEdicao(prazo != null ? adicionarDiasISO(guia.expirationDate, -prazo) : '')
     setProcedimentosEdicao(
@@ -158,6 +160,7 @@ export function GuiasPage() {
     setProfissionalEdicao(null)
     setHealthPlanIdEdicao('')
     setStatusEdicao('pending')
+    setGuideNumberEdicao('')
     setStartDateEdicao('')
     setExpirationDateEdicao('')
     setProcedimentosEdicao([])
@@ -218,6 +221,7 @@ export function GuiasPage() {
         healthPlanId: healthPlanIdEdicao,
         healthProfessionalId: healthProfessionalIdEdicao,
         status: statusEdicao,
+        guideNumber: guideNumberEdicao.trim() ? guideNumberEdicao.trim() : null,
         expirationDate: expirationDateEdicao,
         procedures: procedures.map((item) => ({
           procedureId: item.procedureId,
@@ -548,6 +552,12 @@ export function GuiasPage() {
                 </MenuItem>
               ))}
             </TextField>
+            <TextField
+              label="Número da guia"
+              value={guideNumberEdicao}
+              onChange={(event) => setGuideNumberEdicao(event.target.value)}
+              helperText="Opcional"
+            />
             <TextField
               label="Data de início"
               type="date"
