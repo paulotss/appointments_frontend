@@ -155,6 +155,23 @@ export interface ListarFinancialExitsParams {
   limit?: number
 }
 
+export const PAYABLE_DOCUMENT_MAX_FILES = 3
+export const PAYABLE_DOCUMENT_MAX_BYTES = 1024 * 1024
+export const PAYABLE_DOCUMENT_MIME_TYPES = [
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+] as const
+
+export interface PayableDocument {
+  id: number
+  payableId: number
+  originalName: string
+  mimeType: string
+  sizeBytes: number
+  uploadedAt: string
+}
+
 export interface Payable {
   id: number
   supplierId: number
@@ -169,6 +186,7 @@ export interface Payable {
   createdAt: string
   supplier?: FinanceiroSupplierRef
   financialExit?: FinancialExit | null
+  documents: PayableDocument[]
 }
 
 export interface CreatePayableRequest {

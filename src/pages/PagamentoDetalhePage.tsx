@@ -15,8 +15,12 @@ import {
   Typography,
 } from '@mui/material'
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { buscarPagamento, faturarPagamento } from '../services/payables.service'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import {
+  baixarDocumentoPagamento,
+  buscarPagamento,
+  faturarPagamento,
+} from '../services/payables.service'
 import {
   PAYABLE_KIND_LABELS,
   PAYABLE_STATUS_LABELS,
@@ -48,15 +52,27 @@ function corStatus(status: Payable['status']) {
   return 'default'
 }
 
+function formatarTamanhoArquivo(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1).replace('.', ',')} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`
+}
+
 export function PagamentoDetalhePage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { id: idParam } = useParams<{ id: string }>()
   const id = idParam != null && idParam !== '' ? Number.parseInt(idParam, 10) : Number.NaN
+  const avisoNavegacao =
+    location.state && typeof location.state === 'object' && 'warning' in location.state
+      ? String((location.state as { warning?: string }).warning ?? '')
+      : ''
 
   const [pagamento, setPagamento] = useState<Payable | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const aviso = avisoNavegacao || null
   const [dialogAberto, setDialogAberto] = useState(false)
   const [saving, setSaving] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix')
@@ -87,6 +103,21 @@ export function PagamentoDetalhePage() {
       cancelado = true
     }
   }, [id])
+
+  async function baixarDocumento(documentId: number, nome: string) {
+    setError(null)
+    try {
+      const blob = await baixarDocumentoPagamento(id, documentId)
+      const url = URL.createObjectURL(blob)
+      const link = window.document.createElement('a')
+      link.href = url
+      link.setAttribute('download', nome)
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(mensagemErroApi(err, 'Não foi possível baixar o documento.'))
+    }
+  }
 
   async function confirmarFaturar() {
     if (!pagamento) return
@@ -124,6 +155,7 @@ export function PagamentoDetalhePage() {
       </Stack>
 
       {error ? <Alert severity="error">{error}</Alert> : null}
+      {aviso ? <Alert severity="warning">{aviso}</Alert> : null}
       {success ? <Alert severity="success">{success}</Alert> : null}
 
       {loading ? (
@@ -161,6 +193,31 @@ export function PagamentoDetalhePage() {
             <Typography>
               <strong>Observações:</strong> {pagamento.notes ?? '—'}
             </Typography>
+            <Stack spacing={0.5}>
+              <Typography>
+                <strong>Documentos:</strong>
+                {pagamento.documents.length === 0 ? ' —' : ''}
+              </Typography>
+              {pagamento.documents.map((documento) => (
+                <Stack
+                  key={documento.id}
+                  direction="row"
+                  alignItems="center"
+                  gap={1}
+                  flexWrap="wrap"
+                >
+                  <Typography>
+                    {documento.originalName} ({formatarTamanhoArquivo(documento.sizeBytes)})
+                  </Typography>
+                  <Button
+                    size="small"
+                    onClick={() => void baixarDocumento(documento.id, documento.originalName)}
+                  >
+                    Baixar
+                  </Button>
+                </Stack>
+              ))}
+            </Stack>
             {pagamento.financialExit ? (
               <Alert severity="info">
                 Saída #{pagamento.financialExit.id} gerada em{' '}

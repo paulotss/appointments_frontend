@@ -5,6 +5,7 @@ import {
   type ListarPayablesParams,
   type PayPayableRequest,
   type Payable,
+  type PayableDocument,
   type PaymentMethod,
 } from '../types/financeiro'
 import { isoDatePrefix } from '../utils/dataISO'
@@ -28,6 +29,15 @@ interface BackendFinancialExit {
   createdAt: string
 }
 
+interface BackendPayableDocument {
+  id: number
+  payableId: number
+  originalName: string
+  mimeType: string
+  sizeBytes: number
+  uploadedAt: string
+}
+
 interface BackendPayable {
   id: number
   supplierId: number
@@ -42,6 +52,18 @@ interface BackendPayable {
   createdAt: string
   supplier?: BackendSupplierRef
   financialExit?: BackendFinancialExit | null
+  documents?: BackendPayableDocument[]
+}
+
+function mapDocumento(item: BackendPayableDocument): PayableDocument {
+  return {
+    id: item.id,
+    payableId: item.payableId,
+    originalName: item.originalName,
+    mimeType: item.mimeType,
+    sizeBytes: item.sizeBytes,
+    uploadedAt: item.uploadedAt,
+  }
 }
 
 function mapPayable(item: BackendPayable): Payable {
@@ -59,6 +81,7 @@ function mapPayable(item: BackendPayable): Payable {
     createdAt: item.createdAt,
     supplier: item.supplier,
     financialExit: item.financialExit ? mapBackendFinancialExit(item.financialExit) : null,
+    documents: (item.documents ?? []).map(mapDocumento),
   }
 }
 
@@ -94,4 +117,24 @@ export async function criarPagamento(payload: CreatePayableRequest): Promise<Pay
 export async function faturarPagamento(id: number, payload: PayPayableRequest): Promise<Payable> {
   const response = await apiClient.post<BackendPayable>(`/payables/${id}/pay`, payload)
   return mapPayable(response.data)
+}
+
+export async function enviarDocumentoPagamento(id: number, file: File): Promise<PayableDocument> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await apiClient.post<BackendPayableDocument>(
+    `/payables/${id}/documents`,
+    formData,
+    {
+      headers: { 'Content-Type': false },
+    },
+  )
+  return mapDocumento(response.data)
+}
+
+export async function baixarDocumentoPagamento(payableId: number, documentId: number): Promise<Blob> {
+  const response = await apiClient.get<Blob>(`/payables/${payableId}/documents/${documentId}/download`, {
+    responseType: 'blob',
+  })
+  return response.data
 }

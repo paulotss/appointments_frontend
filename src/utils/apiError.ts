@@ -38,6 +38,7 @@ const MENSAGENS_EXATAS: Record<string, string> = {
   'file is required': 'Envie um arquivo.',
   'Only PDF, JPEG and PNG documents are allowed':
     'Somente documentos PDF, JPEG e PNG são permitidos.',
+  'File too large': 'O arquivo excede o tamanho máximo permitido.',
   'Only open billing batches can be updated': 'Somente lotes abertos podem ser atualizados.',
   'Only open billing batches can be billed': 'Somente lotes abertos podem ser faturados.',
   'Cannot bill a batch without guides': 'Não é possível faturar um lote sem guias.',
