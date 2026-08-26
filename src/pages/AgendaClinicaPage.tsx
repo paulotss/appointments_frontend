@@ -5,6 +5,7 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   Dialog,
   DialogContent,
@@ -18,7 +19,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AgendaClinicaCabecalho,
   AgendaClinicaCalendario,
@@ -97,8 +98,14 @@ function montarIntervalo(values: AgendamentoClinicoFormValues): { scheduledAt: s
   }
 }
 
+function notesDoFormulario(values: AgendamentoClinicoFormValues): string | null {
+  const notes = values.notes?.trim()
+  return notes ? notes : null
+}
+
 function montarPayloadCriacao(values: AgendamentoClinicoFormValues): CreateClinicalAppointmentRequest {
   const { scheduledAt, endsAt } = montarIntervalo(values)
+  const notes = notesDoFormulario(values)
   if (values.type === 'private') {
     return {
       patientId: values.patientId,
@@ -108,6 +115,7 @@ function montarPayloadCriacao(values: AgendamentoClinicoFormValues): CreateClini
       type: 'private',
       status: values.status,
       procedureIds: values.procedureIds,
+      ...(notes ? { notes } : {}),
     }
   }
   return {
@@ -118,31 +126,49 @@ function montarPayloadCriacao(values: AgendamentoClinicoFormValues): CreateClini
     type: 'health_plan',
     status: values.status,
     insuranceGuideIds: values.insuranceGuideIds,
+    ...(notes ? { notes } : {}),
   }
 }
 
-function montarPayloadAtualizacao(values: AgendamentoClinicoFormValues): UpdateClinicalAppointmentRequest {
+function idsIguais(a: number[], b: number[]): boolean {
+  if (a.length !== b.length) return false
+  const ordenadosA = [...a].sort((x, y) => x - y)
+  const ordenadosB = [...b].sort((x, y) => x - y)
+  return ordenadosA.every((id, index) => id === ordenadosB[index])
+}
+
+function montarPayloadAtualizacao(
+  values: AgendamentoClinicoFormValues,
+  atual: ClinicalAppointment,
+): UpdateClinicalAppointmentRequest {
   const { scheduledAt, endsAt } = montarIntervalo(values)
-  if (values.type === 'private') {
-    return {
-      patientId: values.patientId,
-      healthProfessionalId: values.healthProfessionalId,
-      scheduledAt,
-      endsAt,
-      type: 'private',
-      status: values.status,
-      procedureIds: values.procedureIds,
-    }
-  }
-  return {
+  const tipoMudou = values.type !== atual.type
+  const payload: UpdateClinicalAppointmentRequest = {
     patientId: values.patientId,
     healthProfessionalId: values.healthProfessionalId,
     scheduledAt,
     endsAt,
-    type: 'health_plan',
     status: values.status,
-    insuranceGuideIds: values.insuranceGuideIds,
+    notes: notesDoFormulario(values),
   }
+
+  if (tipoMudou) {
+    payload.type = values.type
+  }
+
+  if (values.type === 'private') {
+    const atuais = atual.procedures.map((item) => item.procedureId)
+    if (tipoMudou || !idsIguais(values.procedureIds, atuais)) {
+      payload.procedureIds = values.procedureIds
+    }
+  } else {
+    const atuais = idsGuiasDoAgendamento(atual)
+    if (tipoMudou || !idsIguais(values.insuranceGuideIds, atuais)) {
+      payload.insuranceGuideIds = values.insuranceGuideIds
+    }
+  }
+
+  return payload
 }
 
 export function AgendaClinicaPage() {
@@ -163,6 +189,8 @@ export function AgendaClinicaPage() {
   const [editando, setEditando] = useState<ClinicalAppointment | null>(null)
   const [dataPreenchida, setDataPreenchida] = useState(ymdEmSaoPaulo())
   const [horaPreenchida, setHoraPreenchida] = useState('08:00')
+  const [cabecalhoCompacto, setCabecalhoCompacto] = useState(false)
+  const sentinelCabecalhoRef = useRef<HTMLDivElement>(null)
 
   const { from, to } = useMemo(() => intervaloVisivel(visao, dataRef), [visao, dataRef])
   const filtroPacienteId = filtroPaciente?.id ?? ''
@@ -251,7 +279,7 @@ export function AgendaClinicaPage() {
     setSuccess(null)
     try {
       if (editando) {
-        await atualizarAgendamentoClinico(editando.id, montarPayloadAtualizacao(values))
+        await atualizarAgendamentoClinico(editando.id, montarPayloadAtualizacao(values, editando))
         setSuccess('Agendamento atualizado com sucesso.')
       } else {
         await criarAgendamentoClinico(montarPayloadCriacao(values))
@@ -290,6 +318,36 @@ export function AgendaClinicaPage() {
   const visaoCalendario: VisaoAgenda = visao === 'lista' ? 'semana' : visao
   const calendarioVisivel = filtroAgendaAtivo && !loading && visao !== 'lista'
 
+  const chipsFiltrosSelecionados = useMemo(() => {
+    const chips: { key: string; label: string }[] = []
+    if (filtroPaciente) {
+      chips.push({ key: 'paciente', label: `Paciente: ${filtroPaciente.name}` })
+    }
+    if (filtroProfissional) {
+      chips.push({ key: 'profissional', label: `Profissional: ${filtroProfissional.name}` })
+    }
+    if (filtroTipo !== '') {
+      chips.push({ key: 'tipo', label: CLINICAL_APPOINTMENT_TYPE_LABELS[filtroTipo] })
+    }
+    if (filtroStatus !== '') {
+      chips.push({ key: 'status', label: CLINICAL_APPOINTMENT_STATUS_LABELS[filtroStatus] })
+    }
+    return chips
+  }, [filtroPaciente, filtroProfissional, filtroTipo, filtroStatus])
+
+  useEffect(() => {
+    const el = sentinelCabecalhoRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setCabecalhoCompacto(!entry.isIntersecting)
+      },
+      { threshold: 0 },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <Stack spacing={2}>
       <Box display="flex" alignItems="center" justifyContent="space-between" gap={2} flexWrap="wrap">
@@ -302,6 +360,7 @@ export function AgendaClinicaPage() {
       </Box>
 
       <Box>
+        <Box ref={sentinelCabecalhoRef} aria-hidden sx={{ height: 1, mt: '-1px' }} />
         <Box
           sx={{
             position: 'sticky',
@@ -310,84 +369,133 @@ export function AgendaClinicaPage() {
             bgcolor: 'grey.100',
           }}
         >
-          <Paper sx={{ p: 1.5 }}>
-            <Stack spacing={1.5}>
-              <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ md: 'center' }}>
-                <Stack direction="row" spacing={0.5} alignItems="center">
-                  <Button size="small" variant="outlined" onClick={irHoje}>
-                    Hoje
-                  </Button>
-                  <IconButton aria-label="Anterior" onClick={irAnterior} size="small">
-                    <ChevronLeftIcon />
-                  </IconButton>
-                  <IconButton aria-label="Próximo" onClick={irProximo} size="small">
-                    <ChevronRightIcon />
-                  </IconButton>
+          <Paper sx={{ p: cabecalhoCompacto ? 1 : 1.5 }}>
+            <Box sx={{ display: cabecalhoCompacto ? 'none' : 'block' }} aria-hidden={cabecalhoCompacto}>
+              <Stack spacing={1.5}>
+                <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ md: 'center' }}>
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <Button size="small" variant="outlined" onClick={irHoje}>
+                      Hoje
+                    </Button>
+                    <IconButton aria-label="Anterior" onClick={irAnterior} size="small">
+                      <ChevronLeftIcon />
+                    </IconButton>
+                    <IconButton aria-label="Próximo" onClick={irProximo} size="small">
+                      <ChevronRightIcon />
+                    </IconButton>
+                  </Stack>
+                  <Typography variant="h6" fontWeight={700} sx={{ flex: 1, textTransform: 'capitalize' }}>
+                    {tituloPeriodo(visao, dataRef)}
+                  </Typography>
+                  <ToggleButtonGroup
+                    exclusive
+                    size="small"
+                    value={visao}
+                    onChange={(_, value: VisaoTela | null) => {
+                      if (value) setVisao(value)
+                    }}
+                  >
+                    <ToggleButton value="dia">Dia</ToggleButton>
+                    <ToggleButton value="semana">Semana</ToggleButton>
+                    <ToggleButton value="mes">Mês</ToggleButton>
+                    <ToggleButton value="lista">Lista</ToggleButton>
+                  </ToggleButtonGroup>
                 </Stack>
-                <Typography variant="h6" fontWeight={700} sx={{ flex: 1, textTransform: 'capitalize' }}>
-                  {tituloPeriodo(visao, dataRef)}
-                </Typography>
-                <ToggleButtonGroup
-                  exclusive
-                  size="small"
-                  value={visao}
-                  onChange={(_, value: VisaoTela | null) => {
-                    if (value) setVisao(value)
-                  }}
-                >
-                  <ToggleButton value="dia">Dia</ToggleButton>
-                  <ToggleButton value="semana">Semana</ToggleButton>
-                  <ToggleButton value="mes">Mês</ToggleButton>
-                  <ToggleButton value="lista">Lista</ToggleButton>
-                </ToggleButtonGroup>
-              </Stack>
 
-              <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
-                <Box sx={{ minWidth: 220, flex: 1 }}>
-                  <PacienteBuscaAutocomplete
-                    value={filtroPaciente}
-                    onChange={setFiltroPaciente}
+                <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
+                  <Box sx={{ minWidth: 220, flex: 1 }}>
+                    <PacienteBuscaAutocomplete
+                      value={filtroPaciente}
+                      onChange={setFiltroPaciente}
+                      size="small"
+                    />
+                  </Box>
+                  <Box sx={{ minWidth: 220, flex: 1 }}>
+                    <ProfissionalBuscaAutocomplete
+                      value={filtroProfissional}
+                      onChange={setFiltroProfissional}
+                      size="small"
+                    />
+                  </Box>
+                  <TextField
+                    select
                     size="small"
-                  />
-                </Box>
-                <Box sx={{ minWidth: 220, flex: 1 }}>
-                  <ProfissionalBuscaAutocomplete
-                    value={filtroProfissional}
-                    onChange={setFiltroProfissional}
+                    label="Tipo"
+                    value={filtroTipo}
+                    onChange={(event) => setFiltroTipo(event.target.value as ClinicalAppointmentType | '')}
+                    sx={{ minWidth: 180 }}
+                  >
+                    <MenuItem value="">Todos</MenuItem>
+                    {CLINICAL_APPOINTMENT_TYPES.map((tipo) => (
+                      <MenuItem key={tipo} value={tipo}>
+                        {CLINICAL_APPOINTMENT_TYPE_LABELS[tipo]}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField
+                    select
                     size="small"
-                  />
-                </Box>
-                <TextField
-                  select
-                  size="small"
-                  label="Tipo"
-                  value={filtroTipo}
-                  onChange={(event) => setFiltroTipo(event.target.value as ClinicalAppointmentType | '')}
-                  sx={{ minWidth: 180 }}
-                >
-                  <MenuItem value="">Todos</MenuItem>
-                  {CLINICAL_APPOINTMENT_TYPES.map((tipo) => (
-                    <MenuItem key={tipo} value={tipo}>
-                      {CLINICAL_APPOINTMENT_TYPE_LABELS[tipo]}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  select
-                  size="small"
-                  label="Status"
-                  value={filtroStatus}
-                  onChange={(event) => setFiltroStatus(event.target.value as ClinicalAppointmentStatus | '')}
-                  sx={{ minWidth: 180 }}
-                >
-                  <MenuItem value="">Todos</MenuItem>
-                  {CLINICAL_APPOINTMENT_STATUSES.map((status) => (
-                    <MenuItem key={status} value={status}>
-                      {CLINICAL_APPOINTMENT_STATUS_LABELS[status]}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                    label="Status"
+                    value={filtroStatus}
+                    onChange={(event) => setFiltroStatus(event.target.value as ClinicalAppointmentStatus | '')}
+                    sx={{ minWidth: 180 }}
+                  >
+                    <MenuItem value="">Todos</MenuItem>
+                    {CLINICAL_APPOINTMENT_STATUSES.map((status) => (
+                      <MenuItem key={status} value={status}>
+                        {CLINICAL_APPOINTMENT_STATUS_LABELS[status]}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Stack>
               </Stack>
+            </Box>
+
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              flexWrap="wrap"
+              useFlexGap
+              aria-hidden={!cabecalhoCompacto}
+              aria-label="Filtros da agenda. Clique para voltar ao topo e editar."
+              role={cabecalhoCompacto ? 'button' : undefined}
+              tabIndex={cabecalhoCompacto ? 0 : -1}
+              sx={{
+                display: cabecalhoCompacto ? 'flex' : 'none',
+                cursor: 'pointer',
+              }}
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }
+              }}
+              title="Role para o topo para editar os filtros"
+            >
+              <Typography
+                variant="subtitle1"
+                fontWeight={700}
+                sx={{ textTransform: 'capitalize', lineHeight: 1.3 }}
+              >
+                {tituloPeriodo(visao, dataRef)}
+              </Typography>
+              {chipsFiltrosSelecionados.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  Nenhum filtro selecionado
+                </Typography>
+              ) : (
+                chipsFiltrosSelecionados.map((chip) => (
+                  <Chip
+                    key={chip.key}
+                    label={chip.label}
+                    size="small"
+                    variant="outlined"
+                    sx={{ cursor: 'inherit', pointerEvents: 'none' }}
+                  />
+                ))
+              )}
             </Stack>
           </Paper>
 
@@ -405,49 +513,51 @@ export function AgendaClinicaPage() {
           {calendarioVisivel ? (
             <Paper
               sx={{
-                mt: 2,
+                mt: cabecalhoCompacto ? 1 : 2,
                 p: 1,
                 pb: 0,
                 borderBottomLeftRadius: 0,
                 borderBottomRightRadius: 0,
               }}
             >
-              <Stack direction="row" spacing={2} sx={{ px: 1, py: 0.5 }} flexWrap="wrap" useFlexGap>
-                {CLINICAL_APPOINTMENT_STATUSES.map((status) => (
-                  <Typography
-                    key={status}
-                    variant="caption"
-                    sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}
-                  >
-                    <Box
-                      sx={{
-                        width: 12,
-                        height: 12,
-                        bgcolor: CLINICAL_APPOINTMENT_STATUS_CORES[status],
-                        borderRadius: 0.5,
-                      }}
-                    />
-                    {CLINICAL_APPOINTMENT_STATUS_LABELS[status]}
-                  </Typography>
-                ))}
-                {CLINICAL_APPOINTMENT_TYPES.map((tipo) => (
-                  <Typography
-                    key={tipo}
-                    variant="caption"
-                    sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}
-                  >
-                    <Box
-                      sx={{
-                        width: 4,
-                        height: 12,
-                        bgcolor: CLINICAL_APPOINTMENT_TYPE_CORES[tipo],
-                        borderRadius: 0.25,
-                      }}
-                    />
-                    {CLINICAL_APPOINTMENT_TYPE_LABELS[tipo]}
-                  </Typography>
-                ))}
-              </Stack>
+              {cabecalhoCompacto ? null : (
+                <Stack direction="row" spacing={2} sx={{ px: 1, py: 0.5 }} flexWrap="wrap" useFlexGap>
+                  {CLINICAL_APPOINTMENT_STATUSES.map((status) => (
+                    <Typography
+                      key={status}
+                      variant="caption"
+                      sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}
+                    >
+                      <Box
+                        sx={{
+                          width: 12,
+                          height: 12,
+                          bgcolor: CLINICAL_APPOINTMENT_STATUS_CORES[status],
+                          borderRadius: 0.5,
+                        }}
+                      />
+                      {CLINICAL_APPOINTMENT_STATUS_LABELS[status]}
+                    </Typography>
+                  ))}
+                  {CLINICAL_APPOINTMENT_TYPES.map((tipo) => (
+                    <Typography
+                      key={tipo}
+                      variant="caption"
+                      sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}
+                    >
+                      <Box
+                        sx={{
+                          width: 4,
+                          height: 12,
+                          bgcolor: CLINICAL_APPOINTMENT_TYPE_CORES[tipo],
+                          borderRadius: 0.25,
+                        }}
+                      />
+                      {CLINICAL_APPOINTMENT_TYPE_LABELS[tipo]}
+                    </Typography>
+                  ))}
+                </Stack>
+              )}
               <AgendaClinicaCabecalho visao={visaoCalendario} dataRef={dataRef} />
             </Paper>
           ) : null}
@@ -517,6 +627,7 @@ export function AgendaClinicaPage() {
                         type: editando.type,
                         procedureIds: editando.procedures.map((item) => item.procedureId),
                         insuranceGuideIds: idsGuiasDoAgendamento(editando),
+                        notes: editando.notes ?? '',
                       }
                     : {
                         patientId: undefined,
@@ -528,6 +639,7 @@ export function AgendaClinicaPage() {
                         type: 'private',
                         procedureIds: [],
                         insuranceGuideIds: [],
+                        notes: '',
                       }
                 }
                 pacientes={filtroPaciente ? [filtroPaciente] : []}

@@ -65,6 +65,7 @@ export interface ClinicalAppointment {
   endsAt: string
   status: ClinicalAppointmentStatus
   type: ClinicalAppointmentType
+  notes: string | null
   patient?: InsuranceGuideRef
   healthProfessional?: InsuranceGuideRef
   insuranceGuides: ClinicalAppointmentGuideLink[]
@@ -78,6 +79,7 @@ export interface CreateClinicalAppointmentRequest {
   endsAt: string
   type: ClinicalAppointmentType
   status?: ClinicalAppointmentStatus
+  notes?: string
   insuranceGuideIds?: number[]
   procedureIds?: number[]
 }
@@ -89,6 +91,7 @@ export interface UpdateClinicalAppointmentRequest {
   endsAt?: string
   type?: ClinicalAppointmentType
   status?: ClinicalAppointmentStatus
+  notes?: string | null
   insuranceGuideIds?: number[]
   procedureIds?: number[]
 }

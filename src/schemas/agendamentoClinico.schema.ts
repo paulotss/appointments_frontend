@@ -20,6 +20,7 @@ const baseSchema = z.object({
   type: z.enum(CLINICAL_APPOINTMENT_TYPES),
   procedureIds: z.array(z.number().int().positive()).default([]),
   insuranceGuideIds: z.array(z.number().int().positive()).default([]),
+  notes: z.string().optional(),
 })
 
 export const agendamentoClinicoSchema = baseSchema.superRefine((values, ctx) => {

@@ -565,6 +565,24 @@ export function AgendamentoClinicoForm({
         </>
       )}
 
+      <Controller
+        name="notes"
+        control={control}
+        render={({ field }) => (
+          <TextField
+            label="Observações"
+            multiline
+            minRows={2}
+            value={field.value ?? ''}
+            onChange={field.onChange}
+            onBlur={field.onBlur}
+            inputRef={field.ref}
+            error={Boolean(errors.notes)}
+            helperText={errors.notes?.message ?? ' '}
+          />
+        )}
+      />
+
       <Stack direction="row" spacing={1} justifyContent="flex-end">
         {onExcluir ? (
           <Button color="error" onClick={onExcluir} disabled={loading} sx={{ mr: 'auto' }}>

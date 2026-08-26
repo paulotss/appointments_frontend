@@ -53,6 +53,7 @@ interface BackendClinicalAppointment {
   endsAt: string
   status: ClinicalAppointmentStatus
   type: ClinicalAppointmentType
+  notes?: string | null
   patient?: BackendRef
   healthProfessional?: BackendRef
   insuranceGuides?: BackendGuideLink[]
@@ -86,6 +87,7 @@ function mapBackendAppointment(item: BackendClinicalAppointment): ClinicalAppoin
     endsAt: item.endsAt,
     status: item.status,
     type: item.type,
+    notes: item.notes?.trim() ? item.notes : null,
     patient: item.patient,
     healthProfessional: item.healthProfessional,
     insuranceGuides: (item.insuranceGuides ?? []).map(mapGuideLink),

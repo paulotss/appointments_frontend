@@ -1,4 +1,5 @@
-import { Box, Chip, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@mui/material'
+import StickyNote2Icon from '@mui/icons-material/StickyNote2'
+import { Box, Chip, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip, Typography } from '@mui/material'
 import type { ClinicalAppointment } from '../types/agendamentoClinico'
 import {
   CLINICAL_APPOINTMENT_STATUS_CORES,
@@ -80,6 +81,8 @@ interface EventoChipProps {
 }
 
 export function EventoAgendaChip({ item, compact = false, onClick }: EventoChipProps) {
+  const nota = item.notes?.trim() || ''
+
   return (
     <Box
       onClick={(event) => {
@@ -87,12 +90,14 @@ export function EventoAgendaChip({ item, compact = false, onClick }: EventoChipP
         onClick(item)
       }}
       sx={{
+        position: 'relative',
         bgcolor: CLINICAL_APPOINTMENT_STATUS_CORES[item.status],
         color: '#fff',
         borderLeft: `4px solid ${CLINICAL_APPOINTMENT_TYPE_CORES[item.type]}`,
         borderRadius: 0.75,
         px: 0.75,
         py: compact ? 0.15 : 0.4,
+        pr: nota ? 2 : 0.75,
         fontSize: compact ? 11 : 12,
         lineHeight: 1.25,
         cursor: 'pointer',
@@ -102,6 +107,30 @@ export function EventoAgendaChip({ item, compact = false, onClick }: EventoChipP
         '&:hover': { filter: 'brightness(1.08)' },
       }}
     >
+      {nota ? (
+        <Tooltip
+          title={
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', maxWidth: 280 }}>
+              {nota}
+            </Typography>
+          }
+          arrow
+        >
+          <Box
+            component="span"
+            sx={{
+              position: 'absolute',
+              top: compact ? 1 : 2,
+              right: 2,
+              display: 'flex',
+              lineHeight: 0,
+              zIndex: 1,
+            }}
+          >
+            <StickyNote2Icon sx={{ fontSize: compact ? 11 : 13, color: '#ffeb3b' }} />
+          </Box>
+        </Tooltip>
+      ) : null}
       <Box component="span" sx={{ fontWeight: 700, display: 'block', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
         {formatarHoraSaoPaulo(item.scheduledAt)} {item.patient?.name ?? 'Paciente'}
       </Box>

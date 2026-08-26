@@ -107,7 +107,8 @@ export function guiaProcedimentosTotalmenteUtilizados(
   )
 }
 
-export function rotuloGuia(guia: Pick<InsuranceGuide, 'id' | 'healthPlan' | 'status'>): string {
+export function rotuloGuia(guia: Pick<InsuranceGuide, 'id' | 'guideNumber' | 'healthPlan' | 'status'>): string {
   const plano = guia.healthPlan?.name ?? 'Plano'
-  return `#${guia.id} · ${plano} · ${INSURANCE_GUIDE_STATUS_LABELS[guia.status] ?? guia.status}`
+  const identificador = guia.guideNumber?.trim() || `#${guia.id}`
+  return `${identificador} · ${plano} · ${INSURANCE_GUIDE_STATUS_LABELS[guia.status] ?? guia.status}`
 }

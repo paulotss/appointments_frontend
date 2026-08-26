@@ -20,7 +20,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CampoValorMoeda } from '../components/CampoValorMoeda'
 import { GuiasTable } from '../components/GuiasTable'
@@ -28,7 +28,7 @@ import { PacienteBuscaAutocomplete } from '../components/PacienteBuscaAutocomple
 import { ProfissionalBuscaAutocomplete } from '../components/ProfissionalBuscaAutocomplete'
 import { listarPlanosSaude } from '../services/health-plans.service'
 import { buscarProfissional } from '../services/health-professionals.service'
-import { atualizarGuia, excluirGuia, listarGuias } from '../services/insurance-guides.service'
+import { atualizarGuia, excluirGuia, listarGuias, listarTodasGuias } from '../services/insurance-guides.service'
 import { buscarPaciente } from '../services/patients.service'
 import { listarProcedimentos } from '../services/procedures.service'
 import {
@@ -56,6 +56,18 @@ function prazoDoPlano(guia: InsuranceGuide, planos: HealthPlan[]): number | unde
     guia.healthPlan?.submissionDeadlineDays ??
     planos.find((item) => item.id === guia.healthPlanId)?.submissionDeadlineDays
   )
+}
+
+function guiaAtendeFiltrosLocais(
+  guia: InsuranceGuide,
+  filtroMostrarFaturadas: boolean,
+  filtroPertoVencer: boolean,
+  filtroSemSaldo: boolean,
+): boolean {
+  if (guia.isBilled !== filtroMostrarFaturadas) return false
+  if (filtroPertoVencer && statusPrazoGuia(guia.expirationDate) !== 'proxima') return false
+  if (filtroSemSaldo && !guiaProcedimentosTotalmenteUtilizados(guia.procedures)) return false
+  return true
 }
 
 type ProcedimentoEdicao = {
@@ -281,38 +293,66 @@ export function GuiasPage() {
     startDateInvalida ||
     expirationInvalida
 
+  const filtrosLocaisAtivos = filtroPertoVencer || filtroSemSaldo || filtroMostrarFaturadas
+
+  const paramsApi = useMemo(
+    () => ({
+      ...(filtroPaciente ? { patientId: filtroPaciente.id } : {}),
+      ...(filtroPlanoId === '' ? {} : { healthPlanId: filtroPlanoId }),
+      ...(filtroStatus === '' ? {} : { status: filtroStatus }),
+    }),
+    [filtroPaciente, filtroPlanoId, filtroStatus],
+  )
+
   const guiasFiltradas = useMemo(() => {
-    return guias.filter((guia) => {
-      if (guia.isBilled !== filtroMostrarFaturadas) return false
-      if (filtroPertoVencer && statusPrazoGuia(guia.expirationDate) !== 'proxima') return false
-      if (filtroSemSaldo && !guiaProcedimentosTotalmenteUtilizados(guia.procedures)) return false
-      return true
-    })
+    return guias.filter((guia) =>
+      guiaAtendeFiltrosLocais(guia, filtroMostrarFaturadas, filtroPertoVencer, filtroSemSaldo),
+    )
   }, [guias, filtroMostrarFaturadas, filtroPertoVencer, filtroSemSaldo])
 
-  const carregarGuias = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const resultado = await listarGuias({
-        page: page + 1,
-        limit: rowsPerPage,
-        ...(filtroPaciente ? { patientId: filtroPaciente.id } : {}),
-        ...(filtroPlanoId === '' ? {} : { healthPlanId: filtroPlanoId }),
-        ...(filtroStatus === '' ? {} : { status: filtroStatus }),
-      })
-      setGuias(resultado.data)
-      setMeta(resultado.meta)
-    } catch (err) {
-      setError(mensagemErroApi(err, 'Não foi possível carregar as guias.'))
-    } finally {
-      setLoading(false)
-    }
-  }, [page, rowsPerPage, filtroPaciente, filtroPlanoId, filtroStatus])
+  const totalExibido = filtrosLocaisAtivos ? guiasFiltradas.length : meta.total
+  const ultimaPagina = Math.max(0, Math.ceil(totalExibido / rowsPerPage) - 1)
+  const pageSegura = Math.min(page, ultimaPagina)
+  const guiasExibidas = useMemo(() => {
+    if (!filtrosLocaisAtivos) return guiasFiltradas
+    const inicio = pageSegura * rowsPerPage
+    return guiasFiltradas.slice(inicio, inicio + rowsPerPage)
+  }, [filtrosLocaisAtivos, guiasFiltradas, pageSegura, rowsPerPage])
+
+  const paginaServidor = filtrosLocaisAtivos ? null : page
+  const limiteServidor = filtrosLocaisAtivos ? null : rowsPerPage
 
   useEffect(() => {
-    void carregarGuias()
-  }, [carregarGuias])
+    let cancelado = false
+    async function carregar() {
+      setLoading(true)
+      setError(null)
+      try {
+        if (paginaServidor == null || limiteServidor == null) {
+          const todas = await listarTodasGuias(paramsApi)
+          if (!cancelado) setGuias(todas)
+          return
+        }
+        const resultado = await listarGuias({
+          page: paginaServidor + 1,
+          limit: limiteServidor,
+          ...paramsApi,
+        })
+        if (!cancelado) {
+          setGuias(resultado.data)
+          setMeta(resultado.meta)
+        }
+      } catch (err) {
+        if (!cancelado) setError(mensagemErroApi(err, 'Não foi possível carregar as guias.'))
+      } finally {
+        if (!cancelado) setLoading(false)
+      }
+    }
+    void carregar()
+    return () => {
+      cancelado = true
+    }
+  }, [paramsApi, paginaServidor, limiteServidor])
 
   useEffect(() => {
     async function carregarPlanos() {
@@ -327,7 +367,11 @@ export function GuiasPage() {
 
   useEffect(() => {
     setPage(0)
-  }, [filtroPaciente, filtroPlanoId, filtroStatus])
+  }, [filtroPaciente, filtroPlanoId, filtroStatus, filtroPertoVencer, filtroMostrarFaturadas, filtroSemSaldo])
+
+  useEffect(() => {
+    if (page > ultimaPagina) setPage(ultimaPagina)
+  }, [page, ultimaPagina])
 
   useEffect(() => {
     async function carregarProcedimentos() {
@@ -421,7 +465,10 @@ export function GuiasPage() {
               control={
                 <Switch
                   checked={filtroPertoVencer}
-                  onChange={(_, checked) => setFiltroPertoVencer(checked)}
+                  onChange={(_, checked) => {
+                    setFiltroPertoVencer(checked)
+                    setPage(0)
+                  }}
                 />
               }
               label="Perto de vencer (7 dias)"
@@ -430,7 +477,10 @@ export function GuiasPage() {
               control={
                 <Switch
                   checked={filtroMostrarFaturadas}
-                  onChange={(_, checked) => setFiltroMostrarFaturadas(checked)}
+                  onChange={(_, checked) => {
+                    setFiltroMostrarFaturadas(checked)
+                    setPage(0)
+                  }}
                 />
               }
               label="Mostrar faturadas"
@@ -439,7 +489,10 @@ export function GuiasPage() {
               control={
                 <Switch
                   checked={filtroSemSaldo}
-                  onChange={(_, checked) => setFiltroSemSaldo(checked)}
+                  onChange={(_, checked) => {
+                    setFiltroSemSaldo(checked)
+                    setPage(0)
+                  }}
                 />
               }
               label="Sem saldo"
@@ -481,14 +534,14 @@ export function GuiasPage() {
       {!loading && !error && guiasFiltradas.length > 0 ? (
         <Paper sx={{ p: 0 }}>
           <GuiasTable
-            guias={guiasFiltradas}
+            guias={guiasExibidas}
             onEditar={abrirEdicao}
             onExcluir={(guia) => void excluir(guia)}
           />
           <TablePagination
             component="div"
-            count={meta.total}
-            page={page}
+            count={totalExibido}
+            page={pageSegura}
             onPageChange={(_, nextPage) => setPage(nextPage)}
             rowsPerPage={rowsPerPage}
             onRowsPerPageChange={(event) => {
