@@ -98,8 +98,14 @@ function montarIntervalo(values: AgendamentoClinicoFormValues): { scheduledAt: s
   }
 }
 
+function notesDoFormulario(values: AgendamentoClinicoFormValues): string | null {
+  const notes = values.notes?.trim()
+  return notes ? notes : null
+}
+
 function montarPayloadCriacao(values: AgendamentoClinicoFormValues): CreateClinicalAppointmentRequest {
   const { scheduledAt, endsAt } = montarIntervalo(values)
+  const notes = notesDoFormulario(values)
   if (values.type === 'private') {
     return {
       patientId: values.patientId,
@@ -109,6 +115,7 @@ function montarPayloadCriacao(values: AgendamentoClinicoFormValues): CreateClini
       type: 'private',
       status: values.status,
       procedureIds: values.procedureIds,
+      ...(notes ? { notes } : {}),
     }
   }
   return {
@@ -119,31 +126,49 @@ function montarPayloadCriacao(values: AgendamentoClinicoFormValues): CreateClini
     type: 'health_plan',
     status: values.status,
     insuranceGuideIds: values.insuranceGuideIds,
+    ...(notes ? { notes } : {}),
   }
 }
 
-function montarPayloadAtualizacao(values: AgendamentoClinicoFormValues): UpdateClinicalAppointmentRequest {
+function idsIguais(a: number[], b: number[]): boolean {
+  if (a.length !== b.length) return false
+  const ordenadosA = [...a].sort((x, y) => x - y)
+  const ordenadosB = [...b].sort((x, y) => x - y)
+  return ordenadosA.every((id, index) => id === ordenadosB[index])
+}
+
+function montarPayloadAtualizacao(
+  values: AgendamentoClinicoFormValues,
+  atual: ClinicalAppointment,
+): UpdateClinicalAppointmentRequest {
   const { scheduledAt, endsAt } = montarIntervalo(values)
-  if (values.type === 'private') {
-    return {
-      patientId: values.patientId,
-      healthProfessionalId: values.healthProfessionalId,
-      scheduledAt,
-      endsAt,
-      type: 'private',
-      status: values.status,
-      procedureIds: values.procedureIds,
-    }
-  }
-  return {
+  const tipoMudou = values.type !== atual.type
+  const payload: UpdateClinicalAppointmentRequest = {
     patientId: values.patientId,
     healthProfessionalId: values.healthProfessionalId,
     scheduledAt,
     endsAt,
-    type: 'health_plan',
     status: values.status,
-    insuranceGuideIds: values.insuranceGuideIds,
+    notes: notesDoFormulario(values),
   }
+
+  if (tipoMudou) {
+    payload.type = values.type
+  }
+
+  if (values.type === 'private') {
+    const atuais = atual.procedures.map((item) => item.procedureId)
+    if (tipoMudou || !idsIguais(values.procedureIds, atuais)) {
+      payload.procedureIds = values.procedureIds
+    }
+  } else {
+    const atuais = idsGuiasDoAgendamento(atual)
+    if (tipoMudou || !idsIguais(values.insuranceGuideIds, atuais)) {
+      payload.insuranceGuideIds = values.insuranceGuideIds
+    }
+  }
+
+  return payload
 }
 
 export function AgendaClinicaPage() {
@@ -254,7 +279,7 @@ export function AgendaClinicaPage() {
     setSuccess(null)
     try {
       if (editando) {
-        await atualizarAgendamentoClinico(editando.id, montarPayloadAtualizacao(values))
+        await atualizarAgendamentoClinico(editando.id, montarPayloadAtualizacao(values, editando))
         setSuccess('Agendamento atualizado com sucesso.')
       } else {
         await criarAgendamentoClinico(montarPayloadCriacao(values))
@@ -602,6 +627,7 @@ export function AgendaClinicaPage() {
                         type: editando.type,
                         procedureIds: editando.procedures.map((item) => item.procedureId),
                         insuranceGuideIds: idsGuiasDoAgendamento(editando),
+                        notes: editando.notes ?? '',
                       }
                     : {
                         patientId: undefined,
@@ -613,6 +639,7 @@ export function AgendaClinicaPage() {
                         type: 'private',
                         procedureIds: [],
                         insuranceGuideIds: [],
+                        notes: '',
                       }
                 }
                 pacientes={filtroPaciente ? [filtroPaciente] : []}
