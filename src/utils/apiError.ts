@@ -77,7 +77,7 @@ const PADROES: Array<[RegExp, string]> = [
     /^authorizedQuantity for procedure \d+ cannot be less than usedQuantity \d+$/i,
     'A quantidade autorizada não pode ser menor que a quantidade já utilizada.',
   ],
-  [/^Insurance guide \d+ does not belong to patient \d+$/i, 'A guia não pertence a este paciente.'],
+  [/^Insurance guide \d+ not found$/i, 'Guia não encontrada.'],
   [
     /^Insurance guide \d+ does not belong to health professional \d+$/i,
     'A guia não pertence a este profissional.',
