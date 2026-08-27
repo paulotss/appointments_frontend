@@ -1,3 +1,4 @@
+import type { BillingBatch } from '../types/financeiro'
 import type {
   CreateInsuranceGuideRequest,
   InsuranceGuide,
@@ -9,6 +10,7 @@ import type {
 import type { PagedList } from '../types/listEnvelope'
 import { isoDatePrefix } from '../utils/dataISO'
 import { apiClient } from './apiClient'
+import { mapBackendBillingBatch } from './billing-batches.service'
 
 const META_VAZIA = { page: 1, limit: 50, total: 0, totalPages: 1 }
 
@@ -59,6 +61,7 @@ interface BackendInsuranceGuide {
   patient?: BackendRef
   healthProfessional?: BackendRef
   procedures?: BackendGuideProcedure[]
+  billingBatchGuide?: { billingBatchId: number } | null
 }
 
 function mapGuideProcedure(item: BackendGuideProcedure): InsuranceGuideProcedure {
@@ -82,6 +85,7 @@ export function mapBackendGuide(item: BackendInsuranceGuide): InsuranceGuide {
     guideNumber: item.guideNumber ?? null,
     expirationDate: isoDatePrefix(item.expirationDate),
     isBilled: Boolean(item.isBilled),
+    billingBatchId: item.billingBatchGuide?.billingBatchId ?? null,
     status: item.status ?? 'pending',
     healthPlan: item.healthPlan,
     patient: item.patient,
@@ -138,6 +142,11 @@ export async function atualizarGuia(
 
 export async function excluirGuia(id: number): Promise<void> {
   await apiClient.delete(`/insurance-guides/${id}`)
+}
+
+export async function faturarGuia(id: number): Promise<BillingBatch> {
+  const response = await apiClient.post(`/insurance-guides/${id}/bill`)
+  return mapBackendBillingBatch(response.data)
 }
 
 export async function listarTodasGuias(params?: ListarGuiasParams): Promise<InsuranceGuide[]> {

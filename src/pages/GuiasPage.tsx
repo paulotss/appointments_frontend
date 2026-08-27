@@ -21,16 +21,23 @@ import {
   Typography,
 } from '@mui/material'
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { CampoValorMoeda } from '../components/CampoValorMoeda'
 import { GuiasTable } from '../components/GuiasTable'
 import { PacienteBuscaAutocomplete } from '../components/PacienteBuscaAutocomplete'
 import { ProfissionalBuscaAutocomplete } from '../components/ProfissionalBuscaAutocomplete'
 import { listarPlanosSaude } from '../services/health-plans.service'
 import { buscarProfissional } from '../services/health-professionals.service'
-import { atualizarGuia, excluirGuia, listarGuias, listarTodasGuias } from '../services/insurance-guides.service'
+import {
+  atualizarGuia,
+  excluirGuia,
+  faturarGuia,
+  listarGuias,
+  listarTodasGuias,
+} from '../services/insurance-guides.service'
 import { buscarPaciente } from '../services/patients.service'
 import { listarProcedimentos } from '../services/procedures.service'
+import { valorFaturavelGuia } from '../types/financeiro'
 import {
   guiaProcedimentosTotalmenteUtilizados,
   INSURANCE_GUIDE_STATUSES,
@@ -46,7 +53,7 @@ import { tissCodeDoPlano, valorDoPlano } from '../types/procedimento'
 import type { HealthProfessional } from '../types/profissional'
 import { mensagemErroApi } from '../utils/apiError'
 import { adicionarDiasISO, statusPrazoGuia } from '../utils/dataISO'
-import { parseValorDecimal } from '../utils/moedaBRL'
+import { formatarMoedaBRL, parseValorDecimal } from '../utils/moedaBRL'
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100]
 const META_VAZIA: ListMeta = { page: 1, limit: 50, total: 0, totalPages: 1 }
@@ -84,6 +91,10 @@ export function GuiasPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [loteFaturadoId, setLoteFaturadoId] = useState<number | null>(null)
+  const [faturando, setFaturando] = useState<InsuranceGuide | null>(null)
+  const [savingFaturar, setSavingFaturar] = useState(false)
+  const [faturarError, setFaturarError] = useState<string | null>(null)
   const [editando, setEditando] = useState<InsuranceGuide | null>(null)
   const [pacienteEdicao, setPacienteEdicao] = useState<Patient | null>(null)
   const [profissionalEdicao, setProfissionalEdicao] = useState<HealthProfessional | null>(null)
@@ -244,6 +255,7 @@ export function GuiasPage() {
       setGuias((prev) => prev.map((item) => (item.id === atualizado.id ? atualizado : item)))
       fecharEdicao()
       setSuccess('Guia atualizada com sucesso.')
+      setLoteFaturadoId(null)
     } catch (err) {
       setError(mensagemErroApi(err, 'Não foi possível editar a guia.'))
     } finally {
@@ -262,8 +274,35 @@ export function GuiasPage() {
       await excluirGuia(guia.id)
       setGuias((prev) => prev.filter((item) => item.id !== guia.id))
       setSuccess('Guia excluída com sucesso.')
+      setLoteFaturadoId(null)
     } catch (err) {
       setError(mensagemErroApi(err, 'Não foi possível excluir a guia.'))
+    }
+  }
+
+  async function confirmarFaturar() {
+    if (!faturando) return
+    setSavingFaturar(true)
+    setError(null)
+    setSuccess(null)
+    setFaturarError(null)
+    setLoteFaturadoId(null)
+    try {
+      const lote = await faturarGuia(faturando.id)
+      setGuias((prev) =>
+        prev.map((item) =>
+          item.id === faturando.id
+            ? { ...item, isBilled: true, billingBatchId: lote.id }
+            : item,
+        ),
+      )
+      setFaturando(null)
+      setLoteFaturadoId(lote.id)
+      setSuccess('Guia faturada. A entrada financeira ficou pendente até o recebimento do plano.')
+    } catch (err) {
+      setFaturarError(mensagemErroApi(err, 'Não foi possível faturar a guia.'))
+    } finally {
+      setSavingFaturar(false)
     }
   }
 
@@ -421,7 +460,17 @@ export function GuiasPage() {
         </Paper>
       ) : null}
       {error ? <Alert severity="error">{error}</Alert> : null}
-      {success ? <Alert severity="success">{success}</Alert> : null}
+      {success ? (
+        <Alert severity="success">
+          {success}
+          {loteFaturadoId != null ? (
+            <>
+              {' '}
+              <RouterLink to={`/tiss/lotes/${loteFaturadoId}`}>Ver lote #{loteFaturadoId}</RouterLink>
+            </>
+          ) : null}
+        </Alert>
+      ) : null}
 
       {!loading && !error ? (
         <Stack spacing={1.5}>
@@ -537,6 +586,10 @@ export function GuiasPage() {
             guias={guiasExibidas}
             onEditar={abrirEdicao}
             onExcluir={(guia) => void excluir(guia)}
+            onFaturar={(guia) => {
+              setFaturarError(null)
+              setFaturando(guia)
+            }}
           />
           <TablePagination
             component="div"
@@ -781,6 +834,48 @@ export function GuiasPage() {
           <Button onClick={fecharEdicao}>Cancelar</Button>
           <Button onClick={() => void salvarEdicao()} variant="contained" disabled={savingEdit || formInvalido}>
             Salvar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(faturando)}
+        onClose={() => {
+          if (savingFaturar) return
+          setFaturando(null)
+          setFaturarError(null)
+        }}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Faturar guia</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ mt: 0.5 }}>
+            {faturarError ? <Alert severity="error">{faturarError}</Alert> : null}
+            <Alert severity="warning">
+              Confirma o faturamento desta guia
+              {faturando ? ` de ${faturando.patient?.name ?? 'paciente'}` : ''}
+              {faturando
+                ? ` no valor de ${formatarMoedaBRL(valorFaturavelGuia(faturando.procedures))}`
+                : ''}
+              ? A guia será marcada como faturada, um lote TISS será criado e uma entrada financeira
+              pendente será gerada. O recebimento do plano (e eventuais glosas) poderá ser registrado
+              depois no lote.
+            </Alert>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setFaturando(null)
+              setFaturarError(null)
+            }}
+            disabled={savingFaturar}
+          >
+            Cancelar
+          </Button>
+          <Button variant="contained" onClick={() => void confirmarFaturar()} disabled={savingFaturar}>
+            {savingFaturar ? 'Faturando...' : 'Confirmar'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -54,6 +54,7 @@ export interface InsuranceGuide {
   guideNumber: string | null
   expirationDate: string
   isBilled: boolean
+  billingBatchId: number | null
   status: InsuranceGuideStatus
   healthPlan?: InsuranceGuidePlanRef
   patient?: InsuranceGuideRef
@@ -111,4 +112,14 @@ export function rotuloGuia(guia: Pick<InsuranceGuide, 'id' | 'guideNumber' | 'he
   const plano = guia.healthPlan?.name ?? 'Plano'
   const identificador = guia.guideNumber?.trim() || `#${guia.id}`
   return `${identificador} · ${plano} · ${INSURANCE_GUIDE_STATUS_LABELS[guia.status] ?? guia.status}`
+}
+
+export function guiaElegivelParaFaturar(
+  guia: Pick<InsuranceGuide, 'isBilled' | 'billingBatchId' | 'procedures'>,
+): boolean {
+  return (
+    !guia.isBilled &&
+    guia.billingBatchId == null &&
+    guia.procedures.some((item) => item.usedQuantity > 0)
+  )
 }

@@ -3,6 +3,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import EditIcon from '@mui/icons-material/Edit'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
 import {
   Box,
   Chip,
@@ -17,7 +18,7 @@ import {
 } from '@mui/material'
 import { Fragment, useState } from 'react'
 import type { InsuranceGuide, InsuranceGuideStatus } from '../types/guia'
-import { guiaProcedimentosTotalmenteUtilizados, INSURANCE_GUIDE_STATUS_LABELS } from '../types/guia'
+import { guiaElegivelParaFaturar, guiaProcedimentosTotalmenteUtilizados, INSURANCE_GUIDE_STATUS_LABELS } from '../types/guia'
 import { formatarDataISO, statusPrazoGuia } from '../utils/dataISO'
 import { GuiaProcedimentosTabela } from './GuiaProcedimentosTabela'
 
@@ -25,6 +26,7 @@ interface GuiasTableProps {
   guias: InsuranceGuide[]
   onEditar: (guia: InsuranceGuide) => void
   onExcluir: (guia: InsuranceGuide) => void
+  onFaturar: (guia: InsuranceGuide) => void
 }
 
 const sxTextoTruncado = {
@@ -80,13 +82,16 @@ function GuiaRow({
   guia,
   onEditar,
   onExcluir,
+  onFaturar,
 }: {
   guia: InsuranceGuide
   onEditar: (guia: InsuranceGuide) => void
   onExcluir: (guia: InsuranceGuide) => void
+  onFaturar: (guia: InsuranceGuide) => void
 }) {
   const [open, setOpen] = useState(false)
   const corLinha = corLinhaGuia(guia)
+  const podeFaturar = guiaElegivelParaFaturar(guia)
 
   return (
     <Fragment>
@@ -128,6 +133,11 @@ function GuiaRow({
         <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatarDataISO(guia.expirationDate)}</TableCell>
         <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
           <Box sx={{ display: 'inline-flex', flexWrap: 'nowrap', justifyContent: 'flex-end' }}>
+            {podeFaturar ? (
+              <IconButton size="small" color="primary" aria-label="Faturar guia" onClick={() => onFaturar(guia)}>
+                <ReceiptLongIcon fontSize="small" />
+              </IconButton>
+            ) : null}
             <IconButton size="small" aria-label="Editar guia" onClick={() => onEditar(guia)}>
               <EditIcon fontSize="small" />
             </IconButton>
@@ -158,7 +168,7 @@ function GuiaRow({
   )
 }
 
-export function GuiasTable({ guias, onEditar, onExcluir }: GuiasTableProps) {
+export function GuiasTable({ guias, onEditar, onExcluir, onFaturar }: GuiasTableProps) {
   return (
     <TableContainer>
       <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
@@ -170,7 +180,7 @@ export function GuiasTable({ guias, onEditar, onExcluir }: GuiasTableProps) {
             <TableCell sx={{ width: '24%' }}>Profissional</TableCell>
             <TableCell sx={{ width: 160, whiteSpace: 'nowrap' }}>Status</TableCell>
             <TableCell sx={{ width: 110, whiteSpace: 'nowrap' }}>Validade</TableCell>
-            <TableCell align="right" sx={{ width: 136, whiteSpace: 'nowrap' }}>
+            <TableCell align="right" sx={{ width: 176, whiteSpace: 'nowrap' }}>
               Ações
             </TableCell>
           </TableRow>
@@ -182,6 +192,7 @@ export function GuiasTable({ guias, onEditar, onExcluir }: GuiasTableProps) {
               guia={guia}
               onEditar={onEditar}
               onExcluir={onExcluir}
+              onFaturar={onFaturar}
             />
           ))}
         </TableBody>
