@@ -91,6 +91,10 @@ export async function listarPagamentos(params?: ListarPayablesParams): Promise<P
     ? {
         ...(params.status != null ? { status: params.status } : {}),
         ...(params.supplierId != null ? { supplierId: params.supplierId } : {}),
+        ...(params.from ? { from: params.from } : {}),
+        ...(params.to ? { to: params.to } : {}),
+        ...(params.sortBy ? { sortBy: params.sortBy } : {}),
+        ...(params.sortOrder ? { sortOrder: params.sortOrder } : {}),
         ...(params.page != null ? { page: params.page } : {}),
         ...(params.limit != null ? { limit: params.limit } : {}),
       }
