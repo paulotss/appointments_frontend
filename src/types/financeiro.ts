@@ -217,9 +217,24 @@ export interface PayPayableRequest {
   paidAt?: string
 }
 
+export const PAYABLE_SORT_FIELDS = [
+  'description',
+  'supplier',
+  'kind',
+  'amount',
+  'dueDate',
+  'status',
+] as const
+export type PayableSortField = (typeof PAYABLE_SORT_FIELDS)[number]
+export type PayableSortOrder = 'asc' | 'desc'
+
 export interface ListarPayablesParams {
   status?: PayableStatus
   supplierId?: number
+  from?: string
+  to?: string
+  sortBy?: PayableSortField
+  sortOrder?: PayableSortOrder
   page?: number
   limit?: number
 }

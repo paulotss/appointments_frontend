@@ -105,6 +105,9 @@ function GuiaRow({
             {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
           </IconButton>
         </TableCell>
+        <TableCell sx={{ whiteSpace: 'nowrap' }} title={guia.guideNumber?.trim() || undefined}>
+          {guia.guideNumber?.trim() || '-'}
+        </TableCell>
         <TableCell sx={sxTextoTruncado} title={guia.patient?.name ?? undefined}>
           {guia.patient?.name ?? '—'}
         </TableCell>
@@ -153,7 +156,7 @@ function GuiaRow({
         </TableCell>
       </TableRow>
       <TableRow>
-        <TableCell colSpan={7} sx={{ py: 0, px: 0 }}>
+        <TableCell colSpan={8} sx={{ py: 0, px: 0 }}>
           <Collapse in={open} timeout="auto" unmountOnExit>
             <Box sx={{ py: 1.5, px: 2 }}>
               <GuiaProcedimentosTabela
@@ -175,6 +178,7 @@ export function GuiasTable({ guias, onEditar, onExcluir, onFaturar }: GuiasTable
         <TableHead>
           <TableRow>
             <TableCell sx={{ width: 48 }} />
+            <TableCell sx={{ width: 130, whiteSpace: 'nowrap' }}>Número da guia</TableCell>
             <TableCell sx={{ width: '32%' }}>Paciente</TableCell>
             <TableCell sx={{ width: '20%' }}>Plano</TableCell>
             <TableCell sx={{ width: '24%' }}>Profissional</TableCell>

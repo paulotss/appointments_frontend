@@ -1,6 +1,7 @@
 import AddIcon from '@mui/icons-material/Add'
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   CircularProgress,
@@ -21,6 +22,8 @@ import {
   PAYABLE_STATUSES,
   PAYABLE_STATUS_LABELS,
   type Payable,
+  type PayableSortField,
+  type PayableSortOrder,
   type PayableStatus,
 } from '../types/financeiro'
 import type { ListMeta } from '../types/listEnvelope'
@@ -28,6 +31,16 @@ import { mensagemErroApi } from '../utils/apiError'
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100]
 const META_VAZIA: ListMeta = { page: 1, limit: 50, total: 0, totalPages: 1 }
+
+function periodoVencimento(inicio: string, fim: string) {
+  if (inicio && fim && inicio > fim) {
+    return { from: fim, to: inicio }
+  }
+  return {
+    ...(inicio ? { from: inicio } : {}),
+    ...(fim ? { to: fim } : {}),
+  }
+}
 
 export function FinanceiroPagamentosPage() {
   const navigate = useNavigate()
@@ -37,7 +50,11 @@ export function FinanceiroPagamentosPage() {
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(50)
   const [statusFiltro, setStatusFiltro] = useState<PayableStatus | ''>('')
-  const [fornecedorFiltro, setFornecedorFiltro] = useState<number | ''>('')
+  const [fornecedorFiltro, setFornecedorFiltro] = useState<Fornecedor | null>(null)
+  const [vencimentoInicio, setVencimentoInicio] = useState('')
+  const [vencimentoFim, setVencimentoFim] = useState('')
+  const [colunaOrdenacao, setColunaOrdenacao] = useState<PayableSortField | null>(null)
+  const [direcaoOrdenacao, setDirecaoOrdenacao] = useState<PayableSortOrder>('asc')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -49,7 +66,11 @@ export function FinanceiroPagamentosPage() {
         page: page + 1,
         limit: rowsPerPage,
         ...(statusFiltro ? { status: statusFiltro } : {}),
-        ...(fornecedorFiltro === '' ? {} : { supplierId: fornecedorFiltro }),
+        ...(fornecedorFiltro ? { supplierId: fornecedorFiltro.id } : {}),
+        ...periodoVencimento(vencimentoInicio, vencimentoFim),
+        ...(colunaOrdenacao
+          ? { sortBy: colunaOrdenacao, sortOrder: direcaoOrdenacao }
+          : {}),
       })
       setPagamentos(resultado.data)
       setMeta(resultado.meta)
@@ -58,7 +79,16 @@ export function FinanceiroPagamentosPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, rowsPerPage, statusFiltro, fornecedorFiltro])
+  }, [
+    page,
+    rowsPerPage,
+    statusFiltro,
+    fornecedorFiltro,
+    vencimentoInicio,
+    vencimentoFim,
+    colunaOrdenacao,
+    direcaoOrdenacao,
+  ])
 
   useEffect(() => {
     void carregar()
@@ -66,7 +96,7 @@ export function FinanceiroPagamentosPage() {
 
   useEffect(() => {
     setPage(0)
-  }, [statusFiltro, fornecedorFiltro])
+  }, [statusFiltro, fornecedorFiltro, vencimentoInicio, vencimentoFim])
 
   useEffect(() => {
     async function carregarFornecedores() {
@@ -78,6 +108,16 @@ export function FinanceiroPagamentosPage() {
     }
     void carregarFornecedores()
   }, [])
+
+  function alternarOrdenacao(coluna: PayableSortField) {
+    setPage(0)
+    if (colunaOrdenacao === coluna) {
+      setDirecaoOrdenacao((atual) => (atual === 'asc' ? 'desc' : 'asc'))
+      return
+    }
+    setColunaOrdenacao(coluna)
+    setDirecaoOrdenacao('asc')
+  }
 
   return (
     <Stack spacing={2}>
@@ -96,14 +136,14 @@ export function FinanceiroPagamentosPage() {
 
       {error ? <Alert severity="error">{error}</Alert> : null}
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-start' }}>
         <TextField
           select
           label="Status"
           size="small"
           value={statusFiltro}
           onChange={(event) => setStatusFiltro(event.target.value as PayableStatus | '')}
-          sx={{ minWidth: 180 }}
+          sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 180 } }}
         >
           <MenuItem value="">Todos</MenuItem>
           {PAYABLE_STATUSES.map((status) => (
@@ -112,24 +152,38 @@ export function FinanceiroPagamentosPage() {
             </MenuItem>
           ))}
         </TextField>
-        <TextField
-          select
-          label="Fornecedor"
-          size="small"
+        <Autocomplete
+          options={fornecedores}
+          getOptionLabel={(fornecedor) => fornecedor.tradeName}
+          isOptionEqualToValue={(option, selected) => option.id === selected.id}
           value={fornecedorFiltro}
-          onChange={(event) =>
-            setFornecedorFiltro(event.target.value === '' ? '' : Number(event.target.value))
-          }
-          sx={{ minWidth: 240 }}
-        >
-          <MenuItem value="">Todos</MenuItem>
-          {fornecedores.map((item) => (
-            <MenuItem key={item.id} value={item.id}>
-              {item.tradeName}
-            </MenuItem>
-          ))}
-        </TextField>
-      </Stack>
+          onChange={(_, fornecedor) => setFornecedorFiltro(fornecedor)}
+          size="small"
+          sx={{ width: { xs: '100%', sm: 280 }, minWidth: { sm: 240 } }}
+          renderInput={(params) => (
+            <TextField {...params} label="Fornecedor" size="small" placeholder="Todos" />
+          )}
+        />
+        <TextField
+          label="Vencimento início"
+          type="date"
+          size="small"
+          value={vencimentoInicio}
+          onChange={(event) => setVencimentoInicio(event.target.value)}
+          InputLabelProps={{ shrink: true }}
+          sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 200 } }}
+        />
+        <TextField
+          label="Vencimento fim"
+          type="date"
+          size="small"
+          value={vencimentoFim}
+          onChange={(event) => setVencimentoFim(event.target.value)}
+          InputLabelProps={{ shrink: true }}
+          inputProps={{ min: vencimentoInicio || undefined }}
+          sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 200 } }}
+        />
+      </Box>
 
       {loading ? (
         <Paper sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -148,6 +202,9 @@ export function FinanceiroPagamentosPage() {
         <Paper sx={{ p: 0 }}>
           <PagamentosTable
             pagamentos={pagamentos}
+            colunaOrdenacao={colunaOrdenacao}
+            direcaoOrdenacao={direcaoOrdenacao}
+            onOrdenar={alternarOrdenacao}
             onEditar={(item) =>
               navigate(`/financeiro/pagamentos/${item.id}`, { state: { editar: true } })
             }
