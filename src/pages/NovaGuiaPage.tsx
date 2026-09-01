@@ -7,7 +7,7 @@ import type { GuiaFormValues } from '../schemas/guia.schema'
 import { listarPlanosSaude } from '../services/health-plans.service'
 import { criarGuia } from '../services/insurance-guides.service'
 import type { HealthPlan } from '../types/planoSaude'
-import { mensagemErroApi } from '../utils/apiError'
+import { mensagemConflitoNumeroGuia, mensagemErroApi } from '../utils/apiError'
 import { hojeLocalISO } from '../utils/dataISO'
 
 export function NovaGuiaPage() {
@@ -17,6 +17,7 @@ export function NovaGuiaPage() {
   const [error, setError] = useState<string | null>(null)
   const [planos, setPlanos] = useState<HealthPlan[]>([])
   const [formKey, setFormKey] = useState(0)
+  const [guideNumberError, setGuideNumberError] = useState<string | null>(null)
 
   const faltamDependencias = !loadingDados && planos.length === 0
 
@@ -39,6 +40,7 @@ export function NovaGuiaPage() {
   async function onSubmit(values: GuiaFormValues) {
     setLoading(true)
     setError(null)
+    setGuideNumberError(null)
     try {
       await criarGuia({
         healthPlanId: values.healthPlanId,
@@ -57,6 +59,8 @@ export function NovaGuiaPage() {
       setFormKey((prev) => prev + 1)
       navigate('/guias', { replace: true })
     } catch (err) {
+      const conflito = mensagemConflitoNumeroGuia(err)
+      if (conflito) setGuideNumberError(conflito)
       setError(mensagemErroApi(err, 'Não foi possível cadastrar a guia.'))
     } finally {
       setLoading(false)
@@ -106,6 +110,7 @@ export function NovaGuiaPage() {
             planos={planos}
             loading={loading}
             submitLabel="Cadastrar guia"
+            guideNumberServerError={guideNumberError}
             onSubmit={(values) => void onSubmit(values)}
           />
         </Stack>

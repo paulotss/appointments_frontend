@@ -39,6 +39,7 @@ interface GuiaFormProps {
   professionalLocked?: boolean
   onSubmit: (values: GuiaFormValues) => void
   onCancel?: () => void
+  guideNumberServerError?: string | null
 }
 
 export function GuiaForm({
@@ -52,12 +53,15 @@ export function GuiaForm({
   professionalLocked = false,
   onSubmit,
   onCancel,
+  guideNumberServerError,
 }: GuiaFormProps) {
   const {
     control,
     handleSubmit,
     setValue,
     getValues,
+    setError,
+    clearErrors,
     formState: { errors },
   } = useForm<GuiaFormInput, unknown, GuiaFormValues>({
     resolver: zodResolver(guiaSchema),
@@ -93,6 +97,11 @@ export function GuiaForm({
   }, [procedimentosPlano, especialidadeIdsDoProfissional])
 
   const prazoPlano = planos.find((item) => item.id === healthPlanId)?.submissionDeadlineDays
+
+  useEffect(() => {
+    if (!guideNumberServerError) return
+    setError('guideNumber', { type: 'server', message: guideNumberServerError })
+  }, [guideNumberServerError, setError])
 
   useEffect(() => {
     if (!authorizationDate || prazoPlano == null) return
@@ -230,7 +239,12 @@ export function GuiaForm({
           <TextField
             label="Número da guia"
             value={field.value ?? ''}
-            onChange={field.onChange}
+            onChange={(event) => {
+              field.onChange(event)
+              if (errors.guideNumber?.type === 'server') {
+                clearErrors('guideNumber')
+              }
+            }}
             onBlur={field.onBlur}
             inputRef={field.ref}
             error={Boolean(errors.guideNumber)}

@@ -39,6 +39,7 @@ const MENSAGENS_EXATAS: Record<string, string> = {
   'Only PDF, JPEG and PNG documents are allowed':
     'Somente documentos PDF, JPEG e PNG são permitidos.',
   'File too large': 'O arquivo excede o tamanho máximo permitido.',
+  'Já existe uma guia com este número.': 'Já existe uma guia com este número.',
   'Only open billing batches can be updated': 'Somente lotes abertos podem ser atualizados.',
   'Only open billing batches can be billed': 'Somente lotes abertos podem ser faturados.',
   'Cannot bill a batch without guides': 'Não é possível faturar um lote sem guias.',
@@ -126,4 +127,13 @@ export function mensagemErroApi(error: unknown, fallback: string): string {
     return raw.map((item) => traduzirMensagem(String(item))).join(' ')
   }
   return fallback
+}
+
+export function mensagemConflitoNumeroGuia(error: unknown): string | null {
+  if (!axios.isAxiosError(error)) return null
+  const mensagem = mensagemErroApi(error, '')
+  if (error.response?.status === 409 || mensagem === 'Já existe uma guia com este número.') {
+    return 'Já existe uma guia com este número.'
+  }
+  return null
 }

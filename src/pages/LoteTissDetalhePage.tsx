@@ -1,13 +1,16 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import {
   Alert,
   Button,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
   Link,
   Paper,
   Stack,
@@ -21,13 +24,21 @@ import {
 import { useEffect, useState } from 'react'
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ReceberLoteDialog } from '../components/ReceberLoteDialog'
-import { buscarLoteTiss, faturarLoteTiss, receberLoteTiss } from '../services/billing-batches.service'
+import {
+  atualizarLoteTiss,
+  buscarLoteTiss,
+  faturarLoteTiss,
+  receberLoteTiss,
+} from '../services/billing-batches.service'
+import { listarTodasGuias } from '../services/insurance-guides.service'
 import {
   BILLING_BATCH_STATUS_LABELS,
   FINANCIAL_ENTRY_STATUS_LABELS,
+  valorFaturavelGuia,
   type BillingBatch,
   type ReceiveBillingBatchRequest,
 } from '../types/financeiro'
+import type { InsuranceGuide } from '../types/guia'
 import { mensagemErroApi } from '../utils/apiError'
 import { formatarDataHoraISO, formatarDataISO } from '../utils/dataISO'
 import { formatarMoedaBRL } from '../utils/moedaBRL'
@@ -54,6 +65,13 @@ export function LoteTissDetalhePage() {
   const [receberAberto, setReceberAberto] = useState(false)
   const [saving, setSaving] = useState(false)
   const [recebendo, setRecebendo] = useState(false)
+  const [adicionarAberto, setAdicionarAberto] = useState(false)
+  const [guiasElegiveis, setGuiasElegiveis] = useState<InsuranceGuide[]>([])
+  const [guiasSelecionadas, setGuiasSelecionadas] = useState<number[]>([])
+  const [loadingGuias, setLoadingGuias] = useState(false)
+  const [savingGuias, setSavingGuias] = useState(false)
+  const [adicionarError, setAdicionarError] = useState<string | null>(null)
+  const [removendoGuiaId, setRemovendoGuiaId] = useState<number | null>(null)
 
   useEffect(() => {
     if (!Number.isFinite(id)) {
@@ -88,6 +106,76 @@ export function LoteTissDetalhePage() {
     next.delete('receber')
     setSearchParams(next, { replace: true })
   }, [abrirReceber, lote, searchParams, setSearchParams])
+
+  async function abrirAdicionarGuias() {
+    if (!lote) return
+    setAdicionarAberto(true)
+    setGuiasSelecionadas([])
+    setAdicionarError(null)
+    setLoadingGuias(true)
+    try {
+      const data = await listarTodasGuias({
+        healthPlanId: lote.healthPlanId,
+        availableForBilling: true,
+      })
+      setGuiasElegiveis(data)
+    } catch (err) {
+      setGuiasElegiveis([])
+      setAdicionarError(mensagemErroApi(err, 'Não foi possível carregar as guias elegíveis.'))
+    } finally {
+      setLoadingGuias(false)
+    }
+  }
+
+  function alternarGuia(guiaId: number) {
+    setGuiasSelecionadas((prev) =>
+      prev.includes(guiaId) ? prev.filter((item) => item !== guiaId) : [...prev, guiaId],
+    )
+  }
+
+  async function confirmarAdicionarGuias() {
+    if (!lote || guiasSelecionadas.length === 0) return
+    setSavingGuias(true)
+    setAdicionarError(null)
+    setError(null)
+    setSuccess(null)
+    try {
+      const atualizado = await atualizarLoteTiss(lote.id, {
+        addInsuranceGuideIds: guiasSelecionadas,
+      })
+      setLote(atualizado)
+      setAdicionarAberto(false)
+      setSuccess(
+        guiasSelecionadas.length === 1
+          ? 'Guia adicionada ao lote.'
+          : `${guiasSelecionadas.length} guias adicionadas ao lote.`,
+      )
+    } catch (err) {
+      setAdicionarError(mensagemErroApi(err, 'Não foi possível adicionar as guias ao lote.'))
+    } finally {
+      setSavingGuias(false)
+    }
+  }
+
+  async function removerGuia(insuranceGuideId: number, rotulo: string) {
+    if (!lote) return
+    const confirmou = window.confirm(`Confirma remover a guia ${rotulo} deste lote?`)
+    if (!confirmou) return
+    setRemovendoGuiaId(insuranceGuideId)
+    setError(null)
+    setSuccess(null)
+    try {
+      const atualizado = await atualizarLoteTiss(lote.id, {
+        removeInsuranceGuideIds: [insuranceGuideId],
+      })
+      setLote(atualizado)
+      setSuccess('Guia removida do lote.')
+    } catch (err) {
+      setError(mensagemErroApi(err, 'Não foi possível remover a guia do lote.'))
+    } finally {
+      setRemovendoGuiaId(null)
+    }
+  }
 
   async function confirmarFaturar() {
     if (!lote) return
@@ -131,7 +219,7 @@ export function LoteTissDetalhePage() {
     <Stack spacing={2}>
       <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
         <Typography variant="h5" fontWeight={700}>
-          Lote {lote ? `#${lote.id}` : ''}
+          Lote {lote?.batchNumber ?? ''}
         </Typography>
         <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={() => navigate('/tiss/lotes')}>
           Voltar para listagem
@@ -207,29 +295,67 @@ export function LoteTissDetalhePage() {
                   <TableCell align="right">Enviado</TableCell>
                   <TableCell align="right">Recebido</TableCell>
                   <TableCell>Glosa</TableCell>
+                  {lote.status === 'open' ? <TableCell align="right">Ações</TableCell> : null}
                 </TableRow>
               </TableHead>
               <TableBody>
-                {lote.guides.map((item) => (
-                  <TableRow key={item.id} hover>
-                    <TableCell>#{item.insuranceGuideId}</TableCell>
-                    <TableCell>{item.insuranceGuide?.patient?.name ?? '—'}</TableCell>
-                    <TableCell>{item.insuranceGuide?.healthProfessional?.name ?? '—'}</TableCell>
-                    <TableCell>{formatarDataISO(item.insuranceGuide?.expirationDate)}</TableCell>
-                    <TableCell align="right">{formatarMoedaBRL(item.billedAmount)}</TableCell>
-                    <TableCell align="right">
-                      {item.receivedAmount == null ? '—' : formatarMoedaBRL(item.receivedAmount)}
+                {lote.guides.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={lote.status === 'open' ? 8 : 7}>
+                      Nenhuma guia neste lote.
                     </TableCell>
-                    <TableCell>{item.glosaReason ?? '—'}</TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  lote.guides.map((item) => {
+                    const rotuloGuia =
+                      item.insuranceGuide?.guideNumber?.trim() || `#${item.insuranceGuideId}`
+                    return (
+                      <TableRow key={item.id} hover>
+                        <TableCell>{rotuloGuia}</TableCell>
+                        <TableCell>{item.insuranceGuide?.patient?.name ?? '—'}</TableCell>
+                        <TableCell>{item.insuranceGuide?.healthProfessional?.name ?? '—'}</TableCell>
+                        <TableCell>{formatarDataISO(item.insuranceGuide?.expirationDate)}</TableCell>
+                        <TableCell align="right">{formatarMoedaBRL(item.billedAmount)}</TableCell>
+                        <TableCell align="right">
+                          {item.receivedAmount == null ? '—' : formatarMoedaBRL(item.receivedAmount)}
+                        </TableCell>
+                        <TableCell>{item.glosaReason ?? '—'}</TableCell>
+                        {lote.status === 'open' ? (
+                          <TableCell align="right">
+                            <IconButton
+                              size="small"
+                              aria-label={`Remover guia ${rotuloGuia} do lote`}
+                              onClick={() => void removerGuia(item.insuranceGuideId, rotuloGuia)}
+                              disabled={removendoGuiaId != null}
+                            >
+                              {removendoGuiaId === item.insuranceGuideId ? (
+                                <CircularProgress size={18} />
+                              ) : (
+                                <DeleteOutlineIcon fontSize="small" />
+                              )}
+                            </IconButton>
+                          </TableCell>
+                        ) : null}
+                      </TableRow>
+                    )
+                  })
+                )}
               </TableBody>
             </Table>
 
             {lote.status === 'open' ? (
-              <Button variant="contained" onClick={() => setDialogAberto(true)} sx={{ alignSelf: 'flex-start' }}>
-                Faturar
-              </Button>
+              <Stack direction="row" spacing={1.5} sx={{ alignSelf: 'flex-start' }}>
+                <Button variant="outlined" onClick={() => void abrirAdicionarGuias()}>
+                  Adicionar guias
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => setDialogAberto(true)}
+                  disabled={lote.guides.length === 0}
+                >
+                  Faturar
+                </Button>
+              </Stack>
             ) : null}
             {lote.status === 'billed' ? (
               <Button variant="contained" onClick={() => setReceberAberto(true)} sx={{ alignSelf: 'flex-start' }}>
@@ -254,6 +380,75 @@ export function LoteTissDetalhePage() {
           </Button>
           <Button variant="contained" onClick={() => void confirmarFaturar()} disabled={saving}>
             {saving ? 'Faturando...' : 'Confirmar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={adicionarAberto}
+        onClose={() => !savingGuias && setAdicionarAberto(false)}
+        fullWidth
+        maxWidth="md"
+      >
+        <DialogTitle>Adicionar guias</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ mt: 0.5 }}>
+            {adicionarError ? <Alert severity="error">{adicionarError}</Alert> : null}
+            {loadingGuias ? (
+              <Stack direction="row" alignItems="center" gap={1.5}>
+                <CircularProgress size={20} />
+                <Typography>Carregando guias elegíveis...</Typography>
+              </Stack>
+            ) : null}
+            {!loadingGuias && guiasElegiveis.length === 0 && !adicionarError ? (
+              <Typography>Não há guias elegíveis deste plano para incluir no lote.</Typography>
+            ) : null}
+            {!loadingGuias && guiasElegiveis.length > 0 ? (
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell padding="checkbox" />
+                    <TableCell>Guia</TableCell>
+                    <TableCell>Paciente</TableCell>
+                    <TableCell>Profissional</TableCell>
+                    <TableCell>Validade</TableCell>
+                    <TableCell align="right">Valor</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {guiasElegiveis.map((guia) => (
+                    <TableRow key={guia.id} hover>
+                      <TableCell padding="checkbox">
+                        <Checkbox
+                          checked={guiasSelecionadas.includes(guia.id)}
+                          onChange={() => alternarGuia(guia.id)}
+                          inputProps={{ 'aria-label': `Selecionar guia ${guia.guideNumber ?? guia.id}` }}
+                        />
+                      </TableCell>
+                      <TableCell>{guia.guideNumber?.trim() || `#${guia.id}`}</TableCell>
+                      <TableCell>{guia.patient?.name ?? '—'}</TableCell>
+                      <TableCell>{guia.healthProfessional?.name ?? '—'}</TableCell>
+                      <TableCell>{formatarDataISO(guia.expirationDate)}</TableCell>
+                      <TableCell align="right">
+                        {formatarMoedaBRL(valorFaturavelGuia(guia.procedures))}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : null}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAdicionarAberto(false)} disabled={savingGuias}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => void confirmarAdicionarGuias()}
+            disabled={savingGuias || loadingGuias || guiasSelecionadas.length === 0}
+          >
+            {savingGuias ? 'Adicionando...' : 'Adicionar'}
           </Button>
         </DialogActions>
       </Dialog>

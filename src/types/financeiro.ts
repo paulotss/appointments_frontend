@@ -248,6 +248,7 @@ export interface BillingBatchGuide {
   glosaReason: string | null
   insuranceGuide?: {
     id: number
+    guideNumber?: string | null
     patient?: FinanceiroRef
     healthProfessional?: FinanceiroRef
     expirationDate?: string
@@ -262,6 +263,7 @@ export interface BillingBatchGuide {
 export interface BillingBatch {
   id: number
   healthPlanId: number
+  batchNumber: string
   status: BillingBatchStatus
   billedAmount: number
   receivedAmount: number
@@ -290,6 +292,12 @@ export interface ReceiveBillingBatchRequest {
 export interface CreateBillingBatchRequest {
   healthPlanId: number
   insuranceGuideIds: number[]
+  protocolNumber?: string
+}
+
+export interface UpdateBillingBatchRequest {
+  addInsuranceGuideIds?: number[]
+  removeInsuranceGuideIds?: number[]
   protocolNumber?: string
 }
 
