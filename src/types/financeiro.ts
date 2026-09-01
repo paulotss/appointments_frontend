@@ -1,4 +1,5 @@
 import { parseValorDecimal } from '../utils/moedaBRL'
+import type { TissGuideType } from './tiss'
 
 export const PAYMENT_METHODS = ['pix', 'debit', 'credit', 'cash', 'transfer'] as const
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number]
@@ -248,9 +249,11 @@ export interface BillingBatchGuide {
   glosaReason: string | null
   insuranceGuide?: {
     id: number
+    guideNumber?: string | null
     patient?: FinanceiroRef
     healthProfessional?: FinanceiroRef
     expirationDate?: string
+    tissGuideType?: TissGuideType | null
     procedures?: Array<{
       value: string | number
       usedQuantity: number
@@ -262,6 +265,7 @@ export interface BillingBatchGuide {
 export interface BillingBatch {
   id: number
   healthPlanId: number
+  batchNumber: string
   status: BillingBatchStatus
   billedAmount: number
   receivedAmount: number
@@ -290,6 +294,12 @@ export interface ReceiveBillingBatchRequest {
 export interface CreateBillingBatchRequest {
   healthPlanId: number
   insuranceGuideIds: number[]
+  protocolNumber?: string
+}
+
+export interface UpdateBillingBatchRequest {
+  addInsuranceGuideIds?: number[]
+  removeInsuranceGuideIds?: number[]
   protocolNumber?: string
 }
 

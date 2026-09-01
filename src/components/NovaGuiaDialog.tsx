@@ -7,7 +7,7 @@ import type { InsuranceGuide } from '../types/guia'
 import type { Patient } from '../types/paciente'
 import type { HealthPlan } from '../types/planoSaude'
 import type { HealthProfessional } from '../types/profissional'
-import { mensagemErroApi } from '../utils/apiError'
+import { mensagemConflitoNumeroGuia, mensagemErroApi } from '../utils/apiError'
 import { hojeLocalISO } from '../utils/dataISO'
 import { GuiaForm } from './GuiaForm'
 
@@ -34,12 +34,14 @@ export function NovaGuiaDialog({
   const [loadingDados, setLoadingDados] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [guideNumberError, setGuideNumberError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
     async function carregar() {
       setLoadingDados(true)
       setError(null)
+      setGuideNumberError(null)
       try {
         setPlanos(await listarPlanosSaude())
       } catch (err) {
@@ -55,14 +57,16 @@ export function NovaGuiaDialog({
   async function onSubmit(values: GuiaFormValues) {
     setSaving(true)
     setError(null)
+    setGuideNumberError(null)
     try {
       const criada = await criarGuia({
         healthPlanId: values.healthPlanId,
         patientId: values.patientId,
         healthProfessionalId: values.healthProfessionalId,
+        authorizationDate: values.authorizationDate,
         expirationDate: values.expirationDate,
         status: values.status,
-        ...(values.guideNumber ? { guideNumber: values.guideNumber } : {}),
+        guideNumber: values.guideNumber,
         procedures: values.procedures.map((item) => ({
           procedureId: item.procedureId,
           authorizedQuantity: item.authorizedQuantity,
@@ -74,6 +78,8 @@ export function NovaGuiaDialog({
       onCreated(completa)
       onClose()
     } catch (err) {
+      const conflito = mensagemConflitoNumeroGuia(err)
+      if (conflito) setGuideNumberError(conflito)
       setError(mensagemErroApi(err, 'Não foi possível cadastrar a guia.'))
     } finally {
       setSaving(false)
@@ -106,7 +112,7 @@ export function NovaGuiaDialog({
                 healthProfessionalId,
                 status: 'pending',
                 guideNumber: '',
-                startDate: hojeLocalISO(),
+                authorizationDate: hojeLocalISO(),
                 expirationDate: '',
                 procedures: [{ procedureId: undefined, authorizedQuantity: 1, value: undefined }],
               }}
@@ -117,6 +123,7 @@ export function NovaGuiaDialog({
               submitLabel="Cadastrar guia"
               patientLocked
               professionalLocked
+              guideNumberServerError={guideNumberError}
               onSubmit={(values) => void onSubmit(values)}
               onCancel={saving ? undefined : onClose}
             />

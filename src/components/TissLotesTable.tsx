@@ -46,7 +46,7 @@ export function TissLotesTable({ lotes }: TissLotesTableProps) {
             <TableRow key={item.id} hover>
               <TableCell>
                 <Link component={RouterLink} to={`/tiss/lotes/${item.id}`}>
-                  #{item.id}
+                  {item.batchNumber}
                 </Link>
               </TableCell>
               <TableCell>{item.healthPlan?.name ?? '—'}</TableCell>

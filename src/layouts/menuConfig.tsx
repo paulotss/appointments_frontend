@@ -108,6 +108,7 @@ const allMenuItems: MenuItem[] = [
     adminOnly: true,
     items: [
       { kind: 'divider', label: 'Geral' },
+      { kind: 'link', label: 'Clínica', to: '/configuracoes/clinica' },
       { kind: 'link', label: 'Usuários', to: '/usuarios' },
       { kind: 'link', label: 'Profissionais', to: '/profissionais' },
       { kind: 'link', label: 'Especialidades', to: '/especialidades' },

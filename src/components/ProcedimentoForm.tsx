@@ -10,6 +10,7 @@ import {
   type ProcedimentoFormValues,
 } from '../schemas/procedimento.schema'
 import type { HealthPlan } from '../types/planoSaude'
+import { TISS_GUIDE_TYPE_LABELS, TISS_GUIDE_TYPES, sugerirTipoGuiaTiss } from '../types/tiss'
 import type { Especialidade } from '../types/registro'
 
 interface ProcedimentoFormProps {
@@ -33,6 +34,8 @@ export function ProcedimentoForm({
     control,
     register,
     handleSubmit,
+    getValues,
+    setValue,
     formState: { errors },
   } = useForm<ProcedimentoFormInput, unknown, ProcedimentoFormValues>({
     resolver: zodResolver(procedimentoSchema),
@@ -76,6 +79,29 @@ export function ProcedimentoForm({
         error={Boolean(errors.name)}
         helperText={errors.name?.message ?? 'O backend grava o nome em maiúsculas.'}
         {...register('name')}
+      />
+      <Controller
+        name="tissGuideType"
+        control={control}
+        render={({ field }) => (
+          <TextField
+            select
+            label="Tipo da guia TISS"
+            value={field.value ?? ''}
+            onChange={field.onChange}
+            error={Boolean(errors.tissGuideType)}
+            helperText={
+              errors.tissGuideType?.message ??
+              'Consulta gera guiaConsulta; exames e procedimentos geram SP/SADT. Códigos TUSS 1010… costumam ser consulta.'
+            }
+          >
+            {TISS_GUIDE_TYPES.map((tipo) => (
+              <MenuItem key={tipo} value={tipo}>
+                {TISS_GUIDE_TYPE_LABELS[tipo]}
+              </MenuItem>
+            ))}
+          </TextField>
+        )}
       />
       <Controller
         name="value"
@@ -144,7 +170,13 @@ export function ProcedimentoForm({
                 <TextField
                   label="Código TISS"
                   value={tissField.value ?? ''}
-                  onChange={tissField.onChange}
+                  onChange={(event) => {
+                    tissField.onChange(event)
+                    const codes = (getValues('healthPlanPrices') ?? []).map((item, itemIndex) =>
+                      itemIndex === index ? event.target.value : String(item?.tissCode ?? ''),
+                    )
+                    setValue('tissGuideType', sugerirTipoGuiaTiss(codes))
+                  }}
                   onBlur={tissField.onBlur}
                   inputRef={tissField.ref}
                   error={Boolean(itemError?.tissCode)}

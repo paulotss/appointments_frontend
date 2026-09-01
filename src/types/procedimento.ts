@@ -1,3 +1,5 @@
+import type { TissGuideType } from './tiss'
+
 export interface ProcedureSpecialtyRef {
   id: number
   name: string
@@ -24,6 +26,7 @@ export interface Procedure {
   name: string
   /** Preço padrão particular */
   value: string | number
+  tissGuideType: TissGuideType
   specialty?: ProcedureSpecialtyRef
   healthPlanPrices: ProcedureHealthPlanPrice[]
 }
@@ -38,6 +41,7 @@ export interface CreateProcedureRequest {
   specialtyId: number
   name: string
   value: number
+  tissGuideType: TissGuideType
   healthPlanPrices?: HealthPlanPriceInput[]
 }
 
@@ -45,6 +49,7 @@ export interface UpdateProcedureRequest {
   specialtyId?: number
   name?: string
   value?: number
+  tissGuideType?: TissGuideType
   healthPlanPrices?: HealthPlanPriceInput[]
 }
 

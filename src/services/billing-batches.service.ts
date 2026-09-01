@@ -6,7 +6,9 @@ import {
   type CreateBillingBatchRequest,
   type ListarBillingBatchesParams,
   type ReceiveBillingBatchRequest,
+  type UpdateBillingBatchRequest,
 } from '../types/financeiro'
+import type { TissGuideType } from '../types/tiss'
 import { isoDatePrefix } from '../utils/dataISO'
 import { apiClient } from './apiClient'
 
@@ -25,9 +27,11 @@ interface BackendGuideProcedure {
 
 interface BackendGuide {
   id: number
+  guideNumber?: string | null
   patient?: BackendRef
   healthProfessional?: BackendRef
   expirationDate?: string
+  tissGuideType?: TissGuideType | null
   procedures?: BackendGuideProcedure[]
 }
 
@@ -51,6 +55,7 @@ interface BackendFinancialEntryRef {
 interface BackendBillingBatch {
   id: number
   healthPlanId: number
+  batchNumber: string
   status: BillingBatch['status']
   billedAmount: string | number
   receivedAmount: string | number
@@ -74,11 +79,13 @@ function mapGuide(item: BackendBatchGuide): BillingBatchGuide {
     insuranceGuide: item.insuranceGuide
       ? {
           id: item.insuranceGuide.id,
+          guideNumber: item.insuranceGuide.guideNumber ?? null,
           patient: item.insuranceGuide.patient,
           healthProfessional: item.insuranceGuide.healthProfessional,
           expirationDate: item.insuranceGuide.expirationDate
             ? isoDatePrefix(item.insuranceGuide.expirationDate)
             : undefined,
+          tissGuideType: item.insuranceGuide.tissGuideType ?? null,
           procedures: item.insuranceGuide.procedures,
         }
       : undefined,
@@ -89,6 +96,7 @@ export function mapBackendBillingBatch(item: BackendBillingBatch): BillingBatch 
   return {
     id: item.id,
     healthPlanId: item.healthPlanId,
+    batchNumber: item.batchNumber || String(item.id),
     status: item.status,
     billedAmount: mapMoney(item.billedAmount),
     receivedAmount: mapMoney(item.receivedAmount),
@@ -130,6 +138,23 @@ export async function listarLotesTiss(
   }
 }
 
+export async function listarTodosLotesTiss(
+  params?: Omit<ListarBillingBatchesParams, 'page' | 'limit'>,
+): Promise<BillingBatch[]> {
+  const limit = 100
+  let page = 1
+  const todos: BillingBatch[] = []
+
+  while (true) {
+    const resultado = await listarLotesTiss({ ...params, page, limit })
+    todos.push(...resultado.data)
+    if (page >= resultado.meta.totalPages || resultado.data.length === 0) break
+    page += 1
+  }
+
+  return todos
+}
+
 export async function buscarLoteTiss(id: number): Promise<BillingBatch> {
   const response = await apiClient.get<BackendBillingBatch>(`/billing-batches/${id}`)
   return mapBackendBillingBatch(response.data)
@@ -137,6 +162,14 @@ export async function buscarLoteTiss(id: number): Promise<BillingBatch> {
 
 export async function criarLoteTiss(payload: CreateBillingBatchRequest): Promise<BillingBatch> {
   const response = await apiClient.post<BackendBillingBatch>('/billing-batches', payload)
+  return mapBackendBillingBatch(response.data)
+}
+
+export async function atualizarLoteTiss(
+  id: number,
+  payload: UpdateBillingBatchRequest,
+): Promise<BillingBatch> {
+  const response = await apiClient.patch<BackendBillingBatch>(`/billing-batches/${id}`, payload)
   return mapBackendBillingBatch(response.data)
 }
 
@@ -151,4 +184,23 @@ export async function receberLoteTiss(
 ): Promise<BillingBatch> {
   const response = await apiClient.post<BackendBillingBatch>(`/billing-batches/${id}/receive`, payload)
   return mapBackendBillingBatch(response.data)
+}
+
+function filenameFromDisposition(header: string | undefined, fallback: string): string {
+  if (!header) return fallback
+  const utf = header.match(/filename\*=UTF-8''([^;]+)/i)
+  if (utf?.[1]) return decodeURIComponent(utf[1])
+  const simple = header.match(/filename="?([^";]+)"?/i)
+  return simple?.[1]?.trim() || fallback
+}
+
+export async function exportarXmlTissLote(id: number): Promise<{ blob: Blob; filename: string }> {
+  const response = await apiClient.get<Blob>(`/billing-batches/${id}/tiss-xml`, {
+    responseType: 'blob',
+  })
+  const disposition = response.headers['content-disposition'] as string | undefined
+  return {
+    blob: response.data,
+    filename: filenameFromDisposition(disposition, `lote-${id}-tiss.xml`),
+  }
 }

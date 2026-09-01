@@ -8,6 +8,7 @@ import type {
   UpdateInsuranceGuideRequest,
 } from '../types/guia'
 import type { PagedList } from '../types/listEnvelope'
+import type { TissGuideType } from '../types/tiss'
 import { isoDatePrefix } from '../utils/dataISO'
 import { apiClient } from './apiClient'
 import { mapBackendBillingBatch } from './billing-batches.service'
@@ -34,6 +35,7 @@ interface BackendProcedureRef {
   name: string
   value: string | number
   specialtyId: number
+  tissGuideType?: TissGuideType
   specialty?: BackendRef
   healthPlanPrices?: BackendHealthPlanPrice[]
 }
@@ -54,9 +56,11 @@ interface BackendInsuranceGuide {
   patientId: number
   healthProfessionalId: number
   guideNumber?: string | null
+  authorizationDate?: string
   expirationDate: string
   isBilled: boolean
   status: InsuranceGuideStatus
+  tissGuideType?: TissGuideType | null
   healthPlan?: BackendPlanRef
   patient?: BackendRef
   healthProfessional?: BackendRef
@@ -83,10 +87,12 @@ export function mapBackendGuide(item: BackendInsuranceGuide): InsuranceGuide {
     patientId: item.patientId,
     healthProfessionalId: item.healthProfessionalId,
     guideNumber: item.guideNumber ?? null,
+    authorizationDate: isoDatePrefix(item.authorizationDate),
     expirationDate: isoDatePrefix(item.expirationDate),
     isBilled: Boolean(item.isBilled),
     billingBatchId: item.billingBatchGuide?.billingBatchId ?? null,
     status: item.status ?? 'pending',
+    tissGuideType: item.tissGuideType ?? null,
     healthPlan: item.healthPlan,
     patient: item.patient,
     healthProfessional: item.healthProfessional,

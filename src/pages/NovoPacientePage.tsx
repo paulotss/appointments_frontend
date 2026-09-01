@@ -1,48 +1,61 @@
-import { zodResolver } from '@hookform/resolvers/zod'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import { Alert, Button, Stack, TextField, Typography } from '@mui/material'
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { Alert, Button, CircularProgress, Stack, Typography } from '@mui/material'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { pacienteSchema, type PacienteFormInput, type PacienteFormValues } from '../schemas/paciente.schema'
+import { PacienteForm } from '../components/PacienteForm'
+import type { PacienteFormValues } from '../schemas/paciente.schema'
+import { listarPlanosSaude } from '../services/health-plans.service'
+import { sincronizarCarteirinhas } from '../services/insurance-cards.service'
 import { criarPaciente } from '../services/patients.service'
+import type { HealthPlan } from '../types/planoSaude'
+import { mensagemErroApi } from '../utils/apiError'
 
 export function NovoPacientePage() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
+  const [loadingDados, setLoadingDados] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [planos, setPlanos] = useState<HealthPlan[]>([])
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<PacienteFormInput, unknown, PacienteFormValues>({
-    resolver: zodResolver(pacienteSchema),
-    defaultValues: {
-      name: '',
-      phone: '',
-      email: '',
-      birthDate: '',
-      cpf: '',
-    },
-  })
+  useEffect(() => {
+    async function carregar() {
+      setLoadingDados(true)
+      setError(null)
+      try {
+        setPlanos(await listarPlanosSaude())
+      } catch (err) {
+        setError(mensagemErroApi(err, 'Não foi possível carregar os planos de saúde.'))
+      } finally {
+        setLoadingDados(false)
+      }
+    }
+    void carregar()
+  }, [])
 
   async function onSubmit(values: PacienteFormValues) {
     setLoading(true)
     setError(null)
     try {
-      await criarPaciente({
+      const criado = await criarPaciente({
         name: values.name,
         phone: values.phone,
         ...(values.email != null ? { email: values.email } : {}),
         ...(values.birthDate != null ? { birthDate: values.birthDate } : {}),
         ...(values.cpf != null ? { cpf: values.cpf } : {}),
       })
-      reset()
+      await sincronizarCarteirinhas(
+        criado.id,
+        [],
+        values.insuranceCards.map((item) => ({
+          id: item.cardId,
+          healthPlanId: item.healthPlanId,
+          cardNumber: item.cardNumber,
+          expirationDate: item.expirationDate,
+        })),
+      )
       navigate('/pacientes', { replace: true })
-    } catch {
-      setError('Nao foi possivel cadastrar o paciente.')
+    } catch (err) {
+      setError(mensagemErroApi(err, 'Não foi possível cadastrar o paciente.'))
     } finally {
       setLoading(false)
     }
@@ -61,44 +74,29 @@ export function NovoPacientePage() {
 
       {error ? <Alert severity="error">{error}</Alert> : null}
 
-      <Stack component="form" spacing={2} sx={{ maxWidth: 540 }} onSubmit={handleSubmit(onSubmit)}>
-        <TextField
-          label="Nome"
-          error={Boolean(errors.name)}
-          helperText={errors.name?.message}
-          {...register('name')}
-        />
-        <TextField
-          label="Telefone"
-          error={Boolean(errors.phone)}
-          helperText={errors.phone?.message}
-          {...register('phone')}
-        />
-        <TextField
-          label="E-mail (opcional)"
-          type="email"
-          error={Boolean(errors.email)}
-          helperText={errors.email?.message}
-          {...register('email')}
-        />
-        <TextField
-          label="Data de nascimento (opcional)"
-          type="date"
-          InputLabelProps={{ shrink: true }}
-          error={Boolean(errors.birthDate)}
-          helperText={errors.birthDate?.message}
-          {...register('birthDate')}
-        />
-        <TextField
-          label="CPF (opcional)"
-          error={Boolean(errors.cpf)}
-          helperText={errors.cpf?.message}
-          {...register('cpf')}
-        />
-        <Button type="submit" variant="contained" disabled={loading}>
-          {loading ? 'Salvando...' : 'Cadastrar paciente'}
-        </Button>
-      </Stack>
+      {loadingDados ? (
+        <Stack direction="row" alignItems="center" gap={1.5}>
+          <CircularProgress size={20} />
+          <Typography>Carregando dados...</Typography>
+        </Stack>
+      ) : (
+        <Stack sx={{ maxWidth: 720 }}>
+          <PacienteForm
+            defaultValues={{
+              name: '',
+              phone: '',
+              email: '',
+              birthDate: '',
+              cpf: '',
+              insuranceCards: [],
+            }}
+            planos={planos}
+            loading={loading}
+            submitLabel="Cadastrar paciente"
+            onSubmit={(values) => void onSubmit(values)}
+          />
+        </Stack>
+      )}
     </Stack>
   )
 }

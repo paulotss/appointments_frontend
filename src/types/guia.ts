@@ -1,3 +1,5 @@
+import type { TissGuideType } from './tiss'
+
 export const INSURANCE_GUIDE_STATUSES = ['pending', 'under_analysis', 'authorized'] as const
 
 export type InsuranceGuideStatus = (typeof INSURANCE_GUIDE_STATUSES)[number]
@@ -22,6 +24,7 @@ export interface InsuranceGuideProcedureRef {
   name: string
   value: string | number
   specialtyId: number
+  tissGuideType?: TissGuideType
   specialty?: InsuranceGuideRef
   healthPlanPrices?: Array<{
     healthPlanId: number
@@ -52,10 +55,12 @@ export interface InsuranceGuide {
   patientId: number
   healthProfessionalId: number
   guideNumber: string | null
+  authorizationDate: string
   expirationDate: string
   isBilled: boolean
   billingBatchId: number | null
   status: InsuranceGuideStatus
+  tissGuideType: TissGuideType | null
   healthPlan?: InsuranceGuidePlanRef
   patient?: InsuranceGuideRef
   healthProfessional?: InsuranceGuideRef
@@ -67,6 +72,7 @@ export interface CreateInsuranceGuideRequest {
   patientId: number
   healthProfessionalId: number
   guideNumber?: string
+  authorizationDate?: string
   expirationDate?: string
   isBilled?: boolean
   status?: InsuranceGuideStatus
@@ -78,6 +84,7 @@ export interface UpdateInsuranceGuideRequest {
   patientId?: number
   healthProfessionalId?: number
   guideNumber?: string | null
+  authorizationDate?: string
   expirationDate?: string
   isBilled?: boolean
   status?: InsuranceGuideStatus

@@ -21,9 +21,8 @@ export const guiaSchema = z.object({
   guideNumber: z
     .string()
     .trim()
-    .optional()
-    .transform((value) => (value ? value : undefined)),
-  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe a data de início'),
+    .min(1, 'Informe o número da guia'),
+  authorizationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe a data de autorização'),
   expirationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe a data de validade'),
   procedures: z
     .array(procedimentoGuiaSchema)

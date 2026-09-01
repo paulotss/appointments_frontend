@@ -27,6 +27,7 @@ import { atualizarProfissional, listarProfissionais } from '../services/health-p
 import type { ListMeta } from '../types/listEnvelope'
 import type { Especialidade } from '../types/registro'
 import { COUNCIL_TYPES, type CouncilType, type HealthProfessional } from '../types/profissional'
+import { UFS_BRASIL, type UfBrasil } from '../utils/ufBrasil'
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100]
 const META_VAZIA: ListMeta = { page: 1, limit: 50, total: 0, totalPages: 1 }
@@ -47,6 +48,8 @@ export function ProfissionaisPage() {
   const [specialtiesEdicao, setSpecialtiesEdicao] = useState<EspecialidadeEdicao[]>([])
   const [councilTypeEdicao, setCouncilTypeEdicao] = useState<CouncilType>('CRM')
   const [councilNumberEdicao, setCouncilNumberEdicao] = useState('')
+  const [councilUfEdicao, setCouncilUfEdicao] = useState<UfBrasil | ''>('')
+  const [cbosCodeEdicao, setCbosCodeEdicao] = useState('')
   const [cpfEdicao, setCpfEdicao] = useState('')
   const [phoneEdicao, setPhoneEdicao] = useState('')
   const [emailEdicao, setEmailEdicao] = useState('')
@@ -79,6 +82,8 @@ export function ProfissionaisPage() {
     )
     setCouncilTypeEdicao(profissional.councilType)
     setCouncilNumberEdicao(profissional.councilNumber)
+    setCouncilUfEdicao(profissional.councilUf ?? '')
+    setCbosCodeEdicao(profissional.cbosCode ?? '')
     setCpfEdicao(profissional.cpf)
     setPhoneEdicao(profissional.phone ?? '')
     setEmailEdicao(profissional.email ?? '')
@@ -91,6 +96,8 @@ export function ProfissionaisPage() {
     setSpecialtiesEdicao([])
     setCouncilTypeEdicao('CRM')
     setCouncilNumberEdicao('')
+    setCouncilUfEdicao('')
+    setCbosCodeEdicao('')
     setCpfEdicao('')
     setPhoneEdicao('')
     setEmailEdicao('')
@@ -122,6 +129,8 @@ export function ProfissionaisPage() {
         specialties,
         councilType: councilTypeEdicao,
         councilNumber: councilNumberEdicao.trim(),
+        councilUf: councilUfEdicao === '' ? null : councilUfEdicao,
+        cbosCode: cbosCodeEdicao.replace(/\D/g, '') || null,
         cpf: cpfDigits,
         phone: phoneEdicao.trim() || null,
         email: emailEdicao.trim() || null,
@@ -332,6 +341,25 @@ export function ProfissionaisPage() {
                   ? 'Informe o numero do conselho'
                   : ' '
               }
+            />
+            <TextField
+              select
+              label="UF do conselho"
+              value={councilUfEdicao}
+              onChange={(event) => setCouncilUfEdicao(event.target.value as UfBrasil | '')}
+            >
+              <MenuItem value="">Não informado</MenuItem>
+              {UFS_BRASIL.map((uf) => (
+                <MenuItem key={uf} value={uf}>
+                  {uf}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              label="CBO-S"
+              value={cbosCodeEdicao}
+              onChange={(event) => setCbosCodeEdicao(event.target.value)}
+              helperText="6 dígitos da ocupação"
             />
             <TextField
               label="CPF"

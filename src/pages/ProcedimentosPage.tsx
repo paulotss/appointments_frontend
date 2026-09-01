@@ -90,6 +90,7 @@ export function ProcedimentosPage() {
         specialtyId: values.specialtyId,
         name: values.name.trim(),
         value: values.value,
+        tissGuideType: values.tissGuideType,
         healthPlanPrices: values.healthPlanPrices,
       })
       setProcedimentos((prev) => prev.map((item) => (item.id === atualizado.id ? atualizado : item)))
@@ -181,6 +182,7 @@ export function ProcedimentosPage() {
                   specialtyId: editando.specialtyId,
                   name: editando.name,
                   value: parseValorDecimal(editando.value),
+                  tissGuideType: editando.tissGuideType,
                   healthPlanPrices: editando.healthPlanPrices.map((item) => ({
                     healthPlanId: item.healthPlanId,
                     tissCode: item.tissCode,

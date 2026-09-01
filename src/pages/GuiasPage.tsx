@@ -10,12 +10,20 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
   FormControlLabel,
   IconButton,
   MenuItem,
   Paper,
+  Radio,
+  RadioGroup,
   Stack,
   Switch,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
   TablePagination,
   TextField,
   Typography,
@@ -31,13 +39,13 @@ import { buscarProfissional } from '../services/health-professionals.service'
 import {
   atualizarGuia,
   excluirGuia,
-  faturarGuia,
   listarGuias,
   listarTodasGuias,
 } from '../services/insurance-guides.service'
+import { atualizarLoteTiss, criarLoteTiss, listarTodosLotesTiss } from '../services/billing-batches.service'
 import { buscarPaciente } from '../services/patients.service'
 import { listarProcedimentos } from '../services/procedures.service'
-import { valorFaturavelGuia } from '../types/financeiro'
+import { valorFaturavelGuia, type BillingBatch } from '../types/financeiro'
 import {
   guiaProcedimentosTotalmenteUtilizados,
   INSURANCE_GUIDE_STATUSES,
@@ -51,7 +59,7 @@ import type { HealthPlan } from '../types/planoSaude'
 import type { Procedure } from '../types/procedimento'
 import { tissCodeDoPlano, valorDoPlano } from '../types/procedimento'
 import type { HealthProfessional } from '../types/profissional'
-import { mensagemErroApi } from '../utils/apiError'
+import { mensagemConflitoNumeroGuia, mensagemErroApi } from '../utils/apiError'
 import { adicionarDiasISO, statusPrazoGuia } from '../utils/dataISO'
 import { formatarMoedaBRL, parseValorDecimal } from '../utils/moedaBRL'
 
@@ -69,10 +77,15 @@ function guiaAtendeFiltrosLocais(
   guia: InsuranceGuide,
   filtroMostrarFaturadas: boolean,
   filtroPertoVencer: boolean,
+  filtroVencidas: boolean,
   filtroSemSaldo: boolean,
 ): boolean {
   if (guia.isBilled !== filtroMostrarFaturadas) return false
-  if (filtroPertoVencer && statusPrazoGuia(guia.expirationDate) !== 'proxima') return false
+  if (filtroPertoVencer || filtroVencidas) {
+    const prazo = statusPrazoGuia(guia.expirationDate)
+    if (filtroPertoVencer && prazo !== 'proxima') return false
+    if (filtroVencidas && prazo !== 'vencida') return false
+  }
   if (filtroSemSaldo && !guiaProcedimentosTotalmenteUtilizados(guia.procedures)) return false
   return true
 }
@@ -92,16 +105,22 @@ export function GuiasPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [loteFaturadoId, setLoteFaturadoId] = useState<number | null>(null)
+  const [loteFaturadoNumero, setLoteFaturadoNumero] = useState<string | null>(null)
   const [faturando, setFaturando] = useState<InsuranceGuide | null>(null)
   const [savingFaturar, setSavingFaturar] = useState(false)
   const [faturarError, setFaturarError] = useState<string | null>(null)
+  const [faturarModo, setFaturarModo] = useState<'novo' | 'existente'>('novo')
+  const [lotesAbertos, setLotesAbertos] = useState<BillingBatch[]>([])
+  const [loteSelecionadoId, setLoteSelecionadoId] = useState<number | null>(null)
+  const [loadingLotes, setLoadingLotes] = useState(false)
   const [editando, setEditando] = useState<InsuranceGuide | null>(null)
   const [pacienteEdicao, setPacienteEdicao] = useState<Patient | null>(null)
   const [profissionalEdicao, setProfissionalEdicao] = useState<HealthProfessional | null>(null)
   const [healthPlanIdEdicao, setHealthPlanIdEdicao] = useState<number | ''>('')
   const [statusEdicao, setStatusEdicao] = useState<InsuranceGuideStatus>('pending')
   const [guideNumberEdicao, setGuideNumberEdicao] = useState('')
-  const [startDateEdicao, setStartDateEdicao] = useState('')
+  const [guideNumberEdicaoError, setGuideNumberEdicaoError] = useState<string | null>(null)
+  const [authorizationDateEdicao, setAuthorizationDateEdicao] = useState('')
   const [expirationDateEdicao, setExpirationDateEdicao] = useState('')
   const [procedimentosEdicao, setProcedimentosEdicao] = useState<ProcedimentoEdicao[]>([])
   const [procedimentosPlano, setProcedimentosPlano] = useState<Procedure[]>([])
@@ -110,6 +129,7 @@ export function GuiasPage() {
   const [filtroPlanoId, setFiltroPlanoId] = useState<number | ''>('')
   const [filtroStatus, setFiltroStatus] = useState<InsuranceGuideStatus | ''>('')
   const [filtroPertoVencer, setFiltroPertoVencer] = useState(false)
+  const [filtroVencidas, setFiltroVencidas] = useState(false)
   const [filtroMostrarFaturadas, setFiltroMostrarFaturadas] = useState(false)
   const [filtroSemSaldo, setFiltroSemSaldo] = useState(false)
   const [page, setPage] = useState(0)
@@ -133,9 +153,9 @@ export function GuiasPage() {
       ? undefined
       : planos.find((item) => item.id === healthPlanIdEdicao)?.submissionDeadlineDays
 
-  function recalcularValidade(startDate: string, prazo: number | undefined) {
-    if (prazo == null || !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) return
-    setExpirationDateEdicao(adicionarDiasISO(startDate, prazo))
+  function recalcularValidade(authorizationDate: string, prazo: number | undefined) {
+    if (prazo == null || !/^\d{4}-\d{2}-\d{2}$/.test(authorizationDate)) return
+    setExpirationDateEdicao(adicionarDiasISO(authorizationDate, prazo))
   }
 
   function abrirEdicao(guia: InsuranceGuide) {
@@ -150,6 +170,7 @@ export function GuiasPage() {
             email: null,
             birthDate: null,
             cpf: null,
+            insuranceCards: [],
           }
         : null,
     )
@@ -157,8 +178,12 @@ export function GuiasPage() {
     setHealthPlanIdEdicao(guia.healthPlanId)
     setStatusEdicao(guia.status)
     setGuideNumberEdicao(guia.guideNumber ?? '')
+    setGuideNumberEdicaoError(null)
     setExpirationDateEdicao(guia.expirationDate)
-    setStartDateEdicao(prazo != null ? adicionarDiasISO(guia.expirationDate, -prazo) : '')
+    setAuthorizationDateEdicao(
+      guia.authorizationDate ||
+        (prazo != null ? adicionarDiasISO(guia.expirationDate, -prazo) : ''),
+    )
     setProcedimentosEdicao(
       guia.procedures.length > 0
         ? guia.procedures.map((item) => ({
@@ -184,7 +209,8 @@ export function GuiasPage() {
     setHealthPlanIdEdicao('')
     setStatusEdicao('pending')
     setGuideNumberEdicao('')
-    setStartDateEdicao('')
+    setGuideNumberEdicaoError(null)
+    setAuthorizationDateEdicao('')
     setExpirationDateEdicao('')
     setProcedimentosEdicao([])
     setProcedimentosPlano([])
@@ -199,8 +225,8 @@ export function GuiasPage() {
     ) {
       return
     }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDateEdicao)) {
-      setError('Informe a data de início.')
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(authorizationDateEdicao)) {
+      setError('Informe a data de autorização.')
       return
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(expirationDateEdicao)) {
@@ -238,6 +264,7 @@ export function GuiasPage() {
     setSavingEdit(true)
     setError(null)
     setSuccess(null)
+    setGuideNumberEdicaoError(null)
     try {
       const atualizado = await atualizarGuia(editando.id, {
         patientId: patientIdEdicao,
@@ -245,6 +272,7 @@ export function GuiasPage() {
         healthProfessionalId: healthProfessionalIdEdicao,
         status: statusEdicao,
         guideNumber: guideNumberEdicao.trim() ? guideNumberEdicao.trim() : null,
+        authorizationDate: authorizationDateEdicao,
         expirationDate: expirationDateEdicao,
         procedures: procedures.map((item) => ({
           procedureId: item.procedureId,
@@ -256,7 +284,10 @@ export function GuiasPage() {
       fecharEdicao()
       setSuccess('Guia atualizada com sucesso.')
       setLoteFaturadoId(null)
+      setLoteFaturadoNumero(null)
     } catch (err) {
+      const conflito = mensagemConflitoNumeroGuia(err)
+      if (conflito) setGuideNumberEdicaoError(conflito)
       setError(mensagemErroApi(err, 'Não foi possível editar a guia.'))
     } finally {
       setSavingEdit(false)
@@ -275,6 +306,7 @@ export function GuiasPage() {
       setGuias((prev) => prev.filter((item) => item.id !== guia.id))
       setSuccess('Guia excluída com sucesso.')
       setLoteFaturadoId(null)
+      setLoteFaturadoNumero(null)
     } catch (err) {
       setError(mensagemErroApi(err, 'Não foi possível excluir a guia.'))
     }
@@ -282,31 +314,43 @@ export function GuiasPage() {
 
   async function confirmarFaturar() {
     if (!faturando) return
+    if (faturarModo === 'existente' && loteSelecionadoId == null) {
+      setFaturarError('Selecione um lote existente.')
+      return
+    }
     setSavingFaturar(true)
     setError(null)
     setSuccess(null)
     setFaturarError(null)
     setLoteFaturadoId(null)
+    setLoteFaturadoNumero(null)
     try {
-      const lote = await faturarGuia(faturando.id)
+      const lote =
+        faturarModo === 'novo'
+          ? await criarLoteTiss({
+              healthPlanId: faturando.healthPlanId,
+              insuranceGuideIds: [faturando.id],
+            })
+          : await atualizarLoteTiss(loteSelecionadoId!, {
+              addInsuranceGuideIds: [faturando.id],
+            })
       setGuias((prev) =>
         prev.map((item) =>
-          item.id === faturando.id
-            ? { ...item, isBilled: true, billingBatchId: lote.id }
-            : item,
+          item.id === faturando.id ? { ...item, billingBatchId: lote.id } : item,
         ),
       )
       setFaturando(null)
       setLoteFaturadoId(lote.id)
-      setSuccess('Guia faturada. A entrada financeira ficou pendente até o recebimento do plano.')
+      setLoteFaturadoNumero(lote.batchNumber)
+      setSuccess(`Guia adicionada ao lote ${lote.batchNumber}.`)
     } catch (err) {
-      setFaturarError(mensagemErroApi(err, 'Não foi possível faturar a guia.'))
+      setFaturarError(mensagemErroApi(err, 'Não foi possível adicionar a guia ao lote.'))
     } finally {
       setSavingFaturar(false)
     }
   }
 
-  const startDateInvalida = !/^\d{4}-\d{2}-\d{2}$/.test(startDateEdicao)
+  const authorizationDateInvalida = !/^\d{4}-\d{2}-\d{2}$/.test(authorizationDateEdicao)
   const expirationInvalida = !/^\d{4}-\d{2}-\d{2}$/.test(expirationDateEdicao)
   const proceduresInvalidos =
     procedimentosEdicao.length === 0 ||
@@ -329,10 +373,10 @@ export function GuiasPage() {
     healthPlanIdEdicao === '' ||
     healthProfessionalIdEdicao === '' ||
     proceduresInvalidos ||
-    startDateInvalida ||
+    authorizationDateInvalida ||
     expirationInvalida
 
-  const filtrosLocaisAtivos = filtroPertoVencer || filtroSemSaldo || filtroMostrarFaturadas
+  const filtrosLocaisAtivos = filtroPertoVencer || filtroVencidas || filtroSemSaldo || filtroMostrarFaturadas
 
   const paramsApi = useMemo(
     () => ({
@@ -345,9 +389,15 @@ export function GuiasPage() {
 
   const guiasFiltradas = useMemo(() => {
     return guias.filter((guia) =>
-      guiaAtendeFiltrosLocais(guia, filtroMostrarFaturadas, filtroPertoVencer, filtroSemSaldo),
+      guiaAtendeFiltrosLocais(
+        guia,
+        filtroMostrarFaturadas,
+        filtroPertoVencer,
+        filtroVencidas,
+        filtroSemSaldo,
+      ),
     )
-  }, [guias, filtroMostrarFaturadas, filtroPertoVencer, filtroSemSaldo])
+  }, [guias, filtroMostrarFaturadas, filtroPertoVencer, filtroVencidas, filtroSemSaldo])
 
   const totalExibido = filtrosLocaisAtivos ? guiasFiltradas.length : meta.total
   const ultimaPagina = Math.max(0, Math.ceil(totalExibido / rowsPerPage) - 1)
@@ -406,7 +456,7 @@ export function GuiasPage() {
 
   useEffect(() => {
     setPage(0)
-  }, [filtroPaciente, filtroPlanoId, filtroStatus, filtroPertoVencer, filtroMostrarFaturadas, filtroSemSaldo])
+  }, [filtroPaciente, filtroPlanoId, filtroStatus, filtroPertoVencer, filtroVencidas, filtroMostrarFaturadas, filtroSemSaldo])
 
   useEffect(() => {
     if (page > ultimaPagina) setPage(ultimaPagina)
@@ -442,6 +492,43 @@ export function GuiasPage() {
     )
   }, [healthPlanIdEdicao, procedimentosPlano])
 
+  useEffect(() => {
+    if (!faturando) {
+      setLotesAbertos([])
+      setLoteSelecionadoId(null)
+      setFaturarModo('novo')
+      setLoadingLotes(false)
+      return
+    }
+
+    const guia = faturando
+    let cancelado = false
+    async function carregarLotes() {
+      setLoadingLotes(true)
+      setFaturarError(null)
+      setLoteSelecionadoId(null)
+      setFaturarModo('novo')
+      try {
+        const lotes = await listarTodosLotesTiss({
+          healthPlanId: guia.healthPlanId,
+          status: 'open',
+        })
+        if (!cancelado) setLotesAbertos(lotes)
+      } catch (err) {
+        if (!cancelado) {
+          setLotesAbertos([])
+          setFaturarError(mensagemErroApi(err, 'Não foi possível carregar os lotes abertos.'))
+        }
+      } finally {
+        if (!cancelado) setLoadingLotes(false)
+      }
+    }
+    void carregarLotes()
+    return () => {
+      cancelado = true
+    }
+  }, [faturando])
+
   return (
     <Stack spacing={2}>
       <Box display="flex" alignItems="center" justifyContent="space-between" gap={2}>
@@ -466,7 +553,9 @@ export function GuiasPage() {
           {loteFaturadoId != null ? (
             <>
               {' '}
-              <RouterLink to={`/tiss/lotes/${loteFaturadoId}`}>Ver lote #{loteFaturadoId}</RouterLink>
+              <RouterLink to={`/tiss/lotes/${loteFaturadoId}`}>
+                Ver lote {loteFaturadoNumero ?? `#${loteFaturadoId}`}
+              </RouterLink>
             </>
           ) : null}
         </Alert>
@@ -516,11 +605,25 @@ export function GuiasPage() {
                   checked={filtroPertoVencer}
                   onChange={(_, checked) => {
                     setFiltroPertoVencer(checked)
+                    if (checked) setFiltroVencidas(false)
                     setPage(0)
                   }}
                 />
               }
               label="Perto de vencer (7 dias)"
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={filtroVencidas}
+                  onChange={(_, checked) => {
+                    setFiltroVencidas(checked)
+                    if (checked) setFiltroPertoVencer(false)
+                    setPage(0)
+                  }}
+                />
+              }
+              label="Somente vencidas"
             />
             <FormControlLabel
               control={
@@ -558,11 +661,7 @@ export function GuiasPage() {
             </Typography>
             <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
               <Box sx={{ width: 12, height: 12, bgcolor: 'error.light', borderRadius: 0.5 }} />
-              Último dia de validade
-            </Typography>
-            <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-              <Box sx={{ width: 12, height: 12, bgcolor: 'grey.300', borderRadius: 0.5 }} />
-              Vencida
+              Último dia de validade / Vencida
             </Typography>
           </Stack>
         </Stack>
@@ -627,7 +726,7 @@ export function GuiasPage() {
               value={planos.find((plano) => plano.id === healthPlanIdEdicao) ?? null}
               onChange={(_, plano) => {
                 setHealthPlanIdEdicao(plano?.id ?? '')
-                if (plano) recalcularValidade(startDateEdicao, plano.submissionDeadlineDays)
+                if (plano) recalcularValidade(authorizationDateEdicao, plano.submissionDeadlineDays)
                 setProcedimentosEdicao((prev) => prev.map((row) => ({ ...row, value: undefined })))
               }}
               renderInput={(params) => (
@@ -661,34 +760,38 @@ export function GuiasPage() {
             <TextField
               label="Número da guia"
               value={guideNumberEdicao}
-              onChange={(event) => setGuideNumberEdicao(event.target.value)}
-              helperText="Opcional"
+              onChange={(event) => {
+                setGuideNumberEdicao(event.target.value)
+                setGuideNumberEdicaoError(null)
+              }}
+              error={Boolean(guideNumberEdicaoError)}
+              helperText={guideNumberEdicaoError ?? 'Obrigatório no XML TISS'}
             />
             <TextField
-              label="Data de início"
+              label="Data de autorização"
               type="date"
               InputLabelProps={{ shrink: true }}
-              value={startDateEdicao}
+              value={authorizationDateEdicao}
               onChange={(event) => {
                 const next = event.target.value
-                setStartDateEdicao(next)
+                setAuthorizationDateEdicao(next)
                 recalcularValidade(next, prazoPlano)
               }}
-              error={startDateInvalida}
-              helperText={startDateInvalida ? 'Informe a data de início' : ' '}
+              error={authorizationDateInvalida}
+              helperText={authorizationDateInvalida ? 'Informe a data de autorização' : ' '}
             />
             <TextField
               label="Data de validade"
               type="date"
               InputLabelProps={{ shrink: true }}
-              InputProps={{ readOnly: true }}
               value={expirationDateEdicao}
+              onChange={(event) => setExpirationDateEdicao(event.target.value)}
               error={expirationInvalida}
               helperText={
                 expirationInvalida
                   ? 'Informe a data de validade'
                   : prazoPlano != null
-                    ? `Calculada com base na data de início + prazo do plano (${prazoPlano} dias).`
+                    ? `Sugestão: data de autorização + prazo do plano (${prazoPlano} dias). Pode ser alterada.`
                     : ' '
               }
             />
@@ -852,16 +955,79 @@ export function GuiasPage() {
         <DialogContent>
           <Stack spacing={1.5} sx={{ mt: 0.5 }}>
             {faturarError ? <Alert severity="error">{faturarError}</Alert> : null}
-            <Alert severity="warning">
-              Confirma o faturamento desta guia
+            <Alert severity="info">
+              A guia
               {faturando ? ` de ${faturando.patient?.name ?? 'paciente'}` : ''}
               {faturando
                 ? ` no valor de ${formatarMoedaBRL(valorFaturavelGuia(faturando.procedures))}`
-                : ''}
-              ? A guia será marcada como faturada, um lote TISS será criado e uma entrada financeira
-              pendente será gerada. O recebimento do plano (e eventuais glosas) poderá ser registrado
-              depois no lote.
+                : ''}{' '}
+              será incluída em um lote aberto. O faturamento financeiro é feito depois, na tela do
+              lote.
             </Alert>
+            <FormControl>
+              <RadioGroup
+                value={faturarModo}
+                onChange={(event) => {
+                  const modo = event.target.value as 'novo' | 'existente'
+                  setFaturarModo(modo)
+                  if (modo === 'novo') setLoteSelecionadoId(null)
+                }}
+              >
+                <FormControlLabel value="novo" control={<Radio />} label="Criar um novo lote" />
+                <FormControlLabel
+                  value="existente"
+                  control={<Radio />}
+                  label="Adicionar a um lote existente"
+                  disabled={loadingLotes || lotesAbertos.length === 0}
+                />
+              </RadioGroup>
+            </FormControl>
+            {loadingLotes ? (
+              <Stack direction="row" alignItems="center" gap={1.5}>
+                <CircularProgress size={20} />
+                <Typography>Carregando lotes abertos...</Typography>
+              </Stack>
+            ) : null}
+            {!loadingLotes && lotesAbertos.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                Não há lotes abertos deste plano. Um novo lote será criado.
+              </Typography>
+            ) : null}
+            {faturarModo === 'existente' && lotesAbertos.length > 0 ? (
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell padding="checkbox" />
+                    <TableCell>Lote</TableCell>
+                    <TableCell>Guias</TableCell>
+                    <TableCell align="right">Valor</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {lotesAbertos.map((lote) => (
+                    <TableRow
+                      key={lote.id}
+                      hover
+                      selected={loteSelecionadoId === lote.id}
+                      onClick={() => setLoteSelecionadoId(lote.id)}
+                      sx={{ cursor: 'pointer' }}
+                    >
+                      <TableCell padding="checkbox">
+                        <Radio
+                          checked={loteSelecionadoId === lote.id}
+                          onChange={() => setLoteSelecionadoId(lote.id)}
+                          value={lote.id}
+                          inputProps={{ 'aria-label': `Selecionar lote ${lote.batchNumber}` }}
+                        />
+                      </TableCell>
+                      <TableCell>{lote.batchNumber}</TableCell>
+                      <TableCell>{lote.guides.length}</TableCell>
+                      <TableCell align="right">{formatarMoedaBRL(lote.billedAmount)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : null}
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -874,8 +1040,16 @@ export function GuiasPage() {
           >
             Cancelar
           </Button>
-          <Button variant="contained" onClick={() => void confirmarFaturar()} disabled={savingFaturar}>
-            {savingFaturar ? 'Faturando...' : 'Confirmar'}
+          <Button
+            variant="contained"
+            onClick={() => void confirmarFaturar()}
+            disabled={
+              savingFaturar ||
+              loadingLotes ||
+              (faturarModo === 'existente' && loteSelecionadoId == null)
+            }
+          >
+            {savingFaturar ? 'Adicionando...' : 'Confirmar'}
           </Button>
         </DialogActions>
       </Dialog>
