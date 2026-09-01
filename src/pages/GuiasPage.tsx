@@ -69,10 +69,15 @@ function guiaAtendeFiltrosLocais(
   guia: InsuranceGuide,
   filtroMostrarFaturadas: boolean,
   filtroPertoVencer: boolean,
+  filtroVencidas: boolean,
   filtroSemSaldo: boolean,
 ): boolean {
   if (guia.isBilled !== filtroMostrarFaturadas) return false
-  if (filtroPertoVencer && statusPrazoGuia(guia.expirationDate) !== 'proxima') return false
+  if (filtroPertoVencer || filtroVencidas) {
+    const prazo = statusPrazoGuia(guia.expirationDate)
+    if (filtroPertoVencer && prazo !== 'proxima') return false
+    if (filtroVencidas && prazo !== 'vencida') return false
+  }
   if (filtroSemSaldo && !guiaProcedimentosTotalmenteUtilizados(guia.procedures)) return false
   return true
 }
@@ -110,6 +115,7 @@ export function GuiasPage() {
   const [filtroPlanoId, setFiltroPlanoId] = useState<number | ''>('')
   const [filtroStatus, setFiltroStatus] = useState<InsuranceGuideStatus | ''>('')
   const [filtroPertoVencer, setFiltroPertoVencer] = useState(false)
+  const [filtroVencidas, setFiltroVencidas] = useState(false)
   const [filtroMostrarFaturadas, setFiltroMostrarFaturadas] = useState(false)
   const [filtroSemSaldo, setFiltroSemSaldo] = useState(false)
   const [page, setPage] = useState(0)
@@ -336,7 +342,7 @@ export function GuiasPage() {
     authorizationDateInvalida ||
     expirationInvalida
 
-  const filtrosLocaisAtivos = filtroPertoVencer || filtroSemSaldo || filtroMostrarFaturadas
+  const filtrosLocaisAtivos = filtroPertoVencer || filtroVencidas || filtroSemSaldo || filtroMostrarFaturadas
 
   const paramsApi = useMemo(
     () => ({
@@ -349,9 +355,15 @@ export function GuiasPage() {
 
   const guiasFiltradas = useMemo(() => {
     return guias.filter((guia) =>
-      guiaAtendeFiltrosLocais(guia, filtroMostrarFaturadas, filtroPertoVencer, filtroSemSaldo),
+      guiaAtendeFiltrosLocais(
+        guia,
+        filtroMostrarFaturadas,
+        filtroPertoVencer,
+        filtroVencidas,
+        filtroSemSaldo,
+      ),
     )
-  }, [guias, filtroMostrarFaturadas, filtroPertoVencer, filtroSemSaldo])
+  }, [guias, filtroMostrarFaturadas, filtroPertoVencer, filtroVencidas, filtroSemSaldo])
 
   const totalExibido = filtrosLocaisAtivos ? guiasFiltradas.length : meta.total
   const ultimaPagina = Math.max(0, Math.ceil(totalExibido / rowsPerPage) - 1)
@@ -410,7 +422,7 @@ export function GuiasPage() {
 
   useEffect(() => {
     setPage(0)
-  }, [filtroPaciente, filtroPlanoId, filtroStatus, filtroPertoVencer, filtroMostrarFaturadas, filtroSemSaldo])
+  }, [filtroPaciente, filtroPlanoId, filtroStatus, filtroPertoVencer, filtroVencidas, filtroMostrarFaturadas, filtroSemSaldo])
 
   useEffect(() => {
     if (page > ultimaPagina) setPage(ultimaPagina)
@@ -520,11 +532,25 @@ export function GuiasPage() {
                   checked={filtroPertoVencer}
                   onChange={(_, checked) => {
                     setFiltroPertoVencer(checked)
+                    if (checked) setFiltroVencidas(false)
                     setPage(0)
                   }}
                 />
               }
               label="Perto de vencer (7 dias)"
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={filtroVencidas}
+                  onChange={(_, checked) => {
+                    setFiltroVencidas(checked)
+                    if (checked) setFiltroPertoVencer(false)
+                    setPage(0)
+                  }}
+                />
+              }
+              label="Somente vencidas"
             />
             <FormControlLabel
               control={
@@ -562,11 +588,7 @@ export function GuiasPage() {
             </Typography>
             <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
               <Box sx={{ width: 12, height: 12, bgcolor: 'error.light', borderRadius: 0.5 }} />
-              Último dia de validade
-            </Typography>
-            <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-              <Box sx={{ width: 12, height: 12, bgcolor: 'grey.300', borderRadius: 0.5 }} />
-              Vencida
+              Último dia de validade / Vencida
             </Typography>
           </Stack>
         </Stack>

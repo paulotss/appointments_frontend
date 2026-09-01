@@ -57,13 +57,7 @@ function corLinhaGuia(guia: InsuranceGuide) {
     }
   }
   const status = statusPrazoGuia(guia.expirationDate)
-  if (status === 'vencida') {
-    return {
-      bgcolor: 'grey.300',
-      '&:hover': { bgcolor: 'grey.300' },
-    }
-  }
-  if (status === 'ultimoDia') {
+  if (status === 'vencida' || status === 'ultimoDia') {
     return {
       bgcolor: 'error.light',
       '&:hover': { bgcolor: 'error.light' },
