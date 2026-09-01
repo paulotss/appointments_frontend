@@ -2,6 +2,7 @@ import type { CreatePatientRequest, Patient, UpdatePatientRequest } from '../typ
 import type { ListMeta, PagedList } from '../types/listEnvelope'
 import { isoDatePrefix } from '../utils/dataISO'
 import { apiClient } from './apiClient'
+import { mapBackendInsuranceCard } from './insurance-cards.service'
 
 const META_VAZIA: ListMeta = { page: 1, limit: 50, total: 0, totalPages: 1 }
 
@@ -18,6 +19,16 @@ interface BackendPatient {
   email?: string | null
   birthDate?: string | null
   cpf?: string | null
+  insuranceCards?: BackendInsuranceCard[]
+}
+
+interface BackendInsuranceCard {
+  id: number
+  patientId: number
+  healthPlanId: number
+  cardNumber: string
+  expirationDate?: string
+  healthPlan?: { id: number; name: string }
 }
 
 function mapBackendPatient(item: BackendPatient): Patient {
@@ -28,6 +39,7 @@ function mapBackendPatient(item: BackendPatient): Patient {
     email: item.email ?? null,
     birthDate: isoDatePrefix(item.birthDate) || null,
     cpf: item.cpf ?? null,
+    insuranceCards: (item.insuranceCards ?? []).map(mapBackendInsuranceCard),
   }
 }
 

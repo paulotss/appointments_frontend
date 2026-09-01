@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { UFS_BRASIL } from '../utils/ufBrasil'
 
 const optionalText = z
   .union([z.string(), z.undefined()])
@@ -31,6 +32,11 @@ export const profissionalSchema = z.object({
     error: 'Selecione o tipo de conselho',
   }),
   councilNumber: z.string().min(1, 'Informe o numero do conselho'),
+  councilUf: z.enum(UFS_BRASIL, { error: 'Selecione a UF do conselho' }),
+  cbosCode: z
+    .string()
+    .transform((v) => v.replace(/\D/g, ''))
+    .refine((v) => v.length === 6, { message: 'CBO-S deve ter 6 dígitos' }),
   cpf: z
     .string()
     .transform((v) => v.replace(/\D/g, ''))

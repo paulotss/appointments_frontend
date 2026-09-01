@@ -1,5 +1,6 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
+import FileDownloadIcon from '@mui/icons-material/FileDownload'
 import {
   Alert,
   Button,
@@ -27,6 +28,7 @@ import { ReceberLoteDialog } from '../components/ReceberLoteDialog'
 import {
   atualizarLoteTiss,
   buscarLoteTiss,
+  exportarXmlTissLote,
   faturarLoteTiss,
   receberLoteTiss,
 } from '../services/billing-batches.service'
@@ -39,7 +41,8 @@ import {
   type ReceiveBillingBatchRequest,
 } from '../types/financeiro'
 import type { InsuranceGuide } from '../types/guia'
-import { mensagemErroApi } from '../utils/apiError'
+import { TISS_GUIDE_TYPE_LABELS } from '../types/tiss'
+import { mensagemErroApi, mensagemErroApiBlob } from '../utils/apiError'
 import { formatarDataHoraISO, formatarDataISO } from '../utils/dataISO'
 import { formatarMoedaBRL } from '../utils/moedaBRL'
 
@@ -72,6 +75,7 @@ export function LoteTissDetalhePage() {
   const [savingGuias, setSavingGuias] = useState(false)
   const [adicionarError, setAdicionarError] = useState<string | null>(null)
   const [removendoGuiaId, setRemovendoGuiaId] = useState<number | null>(null)
+  const [exportando, setExportando] = useState(false)
 
   useEffect(() => {
     if (!Number.isFinite(id)) {
@@ -194,6 +198,29 @@ export function LoteTissDetalhePage() {
     }
   }
 
+  async function exportarXmlTiss() {
+    if (!lote) return
+    setExportando(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const { blob, filename } = await exportarXmlTissLote(lote.id)
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      setSuccess('XML TISS gerado.')
+    } catch (err) {
+      setError(await mensagemErroApiBlob(err, 'Não foi possível exportar o XML TISS.'))
+    } finally {
+      setExportando(false)
+    }
+  }
+
   async function confirmarReceber(payload: ReceiveBillingBatchRequest) {
     if (!lote) return
     setRecebendo(true)
@@ -226,7 +253,11 @@ export function LoteTissDetalhePage() {
         </Button>
       </Stack>
 
-      {error && !receberAberto ? <Alert severity="error">{error}</Alert> : null}
+      {error && !receberAberto ? (
+        <Alert severity="error" sx={{ whiteSpace: 'pre-line' }}>
+          {error}
+        </Alert>
+      ) : null}
       {success ? <Alert severity="success">{success}</Alert> : null}
 
       {loading ? (
@@ -289,6 +320,7 @@ export function LoteTissDetalhePage() {
               <TableHead>
                 <TableRow>
                   <TableCell>Guia</TableCell>
+                  <TableCell>Tipo</TableCell>
                   <TableCell>Paciente</TableCell>
                   <TableCell>Profissional</TableCell>
                   <TableCell>Validade</TableCell>
@@ -301,7 +333,7 @@ export function LoteTissDetalhePage() {
               <TableBody>
                 {lote.guides.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={lote.status === 'open' ? 8 : 7}>
+                    <TableCell colSpan={lote.status === 'open' ? 9 : 8}>
                       Nenhuma guia neste lote.
                     </TableCell>
                   </TableRow>
@@ -312,6 +344,11 @@ export function LoteTissDetalhePage() {
                     return (
                       <TableRow key={item.id} hover>
                         <TableCell>{rotuloGuia}</TableCell>
+                        <TableCell>
+                          {item.insuranceGuide?.tissGuideType
+                            ? TISS_GUIDE_TYPE_LABELS[item.insuranceGuide.tissGuideType]
+                            : '—'}
+                        </TableCell>
                         <TableCell>{item.insuranceGuide?.patient?.name ?? '—'}</TableCell>
                         <TableCell>{item.insuranceGuide?.healthProfessional?.name ?? '—'}</TableCell>
                         <TableCell>{formatarDataISO(item.insuranceGuide?.expirationDate)}</TableCell>
@@ -357,10 +394,22 @@ export function LoteTissDetalhePage() {
                 </Button>
               </Stack>
             ) : null}
-            {lote.status === 'billed' ? (
-              <Button variant="contained" onClick={() => setReceberAberto(true)} sx={{ alignSelf: 'flex-start' }}>
-                Concluir pagamento
-              </Button>
+            {lote.status === 'billed' || lote.status === 'settled' ? (
+              <Stack direction="row" spacing={1.5} sx={{ alignSelf: 'flex-start' }}>
+                {lote.status === 'billed' ? (
+                  <Button variant="contained" onClick={() => setReceberAberto(true)}>
+                    Concluir pagamento
+                  </Button>
+                ) : null}
+                <Button
+                  variant={lote.status === 'billed' ? 'outlined' : 'contained'}
+                  startIcon={exportando ? <CircularProgress size={16} /> : <FileDownloadIcon />}
+                  onClick={() => void exportarXmlTiss()}
+                  disabled={exportando}
+                >
+                  {exportando ? 'Exportando...' : 'Exportar XML TISS'}
+                </Button>
+              </Stack>
             ) : null}
           </Stack>
         </Paper>

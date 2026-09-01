@@ -5,6 +5,7 @@ import type {
   ProcedureHealthPlanPrice,
   UpdateProcedureRequest,
 } from '../types/procedimento'
+import type { TissGuideType } from '../types/tiss'
 import { apiClient } from './apiClient'
 
 interface BackendSpecialtyRef {
@@ -32,6 +33,7 @@ interface BackendProcedure {
   specialtyId: number
   name: string
   value: string | number
+  tissGuideType?: TissGuideType
   specialty?: BackendSpecialtyRef
   healthPlanPrices?: BackendHealthPlanPrice[]
 }
@@ -53,6 +55,7 @@ function mapBackendProcedure(item: BackendProcedure): Procedure {
     specialtyId: item.specialtyId,
     name: item.name,
     value: item.value,
+    tissGuideType: item.tissGuideType === 'consulta' ? 'consulta' : 'sp_sadt',
     specialty: item.specialty,
     healthPlanPrices: (item.healthPlanPrices ?? []).map(mapHealthPlanPrice),
   }

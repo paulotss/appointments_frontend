@@ -1,8 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import { Alert, Button, Stack, TextField, Typography } from '@mui/material'
+import { Alert, Button, MenuItem, Stack, TextField, Typography } from '@mui/material'
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import {
   planoSaudeSchema,
@@ -10,6 +10,7 @@ import {
   type PlanoSaudeFormValues,
 } from '../schemas/planoSaude.schema'
 import { criarPlanoSaude } from '../services/health-plans.service'
+import { DEFAULT_TISS_VERSION, TISS_VERSIONS } from '../types/tiss'
 
 export function NovoPlanoSaudePage() {
   const navigate = useNavigate()
@@ -19,6 +20,7 @@ export function NovoPlanoSaudePage() {
   const {
     register,
     handleSubmit,
+    control,
     reset,
     formState: { errors },
   } = useForm<PlanoSaudeFormInput, unknown, PlanoSaudeFormValues>({
@@ -26,6 +28,9 @@ export function NovoPlanoSaudePage() {
     defaultValues: {
       name: '',
       submissionDeadlineDays: undefined,
+      registroAns: '',
+      providerCode: '',
+      tissVersion: DEFAULT_TISS_VERSION,
     },
   })
 
@@ -36,6 +41,9 @@ export function NovoPlanoSaudePage() {
       await criarPlanoSaude({
         name: values.name,
         submissionDeadlineDays: values.submissionDeadlineDays,
+        ...(values.registroAns ? { registroAns: values.registroAns } : {}),
+        ...(values.providerCode ? { providerCode: values.providerCode } : {}),
+        tissVersion: values.tissVersion,
       })
       reset()
       navigate('/planos-saude', { replace: true })
@@ -76,6 +84,38 @@ export function NovoPlanoSaudePage() {
           error={Boolean(errors.submissionDeadlineDays)}
           helperText={errors.submissionDeadlineDays?.message}
           {...register('submissionDeadlineDays')}
+        />
+        <TextField
+          label="Registro ANS"
+          error={Boolean(errors.registroAns)}
+          helperText={errors.registroAns?.message ?? '6 dígitos da operadora'}
+          {...register('registroAns')}
+        />
+        <TextField
+          label="Código do prestador na operadora"
+          error={Boolean(errors.providerCode)}
+          helperText={errors.providerCode?.message ?? 'Código da clínica neste plano'}
+          {...register('providerCode')}
+        />
+        <Controller
+          name="tissVersion"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              select
+              label="Versão TISS"
+              value={field.value}
+              onChange={field.onChange}
+              error={Boolean(errors.tissVersion)}
+              helperText={errors.tissVersion?.message ?? 'Versão aceita pela operadora'}
+            >
+              {TISS_VERSIONS.map((versao) => (
+                <MenuItem key={versao} value={versao}>
+                  {versao}
+                </MenuItem>
+              ))}
+            </TextField>
+          )}
         />
         <Button type="submit" variant="contained" disabled={loading}>
           {loading ? 'Salvando...' : 'Cadastrar plano'}

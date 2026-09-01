@@ -25,6 +25,7 @@ import {
 import { listarEspecialidades } from '../services/especialidades.service'
 import { criarProfissional } from '../services/health-professionals.service'
 import { COUNCIL_TYPES } from '../types/profissional'
+import { UFS_BRASIL } from '../utils/ufBrasil'
 import type { Especialidade } from '../types/registro'
 
 export function NovoProfissionalPage() {
@@ -47,6 +48,8 @@ export function NovoProfissionalPage() {
       specialties: [{ specialtyId: undefined }],
       councilType: 'CRM',
       councilNumber: '',
+      councilUf: 'SP',
+      cbosCode: '',
       cpf: '',
       phone: '',
       email: '',
@@ -87,6 +90,8 @@ export function NovoProfissionalPage() {
         specialties: values.specialties,
         councilType: values.councilType,
         councilNumber: values.councilNumber,
+        councilUf: values.councilUf,
+        cbosCode: values.cbosCode,
         cpf: values.cpf,
         isActive: values.isActive,
         ...(values.phone != null ? { phone: values.phone } : {}),
@@ -230,6 +235,32 @@ export function NovoProfissionalPage() {
             error={Boolean(errors.councilNumber)}
             helperText={errors.councilNumber?.message}
             {...register('councilNumber')}
+          />
+          <Controller
+            name="councilUf"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                select
+                label="UF do conselho"
+                value={field.value ?? ''}
+                onChange={field.onChange}
+                error={Boolean(errors.councilUf)}
+                helperText={errors.councilUf?.message}
+              >
+                {UFS_BRASIL.map((uf) => (
+                  <MenuItem key={uf} value={uf}>
+                    {uf}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
+          />
+          <TextField
+            label="CBO-S"
+            error={Boolean(errors.cbosCode)}
+            helperText={errors.cbosCode?.message ?? '6 dígitos da ocupação'}
+            {...register('cbosCode')}
           />
           <TextField
             label="CPF"

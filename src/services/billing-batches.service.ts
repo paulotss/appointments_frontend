@@ -8,6 +8,7 @@ import {
   type ReceiveBillingBatchRequest,
   type UpdateBillingBatchRequest,
 } from '../types/financeiro'
+import type { TissGuideType } from '../types/tiss'
 import { isoDatePrefix } from '../utils/dataISO'
 import { apiClient } from './apiClient'
 
@@ -30,6 +31,7 @@ interface BackendGuide {
   patient?: BackendRef
   healthProfessional?: BackendRef
   expirationDate?: string
+  tissGuideType?: TissGuideType | null
   procedures?: BackendGuideProcedure[]
 }
 
@@ -83,6 +85,7 @@ function mapGuide(item: BackendBatchGuide): BillingBatchGuide {
           expirationDate: item.insuranceGuide.expirationDate
             ? isoDatePrefix(item.insuranceGuide.expirationDate)
             : undefined,
+          tissGuideType: item.insuranceGuide.tissGuideType ?? null,
           procedures: item.insuranceGuide.procedures,
         }
       : undefined,
@@ -181,4 +184,23 @@ export async function receberLoteTiss(
 ): Promise<BillingBatch> {
   const response = await apiClient.post<BackendBillingBatch>(`/billing-batches/${id}/receive`, payload)
   return mapBackendBillingBatch(response.data)
+}
+
+function filenameFromDisposition(header: string | undefined, fallback: string): string {
+  if (!header) return fallback
+  const utf = header.match(/filename\*=UTF-8''([^;]+)/i)
+  if (utf?.[1]) return decodeURIComponent(utf[1])
+  const simple = header.match(/filename="?([^";]+)"?/i)
+  return simple?.[1]?.trim() || fallback
+}
+
+export async function exportarXmlTissLote(id: number): Promise<{ blob: Blob; filename: string }> {
+  const response = await apiClient.get<Blob>(`/billing-batches/${id}/tiss-xml`, {
+    responseType: 'blob',
+  })
+  const disposition = response.headers['content-disposition'] as string | undefined
+  return {
+    blob: response.data,
+    filename: filenameFromDisposition(disposition, `lote-${id}-tiss.xml`),
+  }
 }

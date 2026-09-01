@@ -5,7 +5,6 @@ import {
   Button,
   CircularProgress,
   Dialog,
-  DialogActions,
   DialogContent,
   DialogTitle,
   Paper,
@@ -16,10 +15,16 @@ import {
 } from '@mui/material'
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { PacienteForm } from '../components/PacienteForm'
 import { PacientesTable } from '../components/PacientesTable'
-import { atualizarPaciente, listarPacientes } from '../services/patients.service'
+import { listarPlanosSaude } from '../services/health-plans.service'
+import { sincronizarCarteirinhas } from '../services/insurance-cards.service'
+import { atualizarPaciente, buscarPaciente, listarPacientes } from '../services/patients.service'
+import type { PacienteFormValues } from '../schemas/paciente.schema'
 import type { ListMeta } from '../types/listEnvelope'
 import type { Patient } from '../types/paciente'
+import type { HealthPlan } from '../types/planoSaude'
+import { mensagemErroApi } from '../utils/apiError'
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100]
 const META_VAZIA: ListMeta = { page: 1, limit: 50, total: 0, totalPages: 1 }
@@ -27,15 +32,12 @@ const META_VAZIA: ListMeta = { page: 1, limit: 50, total: 0, totalPages: 1 }
 export function PacientesPage() {
   const navigate = useNavigate()
   const [pacientes, setPacientes] = useState<Patient[]>([])
+  const [planos, setPlanos] = useState<HealthPlan[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [editando, setEditando] = useState<Patient | null>(null)
-  const [nomeEdicao, setNomeEdicao] = useState('')
-  const [phoneEdicao, setPhoneEdicao] = useState('')
-  const [emailEdicao, setEmailEdicao] = useState('')
-  const [birthDateEdicao, setBirthDateEdicao] = useState('')
-  const [cpfEdicao, setCpfEdicao] = useState('')
+  const [loadingEdit, setLoadingEdit] = useState(false)
   const [savingEdit, setSavingEdit] = useState(false)
   const [filtroNome, setFiltroNome] = useState('')
   const [filtroNomeDebounced, setFiltroNomeDebounced] = useState('')
@@ -52,59 +54,65 @@ export function PacientesPage() {
     setPage(0)
   }, [filtroNomeDebounced])
 
-  function abrirEdicao(paciente: Patient) {
+  useEffect(() => {
+    void listarPlanosSaude().then(setPlanos).catch(() => {
+      setPlanos([])
+    })
+  }, [])
+
+  async function abrirEdicao(paciente: Patient) {
+    setError(null)
+    setSuccess(null)
+    setLoadingEdit(true)
     setEditando(paciente)
-    setNomeEdicao(paciente.name)
-    setPhoneEdicao(paciente.phone)
-    setEmailEdicao(paciente.email ?? '')
-    setBirthDateEdicao(paciente.birthDate ?? '')
-    setCpfEdicao(paciente.cpf ?? '')
+    try {
+      setEditando(await buscarPaciente(paciente.id))
+    } catch (err) {
+      setEditando(null)
+      setError(mensagemErroApi(err, 'Não foi possível carregar o paciente.'))
+    } finally {
+      setLoadingEdit(false)
+    }
   }
 
   function fecharEdicao() {
+    if (savingEdit) return
     setEditando(null)
-    setNomeEdicao('')
-    setPhoneEdicao('')
-    setEmailEdicao('')
-    setBirthDateEdicao('')
-    setCpfEdicao('')
   }
 
-  async function salvarEdicao() {
+  async function salvarEdicao(values: PacienteFormValues) {
     if (!editando) return
-    const cpfDigits = cpfEdicao.replace(/\D/g, '')
-    if (cpfDigits.length > 0 && cpfDigits.length !== 11) {
-      setError('CPF deve ter 11 digitos.')
-      return
-    }
     setSavingEdit(true)
     setError(null)
     setSuccess(null)
     try {
-      const atualizado = await atualizarPaciente(editando.id, {
-        name: nomeEdicao.trim(),
-        phone: phoneEdicao.trim(),
-        email: emailEdicao.trim() || null,
-        birthDate: birthDateEdicao || null,
-        cpf: cpfDigits || null,
+      await atualizarPaciente(editando.id, {
+        name: values.name.trim(),
+        phone: values.phone.trim(),
+        email: values.email,
+        birthDate: values.birthDate,
+        cpf: values.cpf,
       })
+      await sincronizarCarteirinhas(
+        editando.id,
+        editando.insuranceCards,
+        values.insuranceCards.map((item) => ({
+          id: item.cardId,
+          healthPlanId: item.healthPlanId,
+          cardNumber: item.cardNumber,
+          expirationDate: item.expirationDate,
+        })),
+      )
+      const atualizado = await buscarPaciente(editando.id)
       setPacientes((prev) => prev.map((item) => (item.id === atualizado.id ? atualizado : item)))
-      fecharEdicao()
+      setEditando(null)
       setSuccess('Paciente atualizado com sucesso.')
-    } catch {
-      setError('Nao foi possivel editar o paciente.')
+    } catch (err) {
+      setError(mensagemErroApi(err, 'Não foi possível editar o paciente.'))
     } finally {
       setSavingEdit(false)
     }
   }
-
-  const nomeInvalido = nomeEdicao.trim().length < 3
-  const phoneInvalido = phoneEdicao.trim().length < 1
-  const birthDateInvalida = birthDateEdicao !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(birthDateEdicao)
-  const cpfDigitsLength = cpfEdicao.replace(/\D/g, '').length
-  const cpfInvalido = cpfDigitsLength > 0 && cpfDigitsLength !== 11
-  const emailTrim = emailEdicao.trim()
-  const emailInvalido = emailTrim !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)
 
   const carregarPacientes = useCallback(async () => {
     setLoading(true)
@@ -117,8 +125,8 @@ export function PacientesPage() {
       })
       setPacientes(resultado.data)
       setMeta(resultado.meta)
-    } catch {
-      setError('Nao foi possivel carregar os pacientes.')
+    } catch (err) {
+      setError(mensagemErroApi(err, 'Não foi possível carregar os pacientes.'))
     } finally {
       setLoading(false)
     }
@@ -139,7 +147,7 @@ export function PacientesPage() {
         </Button>
       </Box>
 
-      {error ? <Alert severity="error">{error}</Alert> : null}
+      {error && !editando ? <Alert severity="error">{error}</Alert> : null}
       {success ? <Alert severity="success">{success}</Alert> : null}
 
       <TextField
@@ -165,7 +173,7 @@ export function PacientesPage() {
 
       {!loading && !error && pacientes.length > 0 ? (
         <Paper sx={{ p: 0 }}>
-          <PacientesTable pacientes={pacientes} onEditar={abrirEdicao} />
+          <PacientesTable pacientes={pacientes} onEditar={(paciente) => void abrirEdicao(paciente)} />
           <TablePagination
             component="div"
             count={meta.total}
@@ -185,62 +193,41 @@ export function PacientesPage() {
         </Paper>
       ) : null}
 
-      <Dialog open={Boolean(editando)} onClose={fecharEdicao} fullWidth maxWidth="sm">
+      <Dialog open={Boolean(editando) || loadingEdit} onClose={fecharEdicao} fullWidth maxWidth="md">
         <DialogTitle>Editar paciente</DialogTitle>
         <DialogContent>
           <Stack spacing={1.5} sx={{ mt: 0.5 }}>
-            <TextField
-              label="Nome"
-              value={nomeEdicao}
-              onChange={(event) => setNomeEdicao(event.target.value)}
-              error={Boolean(nomeEdicao) && nomeInvalido}
-              helperText={Boolean(nomeEdicao) && nomeInvalido ? 'Minimo 3 caracteres' : ' '}
-            />
-            <TextField
-              label="Telefone"
-              value={phoneEdicao}
-              onChange={(event) => setPhoneEdicao(event.target.value)}
-              error={phoneInvalido}
-              helperText={phoneInvalido ? 'Informe o telefone' : ' '}
-            />
-            <TextField
-              label="E-mail (opcional)"
-              type="email"
-              value={emailEdicao}
-              onChange={(event) => setEmailEdicao(event.target.value)}
-              error={emailInvalido}
-              helperText={emailInvalido ? 'Informe um e-mail valido' : ' '}
-            />
-            <TextField
-              label="Data de nascimento (opcional)"
-              type="date"
-              InputLabelProps={{ shrink: true }}
-              value={birthDateEdicao}
-              onChange={(event) => setBirthDateEdicao(event.target.value)}
-              error={birthDateInvalida}
-              helperText={birthDateInvalida ? 'Informe a data de nascimento' : ' '}
-            />
-            <TextField
-              label="CPF (opcional)"
-              value={cpfEdicao}
-              onChange={(event) => setCpfEdicao(event.target.value)}
-              error={cpfInvalido}
-              helperText={cpfInvalido ? 'CPF deve ter 11 digitos' : ' '}
-            />
+            {error && editando ? <Alert severity="error">{error}</Alert> : null}
+            {loadingEdit || !editando ? (
+              <Stack direction="row" alignItems="center" gap={1.5}>
+                <CircularProgress size={20} />
+                <Typography>Carregando paciente...</Typography>
+              </Stack>
+            ) : (
+              <PacienteForm
+                key={editando.id}
+                defaultValues={{
+                  name: editando.name,
+                  phone: editando.phone,
+                  email: editando.email ?? '',
+                  birthDate: editando.birthDate ?? '',
+                  cpf: editando.cpf ?? '',
+                  insuranceCards: editando.insuranceCards.map((item) => ({
+                    cardId: item.id,
+                    healthPlanId: item.healthPlanId,
+                    cardNumber: item.cardNumber,
+                    expirationDate: item.expirationDate,
+                  })),
+                }}
+                planos={planos}
+                loading={savingEdit}
+                submitLabel="Salvar"
+                onCancel={fecharEdicao}
+                onSubmit={(values) => void salvarEdicao(values)}
+              />
+            )}
           </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={fecharEdicao}>Cancelar</Button>
-          <Button
-            onClick={salvarEdicao}
-            variant="contained"
-            disabled={
-              savingEdit || nomeInvalido || phoneInvalido || birthDateInvalida || cpfInvalido || emailInvalido
-            }
-          >
-            Salvar
-          </Button>
-        </DialogActions>
       </Dialog>
     </Stack>
   )

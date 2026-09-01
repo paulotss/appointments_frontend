@@ -8,6 +8,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  MenuItem,
   Paper,
   Stack,
   TextField,
@@ -18,6 +19,7 @@ import { useNavigate } from 'react-router-dom'
 import { PlanosSaudeTable } from '../components/PlanosSaudeTable'
 import { atualizarPlanoSaude, listarPlanosSaude } from '../services/health-plans.service'
 import type { HealthPlan } from '../types/planoSaude'
+import { DEFAULT_TISS_VERSION, TISS_VERSIONS, type TissVersion } from '../types/tiss'
 
 export function PlanosSaudePage() {
   const navigate = useNavigate()
@@ -28,18 +30,27 @@ export function PlanosSaudePage() {
   const [editando, setEditando] = useState<HealthPlan | null>(null)
   const [nomeEdicao, setNomeEdicao] = useState('')
   const [prazoEdicao, setPrazoEdicao] = useState('')
+  const [registroAnsEdicao, setRegistroAnsEdicao] = useState('')
+  const [providerCodeEdicao, setProviderCodeEdicao] = useState('')
+  const [tissVersionEdicao, setTissVersionEdicao] = useState<TissVersion>(DEFAULT_TISS_VERSION)
   const [savingEdit, setSavingEdit] = useState(false)
 
   function abrirEdicao(plano: HealthPlan) {
     setEditando(plano)
     setNomeEdicao(plano.name)
     setPrazoEdicao(String(plano.submissionDeadlineDays))
+    setRegistroAnsEdicao(plano.registroAns ?? '')
+    setProviderCodeEdicao(plano.providerCode ?? '')
+    setTissVersionEdicao(plano.tissVersion)
   }
 
   function fecharEdicao() {
     setEditando(null)
     setNomeEdicao('')
     setPrazoEdicao('')
+    setRegistroAnsEdicao('')
+    setProviderCodeEdicao('')
+    setTissVersionEdicao(DEFAULT_TISS_VERSION)
   }
 
   async function salvarEdicao() {
@@ -56,6 +67,9 @@ export function PlanosSaudePage() {
       const atualizado = await atualizarPlanoSaude(editando.id, {
         name: nomeEdicao.trim(),
         submissionDeadlineDays: prazo,
+        registroAns: registroAnsEdicao.replace(/\D/g, '') || null,
+        providerCode: providerCodeEdicao.trim() || null,
+        tissVersion: tissVersionEdicao,
       })
       setPlanos((prev) => prev.map((item) => (item.id === atualizado.id ? atualizado : item)))
       fecharEdicao()
@@ -145,6 +159,29 @@ export function PlanosSaudePage() {
                 Boolean(prazoEdicao) && prazoInvalido ? 'Informe um inteiro maior que zero' : ' '
               }
             />
+            <TextField
+              label="Registro ANS"
+              value={registroAnsEdicao}
+              onChange={(event) => setRegistroAnsEdicao(event.target.value)}
+              helperText="6 dígitos da operadora"
+            />
+            <TextField
+              label="Código do prestador na operadora"
+              value={providerCodeEdicao}
+              onChange={(event) => setProviderCodeEdicao(event.target.value)}
+            />
+            <TextField
+              select
+              label="Versão TISS"
+              value={tissVersionEdicao}
+              onChange={(event) => setTissVersionEdicao(event.target.value as TissVersion)}
+            >
+              {TISS_VERSIONS.map((versao) => (
+                <MenuItem key={versao} value={versao}>
+                  {versao}
+                </MenuItem>
+              ))}
+            </TextField>
           </Stack>
         </DialogContent>
         <DialogActions>

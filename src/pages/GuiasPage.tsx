@@ -170,6 +170,7 @@ export function GuiasPage() {
             email: null,
             birthDate: null,
             cpf: null,
+            insuranceCards: [],
           }
         : null,
     )
@@ -764,7 +765,7 @@ export function GuiasPage() {
                 setGuideNumberEdicaoError(null)
               }}
               error={Boolean(guideNumberEdicaoError)}
-              helperText={guideNumberEdicaoError ?? 'Opcional'}
+              helperText={guideNumberEdicaoError ?? 'Obrigatório no XML TISS'}
             />
             <TextField
               label="Data de autorização"

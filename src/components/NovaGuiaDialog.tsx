@@ -66,7 +66,7 @@ export function NovaGuiaDialog({
         authorizationDate: values.authorizationDate,
         expirationDate: values.expirationDate,
         status: values.status,
-        ...(values.guideNumber ? { guideNumber: values.guideNumber } : {}),
+        guideNumber: values.guideNumber,
         procedures: values.procedures.map((item) => ({
           procedureId: item.procedureId,
           authorizedQuantity: item.authorizedQuantity,

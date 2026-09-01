@@ -1,4 +1,5 @@
 import { parseValorDecimal } from '../utils/moedaBRL'
+import type { TissGuideType } from './tiss'
 
 export const PAYMENT_METHODS = ['pix', 'debit', 'credit', 'cash', 'transfer'] as const
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number]
@@ -252,6 +253,7 @@ export interface BillingBatchGuide {
     patient?: FinanceiroRef
     healthProfessional?: FinanceiroRef
     expirationDate?: string
+    tissGuideType?: TissGuideType | null
     procedures?: Array<{
       value: string | number
       usedQuantity: number

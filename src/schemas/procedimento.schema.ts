@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { TISS_GUIDE_TYPES } from '../types/tiss'
 
 const healthPlanPriceSchema = z.object({
   healthPlanId: z.number({ error: 'Selecione o plano de saúde' }).int().positive('Selecione o plano de saúde'),
@@ -10,6 +11,7 @@ export const procedimentoSchema = z.object({
   specialtyId: z.number({ error: 'Selecione a especialidade' }).int().positive('Selecione a especialidade'),
   name: z.string().trim().min(2, 'Informe o nome do procedimento'),
   value: z.number({ error: 'Informe o valor particular' }).positive('Informe o valor particular'),
+  tissGuideType: z.enum(TISS_GUIDE_TYPES, { error: 'Selecione o tipo da guia TISS' }),
   healthPlanPrices: z
     .array(healthPlanPriceSchema)
     .superRefine((items, ctx) => {

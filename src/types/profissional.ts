@@ -1,3 +1,5 @@
+import type { UfBrasil } from '../utils/ufBrasil'
+
 export type CouncilType = 'CRM' | 'CRO' | 'CRP' | 'COREN' | 'OTHER'
 
 export const COUNCIL_TYPES: CouncilType[] = ['CRM', 'CRO', 'CRP', 'COREN', 'OTHER']
@@ -21,6 +23,8 @@ export interface HealthProfessional {
   name: string
   councilType: CouncilType
   councilNumber: string
+  councilUf: UfBrasil | null
+  cbosCode: string | null
   cpf: string
   phone: string | null
   email: string | null
@@ -33,6 +37,8 @@ export interface CreateHealthProfessionalRequest {
   specialties: HealthProfessionalSpecialtyInput[]
   councilType: CouncilType
   councilNumber: string
+  councilUf?: UfBrasil
+  cbosCode?: string
   cpf: string
   phone?: string
   email?: string
@@ -44,6 +50,8 @@ export interface UpdateHealthProfessionalRequest {
   specialties?: HealthProfessionalSpecialtyInput[]
   councilType?: CouncilType
   councilNumber?: string
+  councilUf?: UfBrasil | null
+  cbosCode?: string | null
   cpf?: string
   phone?: string | null
   email?: string | null

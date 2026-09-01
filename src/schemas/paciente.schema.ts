@@ -12,6 +12,13 @@ const optionalEmail = optionalText.refine((v) => v === null || z.string().email(
   message: 'E-mail invalido',
 })
 
+const carteirinhaSchema = z.object({
+  cardId: z.number().int().positive().optional(),
+  healthPlanId: z.number({ error: 'Selecione o plano de saúde' }).int().positive('Selecione o plano de saúde'),
+  cardNumber: z.string().trim().min(1, 'Informe o número da carteirinha'),
+  expirationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe a validade da carteirinha'),
+})
+
 export const pacienteSchema = z.object({
   name: z.string().min(3, 'Informe o nome'),
   phone: z.string().min(1, 'Informe o telefone'),
@@ -27,6 +34,18 @@ export const pacienteSchema = z.object({
       return digits === '' ? null : digits
     })
     .refine((v) => v === null || v.length === 11, { message: 'CPF deve ter 11 digitos' }),
+  insuranceCards: z
+    .array(carteirinhaSchema)
+    .superRefine((items, ctx) => {
+      const ids = items.map((item) => item.healthPlanId)
+      if (new Set(ids).size !== ids.length) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Já existe uma carteirinha para este plano',
+          path: [],
+        })
+      }
+    }),
 })
 
 export type PacienteFormInput = z.input<typeof pacienteSchema>

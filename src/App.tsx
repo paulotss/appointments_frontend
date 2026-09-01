@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './layouts/AppLayout'
 import { CategoriasPage } from './pages/CategoriasPage'
+import { ClinicaPage } from './pages/ClinicaPage'
 import { EspecialidadesPage } from './pages/EspecialidadesPage'
 import { EditarLotePage } from './pages/EditarLotePage'
 import { EspecialidadesAtendidasPage } from './pages/EspecialidadesAtendidasPage'
@@ -218,6 +219,14 @@ function App() {
           element={
             <AdminRoute>
               <NovaEspecialidadePage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/configuracoes/clinica"
+          element={
+            <AdminRoute>
+              <ClinicaPage />
             </AdminRoute>
           }
         />

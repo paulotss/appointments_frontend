@@ -52,14 +52,21 @@ const MENSAGENS_EXATAS: Record<string, string> = {
     'A soma dos valores recebidos das guias deve ser igual ao valor recebido do lote.',
   'Settled billing batches cannot be cancelled': 'Lotes quitados não podem ser cancelados.',
   'Billing batch is already cancelled': 'O lote já está cancelado.',
-  'Cannot cancel a billed batch after payment was received':
-    'Não é possível cancelar um lote depois do recebimento.',
+  'procedures cannot mix consulta and sp_sadt tissGuideType':
+    'Não misture procedimentos de consulta e SP/SADT na mesma guia.',
+  'consulta guides must contain exactly one procedure':
+    'A guia de consulta deve ter exatamente um procedimento.',
+  'Only billed or settled billing batches can export TISS XML':
+    'Somente lotes faturados ou quitados podem exportar o XML TISS.',
+  'patient already has a card for this health plan':
+    'Este paciente já tem carteirinha neste plano de saúde.',
 }
 
 const PADROES: Array<[RegExp, string]> = [
   [/^Specialty \d+ not found$/i, 'Especialidade não encontrada.'],
   [/^Health plan \d+ not found$/i, 'Plano de saúde não encontrado.'],
   [/^Procedure \d+ not found$/i, 'Procedimento não encontrado.'],
+  [/^Insurance card \d+ not found$/i, 'Carteirinha não encontrada.'],
   [/^Patient \d+ not found$/i, 'Paciente não encontrado.'],
   [/^Clinical appointment \d+ not found$/i, 'Agendamento clínico não encontrado.'],
   [
@@ -118,15 +125,33 @@ function traduzirMensagem(mensagem: string): string {
   return mensagem
 }
 
+function formatarMensagemApi(raw: string | string[] | undefined, fallback: string): string {
+  if (typeof raw === 'string' && raw.trim()) return traduzirMensagem(raw.trim())
+  if (Array.isArray(raw) && raw.length > 0) {
+    return raw.map((item) => traduzirMensagem(String(item))).join('\n')
+  }
+  return fallback
+}
+
 export function mensagemErroApi(error: unknown, fallback: string): string {
   if (!axios.isAxiosError(error)) return fallback
   const data = error.response?.data as { message?: string | string[] } | undefined
-  const raw = data?.message
-  if (typeof raw === 'string' && raw.trim()) return traduzirMensagem(raw.trim())
-  if (Array.isArray(raw) && raw.length > 0) {
-    return raw.map((item) => traduzirMensagem(String(item))).join(' ')
+  return formatarMensagemApi(data?.message, fallback)
+}
+
+export async function mensagemErroApiBlob(error: unknown, fallback: string): Promise<string> {
+  if (!axios.isAxiosError(error)) return fallback
+  const data = error.response?.data
+  if (data instanceof Blob) {
+    const text = await data.text()
+    try {
+      const json = JSON.parse(text) as { message?: string | string[] }
+      return formatarMensagemApi(json.message, fallback)
+    } catch {
+      return text.trim() || fallback
+    }
   }
-  return fallback
+  return mensagemErroApi(error, fallback)
 }
 
 export function mensagemConflitoNumeroGuia(error: unknown): string | null {

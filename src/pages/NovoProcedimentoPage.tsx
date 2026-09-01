@@ -47,6 +47,7 @@ export function NovoProcedimentoPage() {
         specialtyId: values.specialtyId,
         name: values.name.trim(),
         value: values.value,
+        tissGuideType: values.tissGuideType,
         healthPlanPrices: values.healthPlanPrices.length > 0 ? values.healthPlanPrices : undefined,
       })
       navigate('/procedimentos', { replace: true })
@@ -92,6 +93,7 @@ export function NovoProcedimentoPage() {
               specialtyId: undefined,
               name: '',
               value: undefined,
+              tissGuideType: 'sp_sadt',
               healthPlanPrices: [],
             }}
             especialidades={especialidades}

@@ -1,17 +1,25 @@
 import type { CreateHealthPlanRequest, HealthPlan, UpdateHealthPlanRequest } from '../types/planoSaude'
+import { DEFAULT_TISS_VERSION, TISS_VERSIONS } from '../types/tiss'
 import { apiClient } from './apiClient'
 
 interface BackendHealthPlan {
   id: number
   name: string
   submissionDeadlineDays: number
+  registroAns?: string | null
+  providerCode?: string | null
+  tissVersion?: string
 }
 
 function mapBackendHealthPlan(item: BackendHealthPlan): HealthPlan {
+  const version = TISS_VERSIONS.find((value) => value === item.tissVersion)
   return {
     id: item.id,
     name: item.name,
     submissionDeadlineDays: item.submissionDeadlineDays,
+    registroAns: item.registroAns ?? null,
+    providerCode: item.providerCode ?? null,
+    tissVersion: version ?? DEFAULT_TISS_VERSION,
   }
 }
 

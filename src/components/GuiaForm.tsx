@@ -22,6 +22,7 @@ import type { HealthPlan } from '../types/planoSaude'
 import type { Procedure } from '../types/procedimento'
 import { tissCodeDoPlano, valorDoPlano } from '../types/procedimento'
 import type { HealthProfessional } from '../types/profissional'
+import { TISS_GUIDE_TYPE_LABELS } from '../types/tiss'
 import { mensagemErroApi } from '../utils/apiError'
 import { adicionarDiasISO } from '../utils/dataISO'
 import { CampoValorMoeda } from './CampoValorMoeda'
@@ -93,8 +94,23 @@ export function GuiaForm({
 
   const procedimentosElegiveis = useMemo(() => {
     if (especialidadeIdsDoProfissional.size === 0) return []
-    return procedimentosPlano.filter((item) => especialidadeIdsDoProfissional.has(item.specialtyId))
-  }, [procedimentosPlano, especialidadeIdsDoProfissional])
+    const daEspecialidade = procedimentosPlano.filter((item) =>
+      especialidadeIdsDoProfissional.has(item.specialtyId),
+    )
+    const primeiroId = proceduresWatch?.[0]?.procedureId
+    const tipoPrimeiro =
+      primeiroId != null
+        ? daEspecialidade.find((item) => item.id === primeiroId)?.tissGuideType
+        : undefined
+    if (!tipoPrimeiro) return daEspecialidade
+    return daEspecialidade.filter((item) => item.tissGuideType === tipoPrimeiro)
+  }, [procedimentosPlano, especialidadeIdsDoProfissional, proceduresWatch])
+
+  const tipoGuiaAtual = useMemo(() => {
+    const primeiroId = proceduresWatch?.[0]?.procedureId
+    if (primeiroId == null) return null
+    return procedimentosPlano.find((item) => item.id === primeiroId)?.tissGuideType ?? null
+  }, [proceduresWatch, procedimentosPlano])
 
   const prazoPlano = planos.find((item) => item.id === healthPlanId)?.submissionDeadlineDays
 
@@ -248,7 +264,7 @@ export function GuiaForm({
             onBlur={field.onBlur}
             inputRef={field.ref}
             error={Boolean(errors.guideNumber)}
-            helperText={errors.guideNumber?.message ?? 'Opcional'}
+            helperText={errors.guideNumber?.message ?? 'Obrigatório no XML TISS'}
           />
         )}
       />
@@ -291,6 +307,12 @@ export function GuiaForm({
       <Typography variant="subtitle2" fontWeight={700}>
         Procedimentos
       </Typography>
+      {tipoGuiaAtual ? (
+        <Alert severity="info">
+          Esta guia será {TISS_GUIDE_TYPE_LABELS[tipoGuiaAtual]}. Não misture consulta e SP/SADT na
+          mesma guia.
+        </Alert>
+      ) : null}
       {errors.procedures?.root?.message || errors.procedures?.message ? (
         <Alert severity="error">{errors.procedures.root?.message ?? errors.procedures.message}</Alert>
       ) : null}
@@ -410,7 +432,11 @@ export function GuiaForm({
             value: undefined as unknown as number,
           })
         }
-        disabled={procedimentosElegiveis.length === 0 || fields.length >= procedimentosElegiveis.length}
+        disabled={
+          procedimentosElegiveis.length === 0 ||
+          fields.length >= procedimentosElegiveis.length ||
+          tipoGuiaAtual === 'consulta'
+        }
         sx={{ alignSelf: 'flex-start' }}
       >
         Adicionar procedimento

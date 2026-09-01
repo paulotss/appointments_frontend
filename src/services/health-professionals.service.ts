@@ -1,12 +1,7 @@
 import { apiClient } from './apiClient'
 import type { ListMeta, PagedList } from '../types/listEnvelope'
-import type {
-  CouncilType,
-  CreateHealthProfessionalRequest,
-  HealthProfessional,
-  HealthProfessionalSpecialtyLink,
-  UpdateHealthProfessionalRequest,
-} from '../types/profissional'
+import type { CouncilType, CreateHealthProfessionalRequest, HealthProfessional, HealthProfessionalSpecialtyLink, UpdateHealthProfessionalRequest } from '../types/profissional'
+import type { UfBrasil } from '../utils/ufBrasil'
 
 const META_VAZIA: ListMeta = { page: 1, limit: 50, total: 0, totalPages: 1 }
 
@@ -31,6 +26,8 @@ interface BackendHealthProfessional {
   name: string
   councilType: CouncilType
   councilNumber: string
+  councilUf?: string | null
+  cbosCode?: string | null
   cpf: string
   phone?: string | null
   email?: string | null
@@ -51,6 +48,8 @@ function mapBackendHealthProfessional(item: BackendHealthProfessional): HealthPr
     name: item.name,
     councilType: item.councilType,
     councilNumber: item.councilNumber,
+    councilUf: (item.councilUf as UfBrasil | null) ?? null,
+    cbosCode: item.cbosCode ?? null,
     cpf: item.cpf,
     phone: item.phone ?? null,
     email: item.email ?? null,
