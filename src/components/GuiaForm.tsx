@@ -66,7 +66,7 @@ export function GuiaForm({
 
   const { fields, append, remove } = useFieldArray({ control, name: 'procedures' })
   const healthPlanId = useWatch({ control, name: 'healthPlanId' })
-  const startDate = useWatch({ control, name: 'startDate' })
+  const authorizationDate = useWatch({ control, name: 'authorizationDate' })
   const healthProfessionalId = useWatch({ control, name: 'healthProfessionalId' })
   const proceduresWatch = useWatch({ control, name: 'procedures' })
 
@@ -95,11 +95,9 @@ export function GuiaForm({
   const prazoPlano = planos.find((item) => item.id === healthPlanId)?.submissionDeadlineDays
 
   useEffect(() => {
-    if (!startDate || healthPlanId == null) return
-    const plano = planos.find((item) => item.id === healthPlanId)
-    if (!plano) return
-    setValue('expirationDate', adicionarDiasISO(startDate, plano.submissionDeadlineDays))
-  }, [startDate, healthPlanId, planos, setValue])
+    if (!authorizationDate || prazoPlano == null) return
+    setValue('expirationDate', adicionarDiasISO(authorizationDate, prazoPlano))
+  }, [authorizationDate, prazoPlano, setValue])
 
   useEffect(() => {
     const atuais = getValues('procedures') ?? []
@@ -241,17 +239,17 @@ export function GuiaForm({
         )}
       />
       <Controller
-        name="startDate"
+        name="authorizationDate"
         control={control}
         render={({ field }) => (
           <TextField
-            label="Data de início"
+            label="Data de autorização"
             type="date"
             InputLabelProps={{ shrink: true }}
             value={field.value}
             onChange={field.onChange}
-            error={Boolean(errors.startDate)}
-            helperText={errors.startDate?.message ?? ' '}
+            error={Boolean(errors.authorizationDate)}
+            helperText={errors.authorizationDate?.message ?? ' '}
           />
         )}
       />
@@ -263,14 +261,14 @@ export function GuiaForm({
             label="Data de validade"
             type="date"
             InputLabelProps={{ shrink: true }}
-            InputProps={{ readOnly: true }}
             value={field.value}
+            onChange={field.onChange}
             error={Boolean(errors.expirationDate)}
             helperText={
               errors.expirationDate?.message ??
               (prazoPlano != null
-                ? `Calculada com base na data de início + prazo do plano (${prazoPlano} dias).`
-                : 'Selecione o plano e a data de início para calcular a validade.')
+                ? `Sugestão: data de autorização + prazo do plano (${prazoPlano} dias). Pode ser alterada.`
+                : 'Selecione o plano e a data de autorização para sugerir a validade.')
             }
           />
         )}

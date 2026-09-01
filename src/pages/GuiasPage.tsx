@@ -101,7 +101,7 @@ export function GuiasPage() {
   const [healthPlanIdEdicao, setHealthPlanIdEdicao] = useState<number | ''>('')
   const [statusEdicao, setStatusEdicao] = useState<InsuranceGuideStatus>('pending')
   const [guideNumberEdicao, setGuideNumberEdicao] = useState('')
-  const [startDateEdicao, setStartDateEdicao] = useState('')
+  const [authorizationDateEdicao, setAuthorizationDateEdicao] = useState('')
   const [expirationDateEdicao, setExpirationDateEdicao] = useState('')
   const [procedimentosEdicao, setProcedimentosEdicao] = useState<ProcedimentoEdicao[]>([])
   const [procedimentosPlano, setProcedimentosPlano] = useState<Procedure[]>([])
@@ -133,9 +133,9 @@ export function GuiasPage() {
       ? undefined
       : planos.find((item) => item.id === healthPlanIdEdicao)?.submissionDeadlineDays
 
-  function recalcularValidade(startDate: string, prazo: number | undefined) {
-    if (prazo == null || !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) return
-    setExpirationDateEdicao(adicionarDiasISO(startDate, prazo))
+  function recalcularValidade(authorizationDate: string, prazo: number | undefined) {
+    if (prazo == null || !/^\d{4}-\d{2}-\d{2}$/.test(authorizationDate)) return
+    setExpirationDateEdicao(adicionarDiasISO(authorizationDate, prazo))
   }
 
   function abrirEdicao(guia: InsuranceGuide) {
@@ -158,7 +158,10 @@ export function GuiasPage() {
     setStatusEdicao(guia.status)
     setGuideNumberEdicao(guia.guideNumber ?? '')
     setExpirationDateEdicao(guia.expirationDate)
-    setStartDateEdicao(prazo != null ? adicionarDiasISO(guia.expirationDate, -prazo) : '')
+    setAuthorizationDateEdicao(
+      guia.authorizationDate ||
+        (prazo != null ? adicionarDiasISO(guia.expirationDate, -prazo) : ''),
+    )
     setProcedimentosEdicao(
       guia.procedures.length > 0
         ? guia.procedures.map((item) => ({
@@ -184,7 +187,7 @@ export function GuiasPage() {
     setHealthPlanIdEdicao('')
     setStatusEdicao('pending')
     setGuideNumberEdicao('')
-    setStartDateEdicao('')
+    setAuthorizationDateEdicao('')
     setExpirationDateEdicao('')
     setProcedimentosEdicao([])
     setProcedimentosPlano([])
@@ -199,8 +202,8 @@ export function GuiasPage() {
     ) {
       return
     }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDateEdicao)) {
-      setError('Informe a data de início.')
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(authorizationDateEdicao)) {
+      setError('Informe a data de autorização.')
       return
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(expirationDateEdicao)) {
@@ -245,6 +248,7 @@ export function GuiasPage() {
         healthProfessionalId: healthProfessionalIdEdicao,
         status: statusEdicao,
         guideNumber: guideNumberEdicao.trim() ? guideNumberEdicao.trim() : null,
+        authorizationDate: authorizationDateEdicao,
         expirationDate: expirationDateEdicao,
         procedures: procedures.map((item) => ({
           procedureId: item.procedureId,
@@ -306,7 +310,7 @@ export function GuiasPage() {
     }
   }
 
-  const startDateInvalida = !/^\d{4}-\d{2}-\d{2}$/.test(startDateEdicao)
+  const authorizationDateInvalida = !/^\d{4}-\d{2}-\d{2}$/.test(authorizationDateEdicao)
   const expirationInvalida = !/^\d{4}-\d{2}-\d{2}$/.test(expirationDateEdicao)
   const proceduresInvalidos =
     procedimentosEdicao.length === 0 ||
@@ -329,7 +333,7 @@ export function GuiasPage() {
     healthPlanIdEdicao === '' ||
     healthProfessionalIdEdicao === '' ||
     proceduresInvalidos ||
-    startDateInvalida ||
+    authorizationDateInvalida ||
     expirationInvalida
 
   const filtrosLocaisAtivos = filtroPertoVencer || filtroSemSaldo || filtroMostrarFaturadas
@@ -627,7 +631,7 @@ export function GuiasPage() {
               value={planos.find((plano) => plano.id === healthPlanIdEdicao) ?? null}
               onChange={(_, plano) => {
                 setHealthPlanIdEdicao(plano?.id ?? '')
-                if (plano) recalcularValidade(startDateEdicao, plano.submissionDeadlineDays)
+                if (plano) recalcularValidade(authorizationDateEdicao, plano.submissionDeadlineDays)
                 setProcedimentosEdicao((prev) => prev.map((row) => ({ ...row, value: undefined })))
               }}
               renderInput={(params) => (
@@ -665,30 +669,30 @@ export function GuiasPage() {
               helperText="Opcional"
             />
             <TextField
-              label="Data de início"
+              label="Data de autorização"
               type="date"
               InputLabelProps={{ shrink: true }}
-              value={startDateEdicao}
+              value={authorizationDateEdicao}
               onChange={(event) => {
                 const next = event.target.value
-                setStartDateEdicao(next)
+                setAuthorizationDateEdicao(next)
                 recalcularValidade(next, prazoPlano)
               }}
-              error={startDateInvalida}
-              helperText={startDateInvalida ? 'Informe a data de início' : ' '}
+              error={authorizationDateInvalida}
+              helperText={authorizationDateInvalida ? 'Informe a data de autorização' : ' '}
             />
             <TextField
               label="Data de validade"
               type="date"
               InputLabelProps={{ shrink: true }}
-              InputProps={{ readOnly: true }}
               value={expirationDateEdicao}
+              onChange={(event) => setExpirationDateEdicao(event.target.value)}
               error={expirationInvalida}
               helperText={
                 expirationInvalida
                   ? 'Informe a data de validade'
                   : prazoPlano != null
-                    ? `Calculada com base na data de início + prazo do plano (${prazoPlano} dias).`
+                    ? `Sugestão: data de autorização + prazo do plano (${prazoPlano} dias). Pode ser alterada.`
                     : ' '
               }
             />

@@ -44,6 +44,7 @@ export function NovaGuiaPage() {
         healthPlanId: values.healthPlanId,
         patientId: values.patientId,
         healthProfessionalId: values.healthProfessionalId,
+        authorizationDate: values.authorizationDate,
         expirationDate: values.expirationDate,
         status: values.status,
         ...(values.guideNumber ? { guideNumber: values.guideNumber } : {}),
@@ -96,7 +97,7 @@ export function NovaGuiaPage() {
               healthProfessionalId: undefined,
               status: 'pending',
               guideNumber: '',
-              startDate: hojeLocalISO(),
+              authorizationDate: hojeLocalISO(),
               expirationDate: '',
               procedures: [{ procedureId: undefined, authorizedQuantity: 1, value: undefined }],
             }}
