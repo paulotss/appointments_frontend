@@ -35,6 +35,7 @@ import { GuiasPage } from './pages/GuiasPage'
 import { LoteTissDetalhePage } from './pages/LoteTissDetalhePage'
 import { NovaEntradaFinanceiraPage } from './pages/NovaEntradaFinanceiraPage'
 import { NovaGuiaPage } from './pages/NovaGuiaPage'
+import { ImportarGuiaPage } from './pages/ImportarGuiaPage'
 import { NovoLoteTissPage } from './pages/NovoLoteTissPage'
 import { NovoPagamentoPage } from './pages/NovoPagamentoPage'
 import { NovoProcedimentoPage } from './pages/NovoProcedimentoPage'
@@ -307,6 +308,14 @@ function App() {
           element={
             <AdminRoute>
               <NovaGuiaPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/guias/importar"
+          element={
+            <AdminRoute>
+              <ImportarGuiaPage />
             </AdminRoute>
           }
         />

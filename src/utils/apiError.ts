@@ -35,11 +35,29 @@ const MENSAGENS_EXATAS: Record<string, string> = {
   'discountAmount and surchargeAmount must be >= 0':
     'Desconto e acréscimo não podem ser negativos.',
   'Charged amount cannot be negative': 'O valor líquido não pode ser negativo.',
-  'file is required': 'Envie um arquivo.',
+  'GEMINI_API_KEY is not configured':
+    'A chave da API do Google não está configurada. Defina GEMINI_API_KEY no backend.',
+  'Vision provider failed to extract guide data':
+    'Não foi possível ler a guia. Tente outra imagem ou um PDF mais nítido.',
+  'Local vision model requires a JPEG or PNG image (not PDF)':
+    'O modelo local só processa imagens JPEG ou PNG. Envie uma foto da guia.',
+  'health plan was not found in the system; register it before importing':
+    'Cadastre o plano de saúde antes de importar a guia.',
+  'health professional was not found in the system; register it before importing':
+    'Cadastre o profissional antes de importar a guia.',
+  'procedure was not found in the system; register it before importing':
+    'Cadastre o procedimento antes de importar a guia.',
+  'procedure has no price for this health plan; register it before importing':
+    'Cadastre o preço deste procedimento no plano antes de importar.',
+  'insurance card number and expiration date are required':
+    'Informe o número e a validade da carteirinha.',
+  'patient name and phone are required': 'Informe o nome e o telefone do paciente.',
+  'patientId is required': 'Selecione o paciente.',
   'Only PDF, JPEG and PNG documents are allowed':
     'Somente documentos PDF, JPEG e PNG são permitidos.',
   'File too large': 'O arquivo excede o tamanho máximo permitido.',
   'Já existe uma guia com este número.': 'Já existe uma guia com este número.',
+  'Já existe um profissional com este CPF.': 'Já existe um profissional com este CPF.',
   'Only open billing batches can be updated': 'Somente lotes abertos podem ser atualizados.',
   'Only open billing batches can be billed': 'Somente lotes abertos podem ser faturados.',
   'Cannot bill a batch without guides': 'Não é possível faturar um lote sem guias.',
