@@ -1,4 +1,5 @@
 import AddIcon from '@mui/icons-material/Add'
+import DocumentScannerIcon from '@mui/icons-material/DocumentScanner'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import {
   Alert,
@@ -535,9 +536,14 @@ export function GuiasPage() {
         <Typography variant="h5" fontWeight={700}>
           Guias
         </Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/guias/novo')}>
-          Nova guia
-        </Button>
+        <Stack direction="row" spacing={1} flexShrink={0}>
+          <Button variant="outlined" startIcon={<DocumentScannerIcon />} onClick={() => navigate('/guias/importar')}>
+            Importar guia
+          </Button>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/guias/novo')}>
+            Nova guia
+          </Button>
+        </Stack>
       </Box>
 
       {loading ? (

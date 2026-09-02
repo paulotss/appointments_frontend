@@ -28,6 +28,7 @@ import type { ListMeta } from '../types/listEnvelope'
 import type { Especialidade } from '../types/registro'
 import { COUNCIL_TYPES, type CouncilType, type HealthProfessional } from '../types/profissional'
 import { UFS_BRASIL, type UfBrasil } from '../utils/ufBrasil'
+import { mensagemErroApi } from '../utils/apiError'
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100]
 const META_VAZIA: ListMeta = { page: 1, limit: 50, total: 0, totalPages: 1 }
@@ -139,8 +140,8 @@ export function ProfissionaisPage() {
       setProfissionais((prev) => prev.map((item) => (item.id === atualizado.id ? atualizado : item)))
       fecharEdicao()
       setSuccess('Profissional atualizado com sucesso.')
-    } catch {
-      setError('Nao foi possivel editar o profissional.')
+    } catch (err) {
+      setError(mensagemErroApi(err, 'Não foi possível editar o profissional.'))
     } finally {
       setSavingEdit(false)
     }

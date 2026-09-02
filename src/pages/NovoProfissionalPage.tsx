@@ -25,6 +25,7 @@ import {
 import { listarEspecialidades } from '../services/especialidades.service'
 import { criarProfissional } from '../services/health-professionals.service'
 import { COUNCIL_TYPES } from '../types/profissional'
+import { mensagemErroApi } from '../utils/apiError'
 import { UFS_BRASIL } from '../utils/ufBrasil'
 import type { Especialidade } from '../types/registro'
 
@@ -99,8 +100,8 @@ export function NovoProfissionalPage() {
       })
       reset()
       navigate('/profissionais', { replace: true })
-    } catch {
-      setError('Nao foi possivel cadastrar o profissional.')
+    } catch (err) {
+      setError(mensagemErroApi(err, 'Não foi possível cadastrar o profissional.'))
     } finally {
       setLoading(false)
     }
