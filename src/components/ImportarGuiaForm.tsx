@@ -39,6 +39,7 @@ import type { HealthProfessional } from '../types/profissional'
 import { TISS_GUIDE_TYPE_LABELS } from '../types/tiss'
 import { mensagemErroApi } from '../utils/apiError'
 import { formatarDataISO } from '../utils/dataISO'
+import { CampoData } from './CampoData'
 import { PacienteBuscaAutocomplete } from './PacienteBuscaAutocomplete'
 import { ProfissionalBuscaAutocomplete } from './ProfissionalBuscaAutocomplete'
 
@@ -511,11 +512,18 @@ export function ImportarGuiaForm({
                   {...register('phone')}
                 />
                 <TextField label="E-mail (opcional)" {...register('email')} />
-                <TextField
-                  label="Data de nascimento (opcional)"
-                  type="date"
-                  InputLabelProps={{ shrink: true }}
-                  {...register('birthDate')}
+                <Controller
+                  name="birthDate"
+                  control={control}
+                  render={({ field }) => (
+                    <CampoData
+                      label="Data de nascimento (opcional)"
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      inputRef={field.ref}
+                    />
+                  )}
                 />
                 <TextField label="CPF (opcional)" {...register('cpf')} />
               </>
@@ -536,13 +544,20 @@ export function ImportarGuiaForm({
               InputLabelProps={{ shrink: true }}
               {...register('cardNumber')}
             />
-            <TextField
-              label="Validade da carteirinha"
-              type="date"
-              InputLabelProps={{ shrink: true }}
-              error={Boolean(errors.cardExpirationDate)}
-              helperText={errors.cardExpirationDate?.message ?? 'Não localizada na guia'}
-              {...register('cardExpirationDate')}
+            <Controller
+              name="cardExpirationDate"
+              control={control}
+              render={({ field }) => (
+                <CampoData
+                  label="Validade da carteirinha"
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  inputRef={field.ref}
+                  error={Boolean(errors.cardExpirationDate)}
+                  helperText={errors.cardExpirationDate?.message ?? 'Não localizada na guia'}
+                />
+              )}
             />
 
             <Stack direction="row" spacing={1}>
@@ -571,35 +586,49 @@ export function ImportarGuiaForm({
               InputLabelProps={{ shrink: true }}
               {...register('guideNumber')}
             />
-            <TextField
-              label="Data de autorização"
-              type="date"
-              InputLabelProps={{ shrink: true }}
-              error={Boolean(errors.authorizationDate)}
-              helperText={
-                errors.authorizationDate?.message ??
-                (analise?.extracted.guide.authorizationDate
-                  ? `Lido na guia: ${formatarDataISO(analise.extracted.guide.authorizationDate)}`
-                  : analise?.extracted.guide.attendanceDate
-                    ? `Lido na guia (atendimento): ${formatarDataISO(analise.extracted.guide.attendanceDate)}`
-                    : 'Não localizada na guia. Se vazia, use a data do atendimento ou hoje.')
-              }
-              {...register('authorizationDate')}
+            <Controller
+              name="authorizationDate"
+              control={control}
+              render={({ field }) => (
+                <CampoData
+                  label="Data de autorização"
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  inputRef={field.ref}
+                  error={Boolean(errors.authorizationDate)}
+                  helperText={
+                    errors.authorizationDate?.message ??
+                    (analise?.extracted.guide.authorizationDate
+                      ? `Lido na guia: ${formatarDataISO(analise.extracted.guide.authorizationDate)}`
+                      : analise?.extracted.guide.attendanceDate
+                        ? `Lido na guia (atendimento): ${formatarDataISO(analise.extracted.guide.attendanceDate)}`
+                        : 'Não localizada na guia. Se vazia, use a data do atendimento ou hoje.')
+                  }
+                />
+              )}
             />
-            <TextField
-              label="Validade da guia"
-              type="date"
-              InputLabelProps={{ shrink: true }}
-              error={Boolean(errors.expirationDate)}
-              helperText={
-                errors.expirationDate?.message ??
-                (analise?.extracted.guide.passwordExpirationDate
-                  ? `Lido na guia: ${formatarDataISO(analise.extracted.guide.passwordExpirationDate)}`
-                  : planoSelecionado
-                    ? `Não localizada na guia. Sugestão: prazo do plano (${planoSelecionado.submissionDeadlineDays} dias).`
-                    : 'Não localizada na guia')
-              }
-              {...register('expirationDate')}
+            <Controller
+              name="expirationDate"
+              control={control}
+              render={({ field }) => (
+                <CampoData
+                  label="Validade da guia"
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  inputRef={field.ref}
+                  error={Boolean(errors.expirationDate)}
+                  helperText={
+                    errors.expirationDate?.message ??
+                    (analise?.extracted.guide.passwordExpirationDate
+                      ? `Lido na guia: ${formatarDataISO(analise.extracted.guide.passwordExpirationDate)}`
+                      : planoSelecionado
+                        ? `Não localizada na guia. Sugestão: prazo do plano (${planoSelecionado.submissionDeadlineDays} dias).`
+                        : 'Não localizada na guia')
+                  }
+                />
+              )}
             />
 
             {(analise?.procedures ?? []).map((item, index) => (

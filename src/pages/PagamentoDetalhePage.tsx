@@ -19,6 +19,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { PagamentoForm } from '../components/PagamentoForm'
+import { CampoDataHora } from '../components/CampoDataHora'
 import {
   pagamentoSchema,
   type PagamentoFormInput,
@@ -439,12 +440,10 @@ export function PagamentoDetalhePage() {
                 </MenuItem>
               ))}
             </TextField>
-            <TextField
+            <CampoDataHora
               label="Data do pagamento"
-              type="datetime-local"
               value={paidAt}
-              onChange={(event) => setPaidAt(event.target.value)}
-              InputLabelProps={{ shrink: true }}
+              onChange={setPaidAt}
             />
           </Stack>
         </DialogContent>

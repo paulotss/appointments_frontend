@@ -14,6 +14,7 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { SaidasTable } from '../components/SaidasTable'
+import { CampoData } from '../components/CampoData'
 import { listarProdutos } from '../services/products.service'
 import { listarLotes, normalizarValorLote } from '../services/stock-batches.service'
 import { listarSaidas } from '../services/stock-exits.service'
@@ -232,24 +233,20 @@ export function SaidasPage() {
               value={buscaNome}
               onChange={(event) => setBuscaNome(event.target.value)}
             />
-            <TextField
-              type="date"
+            <CampoData
               label="Início"
               size="small"
               value={dataInicio}
-              onChange={(event) => setDataInicio(event.target.value)}
+              onChange={setDataInicio}
               sx={{ minWidth: { xs: '100%', md: 180 } }}
-              InputLabelProps={{ shrink: true }}
             />
-            <TextField
-              type="date"
+            <CampoData
               label="Fim"
               size="small"
               value={dataFim}
-              onChange={(event) => setDataFim(event.target.value)}
-              inputProps={{ min: dataInicio || undefined }}
+              onChange={setDataFim}
+              min={dataInicio || undefined}
               sx={{ minWidth: { xs: '100%', md: 180 } }}
-              InputLabelProps={{ shrink: true }}
             />
           </Stack>
 

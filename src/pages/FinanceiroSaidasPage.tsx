@@ -6,11 +6,11 @@ import {
   Paper,
   Stack,
   TablePagination,
-  TextField,
   Typography,
 } from '@mui/material'
 import { useCallback, useEffect, useState } from 'react'
 import { FinanceiroSaidasTable } from '../components/FinanceiroSaidasTable'
+import { CampoData } from '../components/CampoData'
 import { listarSaidasFinanceiras } from '../services/financial-exits.service'
 import type { FinancialExit, FinancialExitListCounts } from '../types/financeiro'
 import type { ListMeta } from '../types/listEnvelope'
@@ -79,28 +79,24 @@ export function FinanceiroSaidasPage() {
       {error ? <Alert severity="error">{error}</Alert> : null}
 
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-start' }}>
-        <TextField
+        <CampoData
           label="Data início"
-          type="date"
           size="small"
           value={dataInicio}
-          onChange={(event) => {
-            setDataInicio(event.target.value)
+          onChange={(next) => {
+            setDataInicio(next)
             setPage(0)
           }}
-          InputLabelProps={{ shrink: true }}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
         />
-        <TextField
+        <CampoData
           label="Data fim"
-          type="date"
           size="small"
           value={dataFim}
-          onChange={(event) => {
-            setDataFim(event.target.value)
+          onChange={(next) => {
+            setDataFim(next)
             setPage(0)
           }}
-          InputLabelProps={{ shrink: true }}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
         />
       </Box>

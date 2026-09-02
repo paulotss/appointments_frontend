@@ -15,6 +15,7 @@ import {
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PagamentosTable } from '../components/PagamentosTable'
+import { CampoData } from '../components/CampoData'
 import { listarPagamentos } from '../services/payables.service'
 import { listarFornecedores } from '../services/suppliers.service'
 import type { Fornecedor } from '../types/estoque'
@@ -164,23 +165,19 @@ export function FinanceiroPagamentosPage() {
             <TextField {...params} label="Fornecedor" size="small" placeholder="Todos" />
           )}
         />
-        <TextField
+        <CampoData
           label="Vencimento início"
-          type="date"
           size="small"
           value={vencimentoInicio}
-          onChange={(event) => setVencimentoInicio(event.target.value)}
-          InputLabelProps={{ shrink: true }}
+          onChange={setVencimentoInicio}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 200 } }}
         />
-        <TextField
+        <CampoData
           label="Vencimento fim"
-          type="date"
           size="small"
           value={vencimentoFim}
-          onChange={(event) => setVencimentoFim(event.target.value)}
-          InputLabelProps={{ shrink: true }}
-          inputProps={{ min: vencimentoInicio || undefined }}
+          onChange={setVencimentoFim}
+          min={vencimentoInicio || undefined}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 200 } }}
         />
       </Box>

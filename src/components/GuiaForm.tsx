@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Controller, useFieldArray, useForm, useWatch, type DefaultValues } from 'react-hook-form'
 import { guiaSchema, type GuiaFormInput, type GuiaFormValues } from '../schemas/guia.schema'
 import { listarProcedimentos } from '../services/procedures.service'
+import { CampoData } from './CampoData'
 import { INSURANCE_GUIDE_STATUSES, INSURANCE_GUIDE_STATUS_LABELS } from '../types/guia'
 import type { Patient } from '../types/paciente'
 import type { HealthPlan } from '../types/planoSaude'
@@ -272,10 +273,8 @@ export function GuiaForm({
         name="authorizationDate"
         control={control}
         render={({ field }) => (
-          <TextField
+          <CampoData
             label="Data de autorização"
-            type="date"
-            InputLabelProps={{ shrink: true }}
             value={field.value}
             onChange={field.onChange}
             error={Boolean(errors.authorizationDate)}
@@ -287,10 +286,8 @@ export function GuiaForm({
         name="expirationDate"
         control={control}
         render={({ field }) => (
-          <TextField
+          <CampoData
             label="Data de validade"
-            type="date"
-            InputLabelProps={{ shrink: true }}
             value={field.value}
             onChange={field.onChange}
             error={Boolean(errors.expirationDate)}

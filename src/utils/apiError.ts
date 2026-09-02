@@ -36,9 +36,11 @@ const MENSAGENS_EXATAS: Record<string, string> = {
     'Desconto e acréscimo não podem ser negativos.',
   'Charged amount cannot be negative': 'O valor líquido não pode ser negativo.',
   'GEMINI_API_KEY is not configured':
-    'A chave da API do Google não está configurada. Defina GEMINI_API_KEY no backend.',
+    'A chave da API do Google não está configurada. Defina GEMINI_API_KEY no backend (Render → Environment).',
   'Vision provider failed to extract guide data':
     'Não foi possível ler a guia. Tente outra imagem ou um PDF mais nítido.',
+  'Local vision model is unreachable':
+    'O modelo local não está acessível neste servidor. Na nuvem, use Gemini: GUIDE_VISION_PROVIDER=gemini e GEMINI_API_KEY.',
   'Local vision model requires a JPEG or PNG image (not PDF)':
     'O modelo local só processa imagens JPEG ou PNG. Envie uma foto da guia.',
   'health plan was not found in the system; register it before importing':

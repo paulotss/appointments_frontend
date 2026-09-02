@@ -9,6 +9,7 @@ import {
   type PacienteFormValues,
 } from '../schemas/paciente.schema'
 import type { HealthPlan } from '../types/planoSaude'
+import { CampoData } from './CampoData'
 
 interface PacienteFormProps {
   defaultValues: DefaultValues<PacienteFormInput>
@@ -65,13 +66,20 @@ export function PacienteForm({
         helperText={errors.email?.message}
         {...register('email')}
       />
-      <TextField
-        label="Data de nascimento (opcional)"
-        type="date"
-        InputLabelProps={{ shrink: true }}
-        error={Boolean(errors.birthDate)}
-        helperText={errors.birthDate?.message}
-        {...register('birthDate')}
+      <Controller
+        name="birthDate"
+        control={control}
+        render={({ field }) => (
+          <CampoData
+            label="Data de nascimento (opcional)"
+            value={field.value}
+            onChange={field.onChange}
+            onBlur={field.onBlur}
+            inputRef={field.ref}
+            error={Boolean(errors.birthDate)}
+            helperText={errors.birthDate?.message}
+          />
+        )}
       />
       <TextField
         label="CPF (opcional)"
@@ -153,14 +161,21 @@ export function PacienteForm({
               sx={{ flex: 1, minWidth: 180 }}
               {...register(`insuranceCards.${index}.cardNumber`)}
             />
-            <TextField
-              label="Validade"
-              type="date"
-              InputLabelProps={{ shrink: true }}
-              error={Boolean(itemError?.expirationDate)}
-              helperText={itemError?.expirationDate?.message ?? ' '}
-              sx={{ width: { xs: '100%', sm: 180 } }}
-              {...register(`insuranceCards.${index}.expirationDate`)}
+            <Controller
+              name={`insuranceCards.${index}.expirationDate`}
+              control={control}
+              render={({ field }) => (
+                <CampoData
+                  label="Validade"
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  inputRef={field.ref}
+                  error={Boolean(itemError?.expirationDate)}
+                  helperText={itemError?.expirationDate?.message ?? ' '}
+                  sx={{ width: { xs: '100%', sm: 180 } }}
+                />
+              )}
             />
             <IconButton aria-label="Remover carteirinha" onClick={() => remove(index)} sx={{ mt: 0.5 }}>
               <DeleteOutlineIcon />

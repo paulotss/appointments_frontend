@@ -1,8 +1,9 @@
 import PercentIcon from '@mui/icons-material/Percent'
 import { BarChart } from '@mui/x-charts/BarChart'
-import { Alert, Box, CircularProgress, Paper, Stack, TextField, Typography } from '@mui/material'
+import { Alert, Box, CircularProgress, Paper, Stack, Typography } from '@mui/material'
 import { useEffect, useMemo, useState } from 'react'
 import { exportarRegistros } from '../services/registros.service'
+import { CampoData } from '../components/CampoData'
 import type { RegistroAtendimento } from '../types/registro'
 
 type ConversaoPorUsuario = {
@@ -107,19 +108,15 @@ export function TaxaConversaoPage() {
         </Stack>
 
         <Stack direction="row" spacing={1} sx={{ minWidth: 340 }}>
-          <TextField
+          <CampoData
             label="Início"
-            type="date"
             value={dataInicio}
-            onChange={(event) => setDataInicio(event.target.value)}
-            InputLabelProps={{ shrink: true }}
+            onChange={setDataInicio}
           />
-          <TextField
+          <CampoData
             label="Fim"
-            type="date"
             value={dataFim}
-            onChange={(event) => setDataFim(event.target.value)}
-            InputLabelProps={{ shrink: true }}
+            onChange={setDataFim}
           />
         </Stack>
       </Box>

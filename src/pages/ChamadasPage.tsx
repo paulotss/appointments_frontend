@@ -46,6 +46,7 @@ import {
 import type { Call, CallRecordStatus, CallStatus } from '../types/call'
 import type { ListMeta, RecordStatusCounts } from '../types/listEnvelope'
 import { formatAtendenteExibicao } from '../utils/formatAtendente'
+import { CampoData } from '../components/CampoData'
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100]
 
@@ -334,22 +335,18 @@ export function ChamadasPage() {
       </Stack>
 
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-start' }}>
-        <TextField
+        <CampoData
           label="Período inicial"
-          type="date"
           size="small"
           value={dataInicio}
-          onChange={(e) => atualizarFiltros({ dataInicio: e.target.value })}
-          InputLabelProps={{ shrink: true }}
+          onChange={(next) => atualizarFiltros({ dataInicio: next })}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
         />
-        <TextField
+        <CampoData
           label="Período final"
-          type="date"
           size="small"
           value={dataFim}
-          onChange={(e) => atualizarFiltros({ dataFim: e.target.value })}
-          InputLabelProps={{ shrink: true }}
+          onChange={(next) => atualizarFiltros({ dataFim: next })}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
         />
         <FormControl size="small" sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 200 } }}>

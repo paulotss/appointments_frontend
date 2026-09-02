@@ -24,6 +24,7 @@ import {
   numeroParaDigitosMoedaBRL,
 } from '../utils/moedaBRL'
 import { labelUnidadePlural, podeUsarCaixa } from '../utils/stockUnit'
+import { CampoData } from './CampoData'
 
 interface CampoValorMoedaProps {
   value: number | undefined
@@ -318,22 +319,36 @@ export function LoteForm({
         )}
       />
       {exibirInclusao ? (
-        <TextField
-          label="Inclusao"
-          type="date"
-          InputLabelProps={{ shrink: true }}
-          error={Boolean(errors.movementDate)}
-          helperText={errors.movementDate?.message}
-          {...register('movementDate')}
+        <Controller
+          name="movementDate"
+          control={control}
+          render={({ field }) => (
+            <CampoData
+              label="Inclusao"
+              value={field.value}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              inputRef={field.ref}
+              error={Boolean(errors.movementDate)}
+              helperText={errors.movementDate?.message}
+            />
+          )}
         />
       ) : null}
-      <TextField
-        label="Validade"
-        type="date"
-        InputLabelProps={{ shrink: true }}
-        error={Boolean(errors.expirationDate)}
-        helperText={errors.expirationDate?.message}
-        {...register('expirationDate')}
+      <Controller
+        name="expirationDate"
+        control={control}
+        render={({ field }) => (
+          <CampoData
+            label="Validade"
+            value={field.value}
+            onChange={field.onChange}
+            onBlur={field.onBlur}
+            inputRef={field.ref}
+            error={Boolean(errors.expirationDate)}
+            helperText={errors.expirationDate?.message}
+          />
+        )}
       />
       <TextField
         label="Chave NF-e"

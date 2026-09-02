@@ -32,6 +32,7 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { CampoValorMoeda } from '../components/CampoValorMoeda'
+import { CampoData } from '../components/CampoData'
 import { GuiasTable } from '../components/GuiasTable'
 import { PacienteBuscaAutocomplete } from '../components/PacienteBuscaAutocomplete'
 import { ProfissionalBuscaAutocomplete } from '../components/ProfissionalBuscaAutocomplete'
@@ -773,25 +774,20 @@ export function GuiasPage() {
               error={Boolean(guideNumberEdicaoError)}
               helperText={guideNumberEdicaoError ?? 'Obrigatório no XML TISS'}
             />
-            <TextField
+            <CampoData
               label="Data de autorização"
-              type="date"
-              InputLabelProps={{ shrink: true }}
               value={authorizationDateEdicao}
-              onChange={(event) => {
-                const next = event.target.value
+              onChange={(next) => {
                 setAuthorizationDateEdicao(next)
                 recalcularValidade(next, prazoPlano)
               }}
               error={authorizationDateInvalida}
               helperText={authorizationDateInvalida ? 'Informe a data de autorização' : ' '}
             />
-            <TextField
+            <CampoData
               label="Data de validade"
-              type="date"
-              InputLabelProps={{ shrink: true }}
               value={expirationDateEdicao}
-              onChange={(event) => setExpirationDateEdicao(event.target.value)}
+              onChange={setExpirationDateEdicao}
               error={expirationInvalida}
               helperText={
                 expirationInvalida
