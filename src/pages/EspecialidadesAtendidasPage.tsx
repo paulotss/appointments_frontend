@@ -1,8 +1,9 @@
 import PieChartIcon from '@mui/icons-material/PieChart'
 import { BarChart } from '@mui/x-charts/BarChart'
-import { Alert, Box, CircularProgress, Paper, Stack, TextField, Typography } from '@mui/material'
+import { Alert, Box, CircularProgress, Paper, Stack, Typography } from '@mui/material'
 import { useEffect, useMemo, useState } from 'react'
 import { exportarRegistros } from '../services/registros.service'
+import { CampoData } from '../components/CampoData'
 import type { RegistroAtendimento } from '../types/registro'
 
 function getInicioMesAtualISO(): string {
@@ -88,21 +89,17 @@ export function EspecialidadesAtendidasPage() {
         </Stack>
 
         <Stack direction="row" spacing={1} sx={{ minWidth: 340 }}>
-          <TextField
+          <CampoData
             label="Início"
-            type="date"
             value={dataInicio}
-            onChange={(event) => setDataInicio(event.target.value)}
-            InputLabelProps={{ shrink: true }}
+            onChange={setDataInicio}
             size="small"
             sx={{ minWidth: 165 }}
           />
-          <TextField
+          <CampoData
             label="Fim"
-            type="date"
             value={dataFim}
-            onChange={(event) => setDataFim(event.target.value)}
-            InputLabelProps={{ shrink: true }}
+            onChange={setDataFim}
             size="small"
             sx={{ minWidth: 165 }}
           />

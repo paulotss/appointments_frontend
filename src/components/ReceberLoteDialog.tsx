@@ -27,6 +27,7 @@ import type { BillingBatch, ReceiveBillingBatchRequest } from '../types/financei
 import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from '../types/financeiro'
 import { formatarMoedaBRL } from '../utils/moedaBRL'
 import { CampoValorMoeda } from './CampoValorMoeda'
+import { CampoDataHora } from './CampoDataHora'
 
 function agoraDatetimeLocal(): string {
   const data = new Date()
@@ -146,13 +147,20 @@ export function ReceberLoteDialog({
               </TextField>
             )}
           />
-          <TextField
-            label="Data do pagamento"
-            type="datetime-local"
-            InputLabelProps={{ shrink: true }}
-            error={Boolean(errors.paidAt)}
-            helperText={errors.paidAt?.message}
-            {...register('paidAt')}
+          <Controller
+            name="paidAt"
+            control={control}
+            render={({ field }) => (
+              <CampoDataHora
+                label="Data do pagamento"
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                inputRef={field.ref}
+                error={Boolean(errors.paidAt)}
+                helperText={errors.paidAt?.message}
+              />
+            )}
           />
           <Table size="small">
             <TableHead>

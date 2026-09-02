@@ -19,6 +19,7 @@ import {
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatAtendenteExibicao } from '../utils/formatAtendente'
+import { CampoData } from '../components/CampoData'
 import { RegistrosTable } from '../components/RegistrosTable'
 import { getIsAdmin, getLoggedUser } from '../services/authStorage'
 import { listarEspecialidades } from '../services/especialidades.service'
@@ -339,28 +340,24 @@ export function RegistrosPage() {
       </Box>
 
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-start' }}>
-        <TextField
+        <CampoData
           label="Período inicial"
-          type="date"
           size="small"
           value={filtroDataInicio}
-          onChange={(event) => {
-            setFiltroDataInicio(event.target.value)
+          onChange={(next) => {
+            setFiltroDataInicio(next)
             resetPage()
           }}
-          InputLabelProps={{ shrink: true }}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
         />
-        <TextField
+        <CampoData
           label="Período final"
-          type="date"
           size="small"
           value={filtroDataFim}
-          onChange={(event) => {
-            setFiltroDataFim(event.target.value)
+          onChange={(next) => {
+            setFiltroDataFim(next)
             resetPage()
           }}
-          InputLabelProps={{ shrink: true }}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
         />
         {isAdmin ? (

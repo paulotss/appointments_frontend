@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { CampoValorMoeda } from '../components/CampoValorMoeda'
+import { CampoDataHora } from '../components/CampoDataHora'
 import {
   entradaParticularSchema,
   type EntradaParticularFormInput,
@@ -222,13 +223,20 @@ export function NovaEntradaFinanceiraPage() {
                   </TextField>
                 )}
               />
-              <TextField
-                label="Data do pagamento"
-                type="datetime-local"
-                InputLabelProps={{ shrink: true }}
-                error={Boolean(errors.paidAt)}
-                helperText={errors.paidAt?.message}
-                {...register('paidAt')}
+              <Controller
+                name="paidAt"
+                control={control}
+                render={({ field }) => (
+                  <CampoDataHora
+                    label="Data do pagamento"
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    inputRef={field.ref}
+                    error={Boolean(errors.paidAt)}
+                    helperText={errors.paidAt?.message}
+                  />
+                )}
               />
               <Controller
                 name="discountAmount"

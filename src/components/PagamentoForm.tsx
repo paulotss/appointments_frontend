@@ -26,6 +26,7 @@ import {
 } from '../types/financeiro'
 import { ACCEPT_ARQUIVOS_PAGAMENTO, formatarTamanhoArquivo } from '../utils/pagamentoArquivos'
 import { CampoValorMoeda } from './CampoValorMoeda'
+import { CampoData } from './CampoData'
 
 interface PagamentoFormProps {
   control: Control<PagamentoFormInput, unknown, PagamentoFormValues>
@@ -127,13 +128,20 @@ export function PagamentoForm({
           />
         )}
       />
-      <TextField
-        label="Vencimento"
-        type="date"
-        InputLabelProps={{ shrink: true }}
-        error={Boolean(errors.dueDate)}
-        helperText={errors.dueDate?.message}
-        {...register('dueDate')}
+      <Controller
+        name="dueDate"
+        control={control}
+        render={({ field }) => (
+          <CampoData
+            label="Vencimento"
+            value={field.value}
+            onChange={field.onChange}
+            onBlur={field.onBlur}
+            inputRef={field.ref}
+            error={Boolean(errors.dueDate)}
+            helperText={errors.dueDate?.message}
+          />
+        )}
       />
       <TextField
         label="Número da nota"

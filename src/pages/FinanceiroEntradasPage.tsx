@@ -10,11 +10,11 @@ import {
   Select,
   Stack,
   TablePagination,
-  TextField,
   Typography,
 } from '@mui/material'
 import { useCallback, useEffect, useState } from 'react'
 import { FinanceiroEntradasTable } from '../components/FinanceiroEntradasTable'
+import { CampoData } from '../components/CampoData'
 import { listarEntradasFinanceiras } from '../services/financial-entries.service'
 import type {
   FiltroStatusEntrada,
@@ -90,28 +90,24 @@ export function FinanceiroEntradasPage() {
       {error ? <Alert severity="error">{error}</Alert> : null}
 
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-start' }}>
-        <TextField
+        <CampoData
           label="Data início"
-          type="date"
           size="small"
           value={dataInicio}
-          onChange={(event) => {
-            setDataInicio(event.target.value)
+          onChange={(next) => {
+            setDataInicio(next)
             setPage(0)
           }}
-          InputLabelProps={{ shrink: true }}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
         />
-        <TextField
+        <CampoData
           label="Data fim"
-          type="date"
           size="small"
           value={dataFim}
-          onChange={(event) => {
-            setDataFim(event.target.value)
+          onChange={(next) => {
+            setDataFim(next)
             setPage(0)
           }}
-          InputLabelProps={{ shrink: true }}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
         />
         <FormControl size="small" sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 200 } }}>

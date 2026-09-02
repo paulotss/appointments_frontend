@@ -16,6 +16,7 @@ import { exportarRegistros } from '../services/registros.service'
 import { listarUsuarios } from '../services/users.service'
 import type { RegistroAtendimento } from '../types/registro'
 import { formatAtendenteExibicao } from '../utils/formatAtendente'
+import { CampoData } from '../components/CampoData'
 
 function getMesAtualISO(): string {
   const agora = new Date()
@@ -263,22 +264,18 @@ export function AtendimentosPage() {
         </Stack>
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', sm: 'center' }}>
-          <TextField
-            type="date"
+          <CampoData
             label="Início"
             value={dataInicio}
-            onChange={(event) => setDataInicio(event.target.value)}
+            onChange={setDataInicio}
             sx={{ minWidth: 190 }}
-            InputLabelProps={{ shrink: true }}
           />
 
-          <TextField
-            type="date"
+          <CampoData
             label="Fim"
             value={dataFim}
-            onChange={(event) => setDataFim(event.target.value)}
+            onChange={setDataFim}
             sx={{ minWidth: 190 }}
-            InputLabelProps={{ shrink: true }}
           />
 
           <TextField

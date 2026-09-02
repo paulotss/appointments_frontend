@@ -17,6 +17,7 @@ import { Controller, useForm, useWatch, type DefaultValues } from 'react-hook-fo
 import { useNavigate } from 'react-router-dom'
 import { GuiaProcedimentosTabela } from './GuiaProcedimentosTabela'
 import { NovaGuiaDialog } from './NovaGuiaDialog'
+import { CampoData } from './CampoData'
 import { PacienteBuscaAutocomplete } from './PacienteBuscaAutocomplete'
 import { ProfissionalBuscaAutocomplete } from './ProfissionalBuscaAutocomplete'
 import {
@@ -365,10 +366,8 @@ export function AgendamentoClinicoForm({
           name="scheduledDate"
           control={control}
           render={({ field }) => (
-            <TextField
+            <CampoData
               label="Data"
-              type="date"
-              InputLabelProps={{ shrink: true }}
               value={field.value}
               onChange={field.onChange}
               error={Boolean(errors.scheduledDate)}

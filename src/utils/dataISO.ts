@@ -36,11 +36,66 @@ export function hojeMaisDiasLocal(dias: number): string {
   return adicionarDiasISO(hojeLocalISO(), dias)
 }
 
-export function formatarDataISO(value: string | null | undefined): string {
+export function isoParaDataBR(value: string | null | undefined): string {
   const prefix = isoDatePrefix(value)
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(prefix)) return value ?? '—'
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(prefix)) return ''
   const [year, month, day] = prefix.split('-')
   return `${day}/${month}/${year}`
+}
+
+export function mascararDataBR(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 8)
+  if (digits.length <= 2) return digits
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`
+}
+
+export function dataBRParaIso(value: string): string | null {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value.trim())
+  if (!match) return null
+  const day = Number(match[1])
+  const month = Number(match[2])
+  const year = Number(match[3])
+  const date = new Date(year, month - 1, day)
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    return null
+  }
+  return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+export function isoDateTimeLocalParaBr(value: string | null | undefined): string {
+  if (!value) return ''
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(value)
+  if (!match) return isoParaDataBR(value)
+  return `${match[3]}/${match[2]}/${match[1]} ${match[4]}:${match[5]}`
+}
+
+export function mascararDataHoraBR(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 12)
+  const data = mascararDataBR(digits.slice(0, 8))
+  const hora = digits.slice(8)
+  if (!hora) return data
+  if (hora.length <= 2) return `${data} ${hora}`
+  return `${data} ${hora.slice(0, 2)}:${hora.slice(2, 4)}`
+}
+
+export function dataHoraBRParaIsoLocal(value: string): string | null {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?$/.exec(value.trim())
+  if (!match) return null
+  const isoDate = dataBRParaIso(`${match[1]}/${match[2]}/${match[3]}`)
+  if (!isoDate) return null
+  const hour = match[4] ?? '00'
+  const minute = match[5] ?? '00'
+  const h = Number(hour)
+  const min = Number(minute)
+  if (h > 23 || min > 59) return null
+  return `${isoDate}T${hour}:${minute}`
+}
+
+export function formatarDataISO(value: string | null | undefined): string {
+  const formatado = isoParaDataBR(value)
+  if (formatado) return formatado
+  return value ?? '—'
 }
 
 export function formatarDataHoraISO(value: string | null | undefined): string {

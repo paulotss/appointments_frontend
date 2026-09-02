@@ -18,6 +18,7 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { criarLoteTiss } from '../services/billing-batches.service'
+import { CampoData } from '../components/CampoData'
 import { listarPlanosSaude } from '../services/health-plans.service'
 import { listarTodasGuias } from '../services/insurance-guides.service'
 import type { InsuranceGuide } from '../types/guia'
@@ -188,19 +189,15 @@ export function NovoLoteTissPage() {
                   </MenuItem>
                 ))}
               </TextField>
-              <TextField
+              <CampoData
                 label="Data início"
-                type="date"
                 value={dataInicio}
-                onChange={(event) => setDataInicio(event.target.value)}
-                InputLabelProps={{ shrink: true }}
+                onChange={setDataInicio}
               />
-              <TextField
+              <CampoData
                 label="Data fim"
-                type="date"
                 value={dataFim}
-                onChange={(event) => setDataFim(event.target.value)}
-                InputLabelProps={{ shrink: true }}
+                onChange={setDataFim}
               />
               <TextField
                 label="Protocolo"
