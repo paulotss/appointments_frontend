@@ -31,6 +31,7 @@ import { AgendaClinicaPage } from './pages/AgendaClinicaPage'
 import { FinanceiroEntradasPage } from './pages/FinanceiroEntradasPage'
 import { FinanceiroPagamentosPage } from './pages/FinanceiroPagamentosPage'
 import { FinanceiroSaidasPage } from './pages/FinanceiroSaidasPage'
+import { GuiaDetalhePage } from './pages/GuiaDetalhePage'
 import { GuiasPage } from './pages/GuiasPage'
 import { LoteTissDetalhePage } from './pages/LoteTissDetalhePage'
 import { NovaEntradaFinanceiraPage } from './pages/NovaEntradaFinanceiraPage'
@@ -316,6 +317,14 @@ function App() {
           element={
             <AdminRoute>
               <ImportarGuiaPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/guias/:id"
+          element={
+            <AdminRoute>
+              <GuiaDetalhePage />
             </AdminRoute>
           }
         />

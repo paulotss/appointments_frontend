@@ -690,6 +690,7 @@ export function GuiasPage() {
         <Paper sx={{ p: 0 }}>
           <GuiasTable
             guias={guiasExibidas}
+            onAbrir={(guia) => navigate(`/guias/${guia.id}`)}
             onEditar={abrirEdicao}
             onExcluir={(guia) => void excluir(guia)}
             onFaturar={(guia) => {
