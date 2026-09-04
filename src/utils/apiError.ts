@@ -76,8 +76,8 @@ const MENSAGENS_EXATAS: Record<string, string> = {
     'Não misture procedimentos de consulta e SP/SADT na mesma guia.',
   'consulta guides must contain exactly one procedure':
     'A guia de consulta deve ter exatamente um procedimento.',
-  'Only billed or settled billing batches can export TISS XML':
-    'Somente lotes faturados ou quitados podem exportar o XML TISS.',
+  'Cancelled billing batches cannot export TISS XML':
+    'Lotes cancelados não podem exportar o XML TISS.',
   'patient already has a card for this health plan':
     'Este paciente já tem carteirinha neste plano de saúde.',
 }

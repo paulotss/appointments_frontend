@@ -411,32 +411,32 @@ export function LoteTissDetalhePage() {
               </TableBody>
             </Table>
 
-            {lote.status === 'open' ? (
+            {lote.status !== 'cancelled' ? (
               <Stack direction="row" spacing={1.5} sx={{ alignSelf: 'flex-start' }}>
-                <Button variant="outlined" onClick={() => void abrirAdicionarGuias()}>
-                  Adicionar guias
-                </Button>
-                <Button
-                  variant="contained"
-                  onClick={() => setDialogAberto(true)}
-                  disabled={lote.guides.length === 0}
-                >
-                  Faturar
-                </Button>
-              </Stack>
-            ) : null}
-            {lote.status === 'billed' || lote.status === 'settled' ? (
-              <Stack direction="row" spacing={1.5} sx={{ alignSelf: 'flex-start' }}>
+                {lote.status === 'open' ? (
+                  <>
+                    <Button variant="outlined" onClick={() => void abrirAdicionarGuias()}>
+                      Adicionar guias
+                    </Button>
+                    <Button
+                      variant="contained"
+                      onClick={() => setDialogAberto(true)}
+                      disabled={lote.guides.length === 0}
+                    >
+                      Faturar
+                    </Button>
+                  </>
+                ) : null}
                 {lote.status === 'billed' ? (
                   <Button variant="contained" onClick={() => setReceberAberto(true)}>
                     Concluir pagamento
                   </Button>
                 ) : null}
                 <Button
-                  variant={lote.status === 'billed' ? 'outlined' : 'contained'}
+                  variant={lote.status === 'settled' ? 'contained' : 'outlined'}
                   startIcon={exportando ? <CircularProgress size={16} /> : <FileDownloadIcon />}
                   onClick={() => void exportarXmlTiss()}
-                  disabled={exportando}
+                  disabled={exportando || lote.guides.length === 0}
                 >
                   {exportando ? 'Exportando...' : 'Exportar XML TISS'}
                 </Button>
