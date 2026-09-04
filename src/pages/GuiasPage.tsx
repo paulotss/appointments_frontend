@@ -29,7 +29,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { CampoValorMoeda } from '../components/CampoValorMoeda'
 import { CampoData } from '../components/CampoData'
@@ -47,6 +47,7 @@ import {
 import { atualizarLoteTiss, criarLoteTiss, listarTodosLotesTiss } from '../services/billing-batches.service'
 import { buscarPaciente } from '../services/patients.service'
 import { listarProcedimentos } from '../services/procedures.service'
+import { useGuiasFiltros } from '../stores/pageFiltersStore'
 import { valorFaturavelGuia, type BillingBatch } from '../types/financeiro'
 import {
   guiaProcedimentosTotalmenteUtilizados,
@@ -127,16 +128,27 @@ export function GuiasPage() {
   const [procedimentosEdicao, setProcedimentosEdicao] = useState<ProcedimentoEdicao[]>([])
   const [procedimentosPlano, setProcedimentosPlano] = useState<Procedure[]>([])
   const [savingEdit, setSavingEdit] = useState(false)
-  const [filtroPaciente, setFiltroPaciente] = useState<Patient | null>(null)
-  const [filtroPlanoId, setFiltroPlanoId] = useState<number | ''>('')
-  const [filtroStatus, setFiltroStatus] = useState<InsuranceGuideStatus | ''>('')
-  const [filtroPertoVencer, setFiltroPertoVencer] = useState(false)
-  const [filtroVencidas, setFiltroVencidas] = useState(false)
-  const [filtroMostrarFaturadas, setFiltroMostrarFaturadas] = useState(false)
-  const [filtroSemSaldo, setFiltroSemSaldo] = useState(false)
+  const [filtros, setFiltros] = useGuiasFiltros()
+  const {
+    filtroPaciente,
+    filtroPlanoId,
+    filtroStatus,
+    filtroPertoVencer,
+    filtroVencidas,
+    filtroMostrarFaturadas,
+    filtroSemSaldo,
+  } = filtros
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(50)
   const [meta, setMeta] = useState<ListMeta>(META_VAZIA)
+
+  const atualizarFiltros = useCallback(
+    (partial: Parameters<typeof setFiltros>[0]) => {
+      setFiltros(partial)
+      setPage(0)
+    },
+    [setFiltros],
+  )
 
   const patientIdEdicao = pacienteEdicao?.id ?? ''
   const healthProfessionalIdEdicao = profissionalEdicao?.id ?? ''
@@ -457,10 +469,6 @@ export function GuiasPage() {
   }, [])
 
   useEffect(() => {
-    setPage(0)
-  }, [filtroPaciente, filtroPlanoId, filtroStatus, filtroPertoVencer, filtroVencidas, filtroMostrarFaturadas, filtroSemSaldo])
-
-  useEffect(() => {
     if (page > ultimaPagina) setPage(ultimaPagina)
   }, [page, ultimaPagina])
 
@@ -573,7 +581,7 @@ export function GuiasPage() {
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
             <PacienteBuscaAutocomplete
               value={filtroPaciente}
-              onChange={setFiltroPaciente}
+              onChange={(paciente) => atualizarFiltros({ filtroPaciente: paciente })}
               size="small"
               fullWidth
               sx={{ flex: 1, minWidth: { xs: '100%', md: 280 } }}
@@ -583,7 +591,7 @@ export function GuiasPage() {
               getOptionLabel={(plano) => plano.name}
               isOptionEqualToValue={(option, selected) => option.id === selected.id}
               value={planos.find((plano) => plano.id === filtroPlanoId) ?? null}
-              onChange={(_, plano) => setFiltroPlanoId(plano?.id ?? '')}
+              onChange={(_, plano) => atualizarFiltros({ filtroPlanoId: plano?.id ?? '' })}
               sx={{ minWidth: { xs: '100%', md: 240 }, flex: { md: 1 } }}
               renderInput={(params) => (
                 <TextField {...params} label="Plano de saúde" size="small" placeholder="Todos" />
@@ -594,7 +602,9 @@ export function GuiasPage() {
               size="small"
               label="Status"
               value={filtroStatus}
-              onChange={(event) => setFiltroStatus(event.target.value as InsuranceGuideStatus | '')}
+              onChange={(event) =>
+                atualizarFiltros({ filtroStatus: event.target.value as InsuranceGuideStatus | '' })
+              }
               sx={{ minWidth: 180 }}
             >
               <MenuItem value="">Todos</MenuItem>
@@ -611,9 +621,10 @@ export function GuiasPage() {
                 <Switch
                   checked={filtroPertoVencer}
                   onChange={(_, checked) => {
-                    setFiltroPertoVencer(checked)
-                    if (checked) setFiltroVencidas(false)
-                    setPage(0)
+                    atualizarFiltros({
+                      filtroPertoVencer: checked,
+                      ...(checked ? { filtroVencidas: false } : {}),
+                    })
                   }}
                 />
               }
@@ -624,9 +635,10 @@ export function GuiasPage() {
                 <Switch
                   checked={filtroVencidas}
                   onChange={(_, checked) => {
-                    setFiltroVencidas(checked)
-                    if (checked) setFiltroPertoVencer(false)
-                    setPage(0)
+                    atualizarFiltros({
+                      filtroVencidas: checked,
+                      ...(checked ? { filtroPertoVencer: false } : {}),
+                    })
                   }}
                 />
               }
@@ -637,8 +649,7 @@ export function GuiasPage() {
                 <Switch
                   checked={filtroMostrarFaturadas}
                   onChange={(_, checked) => {
-                    setFiltroMostrarFaturadas(checked)
-                    setPage(0)
+                    atualizarFiltros({ filtroMostrarFaturadas: checked })
                   }}
                 />
               }
@@ -649,8 +660,7 @@ export function GuiasPage() {
                 <Switch
                   checked={filtroSemSaldo}
                   onChange={(_, checked) => {
-                    setFiltroSemSaldo(checked)
-                    setPage(0)
+                    atualizarFiltros({ filtroSemSaldo: checked })
                   }}
                 />
               }
