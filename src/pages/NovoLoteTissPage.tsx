@@ -103,9 +103,9 @@ export function NovoLoteTissPage() {
   const { from, to } = normalizarPeriodo(dataInicio, dataFim)
   const guiasFiltradas = useMemo(() => {
     return guias.filter((guia) => {
-      const validade = isoDatePrefix(guia.expirationDate)
-      if (from && validade < from) return false
-      if (to && validade > to) return false
+      const autorizacao = isoDatePrefix(guia.authorizationDate)
+      if (from && autorizacao < from) return false
+      if (to && autorizacao > to) return false
       return true
     })
   }, [guias, from, to])
@@ -190,12 +190,12 @@ export function NovoLoteTissPage() {
                 ))}
               </TextField>
               <CampoData
-                label="Data início"
+                label="Autorização de"
                 value={dataInicio}
                 onChange={setDataInicio}
               />
               <CampoData
-                label="Data fim"
+                label="Autorização até"
                 value={dataFim}
                 onChange={setDataFim}
               />
@@ -236,7 +236,7 @@ export function NovoLoteTissPage() {
                     <TableCell>Guia</TableCell>
                     <TableCell>Paciente</TableCell>
                     <TableCell>Profissional</TableCell>
-                    <TableCell>Validade</TableCell>
+                    <TableCell>Autorização</TableCell>
                     <TableCell align="right">Valor</TableCell>
                   </TableRow>
                 </TableHead>
@@ -253,7 +253,7 @@ export function NovoLoteTissPage() {
                       <TableCell>#{guia.id}</TableCell>
                       <TableCell>{guia.patient?.name ?? '—'}</TableCell>
                       <TableCell>{guia.healthProfessional?.name ?? '—'}</TableCell>
-                      <TableCell>{formatarDataISO(guia.expirationDate)}</TableCell>
+                      <TableCell>{formatarDataISO(guia.authorizationDate)}</TableCell>
                       <TableCell align="right">
                         {formatarMoedaBRL(valorFaturavelGuia(guia.procedures))}
                       </TableCell>

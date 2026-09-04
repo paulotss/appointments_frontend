@@ -54,7 +54,7 @@ function aplicarAnalise(analise: GuideImportAnalysis): DefaultValues<ImportarGui
     cardNumber: existingCard?.cardNumber ?? analise.extracted.patient.cardNumber ?? '',
     cardExpirationDate: existingCard?.expirationDate ?? cardExpiration,
     guideNumber:
-      analise.extracted.guide.operatorGuideNumber ?? analise.extracted.guide.providerGuideNumber ?? '',
+      analise.extracted.guide.providerGuideNumber ?? analise.extracted.guide.operatorGuideNumber ?? '',
     authorizationDate: autorizacao,
     expirationDate: validade,
   }

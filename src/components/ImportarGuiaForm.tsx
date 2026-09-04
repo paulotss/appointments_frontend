@@ -580,7 +580,7 @@ export function ImportarGuiaForm({
               helperText={
                 errors.guideNumber?.message ??
                 `Lido na guia: ${textoOuAusente(
-                  analise?.extracted.guide.operatorGuideNumber ?? analise?.extracted.guide.providerGuideNumber,
+                  analise?.extracted.guide.providerGuideNumber ?? analise?.extracted.guide.operatorGuideNumber,
                 )}`
               }
               InputLabelProps={{ shrink: true }}
