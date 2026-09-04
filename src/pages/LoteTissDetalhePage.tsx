@@ -22,8 +22,9 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { CampoData } from '../components/CampoData'
 import { ReceberLoteDialog } from '../components/ReceberLoteDialog'
 import {
   atualizarLoteTiss,
@@ -43,8 +44,21 @@ import {
 import type { InsuranceGuide } from '../types/guia'
 import { TISS_GUIDE_TYPE_LABELS } from '../types/tiss'
 import { mensagemErroApi, mensagemErroApiBlob } from '../utils/apiError'
-import { formatarDataHoraISO, formatarDataISO } from '../utils/dataISO'
+import {
+  formatarDataHoraISO,
+  formatarDataISO,
+  hojeLocalISO,
+  isoDatePrefix,
+  primeiroDiaDoMesLocalISO,
+} from '../utils/dataISO'
 import { formatarMoedaBRL } from '../utils/moedaBRL'
+
+function normalizarPeriodo(dataInicio: string, dataFim: string) {
+  return {
+    from: dataInicio <= dataFim ? dataInicio : dataFim,
+    to: dataFim >= dataInicio ? dataFim : dataInicio,
+  }
+}
 
 function corStatus(status: BillingBatch['status']) {
   if (status === 'open') return 'info'
@@ -71,6 +85,8 @@ export function LoteTissDetalhePage() {
   const [adicionarAberto, setAdicionarAberto] = useState(false)
   const [guiasElegiveis, setGuiasElegiveis] = useState<InsuranceGuide[]>([])
   const [guiasSelecionadas, setGuiasSelecionadas] = useState<number[]>([])
+  const [dataInicioAdicionar, setDataInicioAdicionar] = useState(primeiroDiaDoMesLocalISO())
+  const [dataFimAdicionar, setDataFimAdicionar] = useState(hojeLocalISO())
   const [loadingGuias, setLoadingGuias] = useState(false)
   const [savingGuias, setSavingGuias] = useState(false)
   const [adicionarError, setAdicionarError] = useState<string | null>(null)
@@ -111,10 +127,25 @@ export function LoteTissDetalhePage() {
     setSearchParams(next, { replace: true })
   }, [abrirReceber, lote, searchParams, setSearchParams])
 
+  const { from: fromAdicionar, to: toAdicionar } = normalizarPeriodo(
+    dataInicioAdicionar,
+    dataFimAdicionar,
+  )
+  const guiasElegiveisFiltradas = useMemo(() => {
+    return guiasElegiveis.filter((guia) => {
+      const autorizacao = isoDatePrefix(guia.authorizationDate)
+      if (fromAdicionar && autorizacao < fromAdicionar) return false
+      if (toAdicionar && autorizacao > toAdicionar) return false
+      return true
+    })
+  }, [guiasElegiveis, fromAdicionar, toAdicionar])
+
   async function abrirAdicionarGuias() {
     if (!lote) return
     setAdicionarAberto(true)
     setGuiasSelecionadas([])
+    setDataInicioAdicionar(primeiroDiaDoMesLocalISO())
+    setDataFimAdicionar(hojeLocalISO())
     setAdicionarError(null)
     setLoadingGuias(true)
     try {
@@ -443,6 +474,18 @@ export function LoteTissDetalhePage() {
         <DialogContent>
           <Stack spacing={1.5} sx={{ mt: 0.5 }}>
             {adicionarError ? <Alert severity="error">{adicionarError}</Alert> : null}
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+              <CampoData
+                label="Autorização de"
+                value={dataInicioAdicionar}
+                onChange={setDataInicioAdicionar}
+              />
+              <CampoData
+                label="Autorização até"
+                value={dataFimAdicionar}
+                onChange={setDataFimAdicionar}
+              />
+            </Stack>
             {loadingGuias ? (
               <Stack direction="row" alignItems="center" gap={1.5}>
                 <CircularProgress size={20} />
@@ -452,7 +495,10 @@ export function LoteTissDetalhePage() {
             {!loadingGuias && guiasElegiveis.length === 0 && !adicionarError ? (
               <Typography>Não há guias elegíveis deste plano para incluir no lote.</Typography>
             ) : null}
-            {!loadingGuias && guiasElegiveis.length > 0 ? (
+            {!loadingGuias && guiasElegiveis.length > 0 && guiasElegiveisFiltradas.length === 0 ? (
+              <Typography>Nenhuma guia elegível no período para este plano.</Typography>
+            ) : null}
+            {!loadingGuias && guiasElegiveisFiltradas.length > 0 ? (
               <Table size="small">
                 <TableHead>
                   <TableRow>
@@ -460,12 +506,12 @@ export function LoteTissDetalhePage() {
                     <TableCell>Guia</TableCell>
                     <TableCell>Paciente</TableCell>
                     <TableCell>Profissional</TableCell>
-                    <TableCell>Validade</TableCell>
+                    <TableCell>Autorização</TableCell>
                     <TableCell align="right">Valor</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {guiasElegiveis.map((guia) => (
+                  {guiasElegiveisFiltradas.map((guia) => (
                     <TableRow key={guia.id} hover>
                       <TableCell padding="checkbox">
                         <Checkbox
@@ -477,7 +523,7 @@ export function LoteTissDetalhePage() {
                       <TableCell>{guia.guideNumber?.trim() || `#${guia.id}`}</TableCell>
                       <TableCell>{guia.patient?.name ?? '—'}</TableCell>
                       <TableCell>{guia.healthProfessional?.name ?? '—'}</TableCell>
-                      <TableCell>{formatarDataISO(guia.expirationDate)}</TableCell>
+                      <TableCell>{formatarDataISO(guia.authorizationDate)}</TableCell>
                       <TableCell align="right">
                         {formatarMoedaBRL(valorFaturavelGuia(guia.procedures))}
                       </TableCell>
