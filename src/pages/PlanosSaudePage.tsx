@@ -169,6 +169,7 @@ export function PlanosSaudePage() {
               label="Código do prestador na operadora"
               value={providerCodeEdicao}
               onChange={(event) => setProviderCodeEdicao(event.target.value)}
+              helperText="O XML TISS usa o CNPJ da clínica, não este código"
             />
             <TextField
               select
