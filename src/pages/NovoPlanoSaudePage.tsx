@@ -94,7 +94,10 @@ export function NovoPlanoSaudePage() {
         <TextField
           label="Código do prestador na operadora"
           error={Boolean(errors.providerCode)}
-          helperText={errors.providerCode?.message ?? 'Código da clínica neste plano'}
+          helperText={
+            errors.providerCode?.message ??
+            'O XML TISS usa o CNPJ da clínica, não este código'
+          }
           {...register('providerCode')}
         />
         <Controller
