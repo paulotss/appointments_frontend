@@ -12,8 +12,8 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - .:/app:Z
-      - /app/node_modules:Z
+      - .:/app
+      - /app/node_modules
 
   frontend-prod:
     profiles: ["prod"]

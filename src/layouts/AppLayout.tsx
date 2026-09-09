@@ -21,6 +21,7 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import logoSeraphisBranca from '../assets/logo-seraphis-branca.png'
+import { PortalRagChat } from '../components/PortalRagChat'
 import { clearToken, getIsAdmin, getLoggedUser } from '../services/authStorage'
 import { getMenuItems, getSubmenuIdForPath, type MenuDivider, type MenuLink } from './menuConfig'
 
@@ -285,6 +286,7 @@ export function AppLayout() {
         </Box>
         <Outlet />
       </Box>
+      <PortalRagChat />
     </Box>
   )
 }
