@@ -37,6 +37,12 @@ const MENSAGENS_EXATAS: Record<string, string> = {
   'Charged amount cannot be negative': 'O valor líquido não pode ser negativo.',
   'GEMINI_API_KEY is not configured':
     'A chave da API do Google não está configurada. Defina GEMINI_API_KEY no backend (Render → Environment).',
+  'OPENROUTER_API_KEY is not configured':
+    'A chave da API do OpenRouter não está configurada. Defina OPENROUTER_API_KEY no backend.',
+  'OpenRouter vision is unreachable':
+    'Não foi possível conectar ao OpenRouter para ler a guia.',
+  'OpenRouter vision model is unavailable':
+    'O modelo de visão do OpenRouter não está disponível no momento.',
   'Vision provider failed to extract guide data':
     'Não foi possível ler a guia. Tente outra imagem ou um PDF mais nítido.',
   'Local vision model is unreachable':
