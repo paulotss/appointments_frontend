@@ -76,6 +76,8 @@ const MENSAGENS_EXATAS: Record<string, string> = {
   'Only open billing batches can be billed': 'Somente lotes abertos podem ser faturados.',
   'Cannot bill a batch without guides': 'Não é possível faturar um lote sem guias.',
   'Cannot bill a batch with zero amount': 'Não é possível faturar um lote com valor zero.',
+  'O lote não possui guias.': 'O lote não possui guias.',
+  'Nenhuma imagem de guia neste lote.': 'Nenhuma imagem de guia neste lote.',
   'Only billed batches can receive payment': 'Somente lotes faturados podem registrar recebimento.',
   'receivedAmount cannot be greater than billedAmount':
     'O valor recebido não pode ser maior que o valor faturado.',

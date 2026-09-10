@@ -12,6 +12,7 @@ import {
 } from '../schemas/importarGuia.schema'
 import { analisarGuia, confirmarImportacaoGuia, recruzarGuia } from '../services/guide-imports.service'
 import { listarPlanosSaude } from '../services/health-plans.service'
+import { enviarDocumentoGuia } from '../services/insurance-guides.service'
 import type { GuideImportAnalysis } from '../types/guideImport'
 import type { HealthPlan } from '../types/planoSaude'
 import { mensagemConflitoNumeroGuia, mensagemErroApi } from '../utils/apiError'
@@ -194,7 +195,7 @@ export function ImportarGuiaPage() {
               cardExpirationDate: values.cardExpirationDate,
             }
 
-      await confirmarImportacaoGuia({
+      const criada = await confirmarImportacaoGuia({
         healthPlanId: values.healthPlanId,
         healthProfessionalId: values.healthProfessionalId,
         procedures: values.procedures,
@@ -203,6 +204,26 @@ export function ImportarGuiaPage() {
         authorizationDate: values.authorizationDate,
         expirationDate: values.expirationDate,
       })
+      if (arquivo) {
+        try {
+          await enviarDocumentoGuia(criada.id, arquivo)
+        } catch (err) {
+          setError(
+            mensagemErroApi(
+              err,
+              'Guia cadastrada, mas não foi possível salvar o documento. Anexe-o na ficha da guia.',
+            ),
+          )
+          navigate(`/guias/${criada.id}`, {
+            replace: true,
+            state: {
+              warning:
+                'Guia cadastrada, mas não foi possível salvar o documento. Anexe-o nesta ficha.',
+            },
+          })
+          return
+        }
+      }
       navigate('/guias', { replace: true })
     } catch (err) {
       const conflito = mensagemConflitoNumeroGuia(err)

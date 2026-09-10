@@ -2,6 +2,7 @@ import type { BillingBatch } from '../types/financeiro'
 import type {
   CreateInsuranceGuideRequest,
   InsuranceGuide,
+  InsuranceGuideDocument,
   InsuranceGuideProcedure,
   InsuranceGuideStatus,
   ListarGuiasParams,
@@ -50,6 +51,15 @@ interface BackendGuideProcedure {
   procedure?: BackendProcedureRef
 }
 
+interface BackendGuideDocument {
+  id: number
+  insuranceGuideId: number
+  originalName: string
+  mimeType: string
+  sizeBytes: number
+  uploadedAt: string
+}
+
 interface BackendInsuranceGuide {
   id: number
   healthPlanId: number
@@ -65,6 +75,7 @@ interface BackendInsuranceGuide {
   patient?: BackendRef
   healthProfessional?: BackendRef
   procedures?: BackendGuideProcedure[]
+  documents?: BackendGuideDocument[]
   billingBatchGuide?: { billingBatchId: number } | null
 }
 
@@ -77,6 +88,17 @@ function mapGuideProcedure(item: BackendGuideProcedure): InsuranceGuideProcedure
     usedQuantity: item.usedQuantity,
     value: item.value,
     procedure: item.procedure,
+  }
+}
+
+function mapGuideDocument(item: BackendGuideDocument): InsuranceGuideDocument {
+  return {
+    id: item.id,
+    insuranceGuideId: item.insuranceGuideId,
+    originalName: item.originalName,
+    mimeType: item.mimeType,
+    sizeBytes: item.sizeBytes,
+    uploadedAt: item.uploadedAt,
   }
 }
 
@@ -97,6 +119,7 @@ export function mapBackendGuide(item: BackendInsuranceGuide): InsuranceGuide {
     patient: item.patient,
     healthProfessional: item.healthProfessional,
     procedures: (item.procedures ?? []).map(mapGuideProcedure),
+    documents: (item.documents ?? []).map(mapGuideDocument),
   }
 }
 
@@ -153,6 +176,27 @@ export async function excluirGuia(id: number): Promise<void> {
 export async function faturarGuia(id: number): Promise<BillingBatch> {
   const response = await apiClient.post(`/insurance-guides/${id}/bill`)
   return mapBackendBillingBatch(response.data)
+}
+
+export async function enviarDocumentoGuia(id: number, file: File): Promise<InsuranceGuideDocument> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await apiClient.post<BackendGuideDocument>(`/insurance-guides/${id}/documents`, formData, {
+    headers: { 'Content-Type': false },
+  })
+  return mapGuideDocument(response.data)
+}
+
+export async function baixarDocumentoGuia(guideId: number, documentId: number): Promise<Blob> {
+  const response = await apiClient.get<Blob>(
+    `/insurance-guides/${guideId}/documents/${documentId}/download`,
+    { responseType: 'blob' },
+  )
+  return response.data
+}
+
+export async function removerDocumentoGuia(guideId: number, documentId: number): Promise<void> {
+  await apiClient.delete(`/insurance-guides/${guideId}/documents/${documentId}`)
 }
 
 export async function listarTodasGuias(params?: ListarGuiasParams): Promise<InsuranceGuide[]> {

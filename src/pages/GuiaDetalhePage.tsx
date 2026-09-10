@@ -1,4 +1,5 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import AttachFileIcon from '@mui/icons-material/AttachFile'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import EditIcon from '@mui/icons-material/Edit'
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
@@ -15,6 +16,7 @@ import {
   DialogTitle,
   FormControl,
   FormControlLabel,
+  FormHelperText,
   IconButton,
   MenuItem,
   Paper,
@@ -30,8 +32,8 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { CampoData } from '../components/CampoData'
 import { CampoValorMoeda } from '../components/CampoValorMoeda'
 import { GuiaProcedimentosTabela } from '../components/GuiaProcedimentosTabela'
@@ -46,8 +48,11 @@ import {
 import { buscarProfissional } from '../services/health-professionals.service'
 import {
   atualizarGuia,
+  baixarDocumentoGuia,
   buscarGuia,
+  enviarDocumentoGuia,
   excluirGuia,
+  removerDocumentoGuia,
 } from '../services/insurance-guides.service'
 import { listarTodosLotesTiss, criarLoteTiss, atualizarLoteTiss } from '../services/billing-batches.service'
 import { buscarPaciente } from '../services/patients.service'
@@ -61,6 +66,7 @@ import {
 } from '../types/agendamentoClinico'
 import { valorFaturavelGuia, type BillingBatch } from '../types/financeiro'
 import {
+  GUIDE_DOCUMENT_MAX_FILES,
   guiaElegivelParaFaturar,
   INSURANCE_GUIDE_STATUSES,
   INSURANCE_GUIDE_STATUS_LABELS,
@@ -75,7 +81,9 @@ import type { HealthProfessional } from '../types/profissional'
 import { TISS_GUIDE_TYPE_LABELS } from '../types/tiss'
 import { mensagemConflitoNumeroGuia, mensagemErroApi } from '../utils/apiError'
 import { adicionarDiasISO, formatarDataISO, hojeLocalISO } from '../utils/dataISO'
+import { ACCEPT_ARQUIVOS_GUIA, validarArquivosGuia } from '../utils/guiaArquivos'
 import { formatarMoedaBRL, parseValorDecimal } from '../utils/moedaBRL'
+import { formatarTamanhoArquivo } from '../utils/pagamentoArquivos'
 import {
   adicionarMinutosIso,
   dataHoraSaoPauloParaIso,
@@ -130,8 +138,17 @@ function ChipSaldoGuia({ saldo }: { saldo: number }) {
   )
 }
 
+function estadoNavegacao(state: unknown): { warning?: string } {
+  if (!state || typeof state !== 'object') return {}
+  const registro = state as { warning?: unknown }
+  return {
+    warning: typeof registro.warning === 'string' ? registro.warning : undefined,
+  }
+}
+
 export function GuiaDetalhePage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { id: idParam } = useParams<{ id: string }>()
   const id = idParam != null && idParam !== '' ? Number.parseInt(idParam, 10) : Number.NaN
 
@@ -140,6 +157,7 @@ export function GuiaDetalhePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const aviso = estadoNavegacao(location.state).warning ?? null
 
   const [scheduledDate, setScheduledDate] = useState(hojeLocalISO)
   const [scheduledTime, setScheduledTime] = useState('')
@@ -161,6 +179,11 @@ export function GuiaDetalhePage() {
   const [procedimentosPlano, setProcedimentosPlano] = useState<Procedure[]>([])
   const [savingEditGuia, setSavingEditGuia] = useState(false)
   const [editGuiaError, setEditGuiaError] = useState<string | null>(null)
+  const [previewUrls, setPreviewUrls] = useState<Record<number, string>>({})
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [arquivosNovos, setArquivosNovos] = useState<File[]>([])
+  const [idsRemovidos, setIdsRemovidos] = useState<number[]>([])
+  const [fileError, setFileError] = useState<string | null>(null)
 
   // ── Faturamento da guia ─────────────────────────────────────────
   const [faturando, setFaturando] = useState<InsuranceGuide | null>(null)
@@ -217,6 +240,43 @@ export function GuiaDetalhePage() {
       .then(setPlanos)
       .catch(() => undefined)
   }, [])
+
+  const documentosKey = (guia?.documents ?? []).map((item) => item.id).join(',')
+
+  useEffect(() => {
+    if (!guia) {
+      setPreviewUrls({})
+      return
+    }
+    const guideId = guia.id
+    const imagens = guia.documents.filter((item) => item.mimeType.startsWith('image/'))
+    if (imagens.length === 0) {
+      setPreviewUrls({})
+      return
+    }
+    let cancelado = false
+    const criados: string[] = []
+    async function carregarPreviews() {
+      const mapa: Record<number, string> = {}
+      for (const documento of imagens) {
+        try {
+          const blob = await baixarDocumentoGuia(guideId, documento.id)
+          if (cancelado) return
+          const url = URL.createObjectURL(blob)
+          criados.push(url)
+          mapa[documento.id] = url
+        } catch {
+          // preview opcional
+        }
+      }
+      if (!cancelado) setPreviewUrls(mapa)
+    }
+    void carregarPreviews()
+    return () => {
+      cancelado = true
+      criados.forEach((url) => URL.revokeObjectURL(url))
+    }
+  }, [guia, documentosKey])
 
   // ── Derived da edição de guia ────────────────────────────────────
   const patientIdEdicao = pacienteEdicao?.id ?? ''
@@ -322,6 +382,9 @@ export function GuiaDetalhePage() {
           }))
         : [{ procedureId: '', authorizedQuantity: '1', usedQuantity: 0, value: undefined }],
     )
+    setArquivosNovos([])
+    setIdsRemovidos([])
+    setFileError(null)
     setEditGuiaError(null)
     void buscarPaciente(g.patientId).then(setPacienteEdicao).catch(() => undefined)
     void buscarProfissional(g.healthProfessionalId).then(setProfissionalEdicao).catch(() => undefined)
@@ -340,6 +403,9 @@ export function GuiaDetalhePage() {
     setExpirationDateEdicao('')
     setProcedimentosEdicao([])
     setProcedimentosPlano([])
+    setArquivosNovos([])
+    setIdsRemovidos([])
+    setFileError(null)
     setEditGuiaError(null)
   }
 
@@ -394,9 +460,34 @@ export function GuiaDetalhePage() {
         expirationDate: expirationDateEdicao,
         procedures,
       })
-      setGuia(atualizado)
+
+      const falhas: string[] = []
+      for (const documentId of idsRemovidos) {
+        try {
+          await removerDocumentoGuia(editandoGuia.id, documentId)
+        } catch (err) {
+          falhas.push(mensagemErroApi(err, 'Não foi possível remover um documento.'))
+        }
+      }
+      for (const arquivo of arquivosNovos) {
+        try {
+          await enviarDocumentoGuia(editandoGuia.id, arquivo)
+        } catch (err) {
+          falhas.push(mensagemErroApi(err, `Não foi possível enviar ${arquivo.name}.`))
+        }
+      }
+
+      const comDocumentos =
+        falhas.length > 0 || idsRemovidos.length > 0 || arquivosNovos.length > 0
+          ? await buscarGuia(editandoGuia.id).catch(() => atualizado)
+          : atualizado
+      setGuia(comDocumentos)
       fecharEditarGuia()
-      setSuccess('Guia atualizada com sucesso.')
+      if (falhas.length > 0) {
+        setError(`Guia atualizada, mas houve falha nos documentos: ${falhas.join(' ')}`)
+      } else {
+        setSuccess('Guia atualizada com sucesso.')
+      }
     } catch (err) {
       const conflito = mensagemConflitoNumeroGuia(err)
       if (conflito) setGuideNumberEdicaoError(conflito)
@@ -417,6 +508,22 @@ export function GuiaDetalhePage() {
       navigate('/guias', { replace: true })
     } catch (err) {
       setError(mensagemErroApi(err, 'Não foi possível excluir a guia.'))
+    }
+  }
+
+  async function baixarDocumento(documentId: number, nome: string) {
+    if (!guia) return
+    setError(null)
+    try {
+      const blob = await baixarDocumentoGuia(guia.id, documentId)
+      const url = URL.createObjectURL(blob)
+      const link = window.document.createElement('a')
+      link.href = url
+      link.setAttribute('download', nome)
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(mensagemErroApi(err, 'Não foi possível baixar o documento.'))
     }
   }
 
@@ -595,6 +702,7 @@ export function GuiaDetalhePage() {
       </Stack>
 
       {error ? <Alert severity="error">{error}</Alert> : null}
+      {aviso ? <Alert severity="warning">{aviso}</Alert> : null}
       {success ? <Alert severity="success">{success}</Alert> : null}
 
       {loading ? (
@@ -682,6 +790,46 @@ export function GuiaDetalhePage() {
                 </Typography>
                 <ChipSaldoGuia saldo={saldo} />
               </Box>
+
+              <Typography variant="subtitle1" fontWeight={700} sx={{ pt: 1 }}>
+                Documento da guia
+              </Typography>
+              {guia.documents.length === 0 ? (
+                <Typography color="text.secondary">Nenhum arquivo anexado.</Typography>
+              ) : (
+                <Stack spacing={1.5}>
+                  {guia.documents.map((documento) => (
+                    <Stack key={documento.id} spacing={1}>
+                      <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
+                        <Typography noWrap title={documento.originalName} sx={{ flex: 1, minWidth: 0 }}>
+                          {documento.originalName} ({formatarTamanhoArquivo(documento.sizeBytes)})
+                        </Typography>
+                        <Button
+                          size="small"
+                          onClick={() => void baixarDocumento(documento.id, documento.originalName)}
+                        >
+                          Baixar
+                        </Button>
+                      </Stack>
+                      {previewUrls[documento.id] ? (
+                        <Box
+                          component="img"
+                          src={previewUrls[documento.id]}
+                          alt={documento.originalName}
+                          sx={{
+                            maxWidth: '100%',
+                            maxHeight: 420,
+                            objectFit: 'contain',
+                            border: 1,
+                            borderColor: 'divider',
+                            borderRadius: 1,
+                          }}
+                        />
+                      ) : null}
+                    </Stack>
+                  ))}
+                </Stack>
+              )}
 
               <Typography variant="subtitle1" fontWeight={700} sx={{ pt: 1 }}>
                 Procedimentos
@@ -1095,6 +1243,95 @@ export function GuiaDetalhePage() {
             >
               Adicionar procedimento
             </Button>
+            <Stack spacing={1} sx={{ pt: 1 }}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ACCEPT_ARQUIVOS_GUIA}
+                multiple
+                hidden
+                onChange={(event) => {
+                  const lista = event.target.files
+                  if (!lista || lista.length === 0) return
+                  const existentesVisiveis = (editandoGuia?.documents ?? []).filter(
+                    (item) => !idsRemovidos.includes(item.id),
+                  ).length
+                  const { aceitos, erro } = validarArquivosGuia(arquivosNovos, lista, existentesVisiveis)
+                  if (aceitos.length > 0) setArquivosNovos((atuais) => [...atuais, ...aceitos])
+                  setFileError(erro)
+                  if (fileInputRef.current) fileInputRef.current.value = ''
+                }}
+              />
+              <Button
+                type="button"
+                variant="outlined"
+                startIcon={<AttachFileIcon />}
+                onClick={() => fileInputRef.current?.click()}
+                disabled={
+                  savingEditGuia ||
+                  (editandoGuia?.documents.filter((item) => !idsRemovidos.includes(item.id)).length ?? 0) +
+                    arquivosNovos.length >=
+                    GUIDE_DOCUMENT_MAX_FILES
+                }
+                sx={{ alignSelf: 'flex-start' }}
+              >
+                Anexar documento da guia
+              </Button>
+              <FormHelperText error={Boolean(fileError)}>
+                {fileError ??
+                  `PDF, JPEG ou PNG. Até ${GUIDE_DOCUMENT_MAX_FILES} arquivos de 10 MB cada.`}
+              </FormHelperText>
+              {(editandoGuia?.documents ?? [])
+                .filter((documento) => !idsRemovidos.includes(documento.id))
+                .map((documento) => (
+                  <Stack
+                    key={documento.id}
+                    direction="row"
+                    alignItems="center"
+                    gap={1}
+                    flexWrap="wrap"
+                  >
+                    <Typography noWrap title={documento.originalName} sx={{ flex: 1, minWidth: 0 }}>
+                      {documento.originalName} ({formatarTamanhoArquivo(documento.sizeBytes)})
+                    </Typography>
+                    <Button
+                      size="small"
+                      onClick={() => void baixarDocumento(documento.id, documento.originalName)}
+                      disabled={savingEditGuia}
+                    >
+                      Baixar
+                    </Button>
+                    <IconButton
+                      aria-label={`Remover ${documento.originalName}`}
+                      onClick={() => setIdsRemovidos((atuais) => [...atuais, documento.id])}
+                      disabled={savingEditGuia}
+                      size="small"
+                    >
+                      <DeleteOutlineIcon />
+                    </IconButton>
+                  </Stack>
+                ))}
+              {arquivosNovos.map((arquivo, indice) => (
+                <Stack
+                  key={`${arquivo.name}-${arquivo.size}-${indice}`}
+                  direction="row"
+                  alignItems="center"
+                  gap={1}
+                >
+                  <Typography noWrap title={arquivo.name} sx={{ flex: 1 }}>
+                    {arquivo.name} ({formatarTamanhoArquivo(arquivo.size)})
+                  </Typography>
+                  <IconButton
+                    aria-label={`Remover ${arquivo.name}`}
+                    onClick={() => setArquivosNovos((atuais) => atuais.filter((_, i) => i !== indice))}
+                    disabled={savingEditGuia}
+                    size="small"
+                  >
+                    <DeleteOutlineIcon />
+                  </IconButton>
+                </Stack>
+              ))}
+            </Stack>
           </Stack>
         </DialogContent>
         <DialogActions>

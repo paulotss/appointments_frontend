@@ -2,7 +2,7 @@ import { Alert, CircularProgress, Dialog, DialogContent, DialogTitle, Stack, Typ
 import { useEffect, useState } from 'react'
 import type { GuiaFormValues } from '../schemas/guia.schema'
 import { listarPlanosSaude } from '../services/health-plans.service'
-import { buscarGuia, criarGuia } from '../services/insurance-guides.service'
+import { buscarGuia, criarGuia, enviarDocumentoGuia } from '../services/insurance-guides.service'
 import type { InsuranceGuide } from '../types/guia'
 import type { Patient } from '../types/paciente'
 import type { HealthPlan } from '../types/planoSaude'
@@ -54,7 +54,7 @@ export function NovaGuiaDialog({
     void carregar()
   }, [open])
 
-  async function onSubmit(values: GuiaFormValues) {
+  async function onSubmit(values: GuiaFormValues, arquivos: File[]) {
     setSaving(true)
     setError(null)
     setGuideNumberError(null)
@@ -73,8 +73,14 @@ export function NovaGuiaDialog({
           value: item.value,
         })),
       })
-      const completa =
-        criada.procedures.length > 0 ? criada : await buscarGuia(criada.id).catch(() => criada)
+      for (const arquivo of arquivos) {
+        try {
+          await enviarDocumentoGuia(criada.id, arquivo)
+        } catch (err) {
+          setError(mensagemErroApi(err, `Guia criada, mas não foi possível enviar ${arquivo.name}.`))
+        }
+      }
+      const completa = await buscarGuia(criada.id).catch(() => criada)
       onCreated(completa)
       onClose()
     } catch (err) {
@@ -124,7 +130,7 @@ export function NovaGuiaDialog({
               patientLocked
               professionalLocked
               guideNumberServerError={guideNumberError}
-              onSubmit={(values) => void onSubmit(values)}
+              onSubmit={(values, arquivos) => void onSubmit(values, arquivos)}
               onCancel={saving ? undefined : onClose}
             />
           ) : null}
