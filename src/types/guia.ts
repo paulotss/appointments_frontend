@@ -49,6 +49,15 @@ export interface InsuranceGuideProcedureInput {
   value?: number
 }
 
+export interface InsuranceGuideDocument {
+  id: number
+  insuranceGuideId: number
+  originalName: string
+  mimeType: string
+  sizeBytes: number
+  uploadedAt: string
+}
+
 export interface InsuranceGuide {
   id: number
   healthPlanId: number
@@ -65,6 +74,7 @@ export interface InsuranceGuide {
   patient?: InsuranceGuideRef
   healthProfessional?: InsuranceGuideRef
   procedures: InsuranceGuideProcedure[]
+  documents: InsuranceGuideDocument[]
 }
 
 export interface CreateInsuranceGuideRequest {
@@ -130,3 +140,8 @@ export function guiaElegivelParaFaturar(
     guia.procedures.some((item) => item.usedQuantity > 0)
   )
 }
+
+export const GUIDE_DOCUMENT_MAX_FILES = 3
+export const GUIDE_DOCUMENT_MAX_BYTES = 10 * 1024 * 1024
+export const GUIDE_DOCUMENT_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png'] as const
+

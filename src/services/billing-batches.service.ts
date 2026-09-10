@@ -204,3 +204,14 @@ export async function exportarXmlTissLote(id: number): Promise<{ blob: Blob; fil
     filename: filenameFromDisposition(disposition, `lote-${id}-tiss.xml`),
   }
 }
+
+export async function baixarImagensGuiasLote(id: number): Promise<{ blob: Blob; filename: string }> {
+  const response = await apiClient.get<Blob>(`/billing-batches/${id}/guide-documents`, {
+    responseType: 'blob',
+  })
+  const disposition = response.headers['content-disposition'] as string | undefined
+  return {
+    blob: response.data,
+    filename: filenameFromDisposition(disposition, `lote-${id}-guias.zip`),
+  }
+}

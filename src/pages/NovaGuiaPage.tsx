@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { GuiaForm } from '../components/GuiaForm'
 import type { GuiaFormValues } from '../schemas/guia.schema'
 import { listarPlanosSaude } from '../services/health-plans.service'
-import { criarGuia } from '../services/insurance-guides.service'
+import { criarGuia, enviarDocumentoGuia } from '../services/insurance-guides.service'
 import type { HealthPlan } from '../types/planoSaude'
 import { mensagemConflitoNumeroGuia, mensagemErroApi } from '../utils/apiError'
 import { hojeLocalISO } from '../utils/dataISO'
@@ -37,12 +37,12 @@ export function NovaGuiaPage() {
     void carregarDados()
   }, [])
 
-  async function onSubmit(values: GuiaFormValues) {
+  async function onSubmit(values: GuiaFormValues, arquivos: File[]) {
     setLoading(true)
     setError(null)
     setGuideNumberError(null)
     try {
-      await criarGuia({
+      const criada = await criarGuia({
         healthPlanId: values.healthPlanId,
         patientId: values.patientId,
         healthProfessionalId: values.healthProfessionalId,
@@ -56,8 +56,21 @@ export function NovaGuiaPage() {
           value: item.value,
         })),
       })
+      const falhas: string[] = []
+      for (const arquivo of arquivos) {
+        try {
+          await enviarDocumentoGuia(criada.id, arquivo)
+        } catch (err) {
+          falhas.push(mensagemErroApi(err, `Não foi possível enviar ${arquivo.name}.`))
+        }
+      }
       setFormKey((prev) => prev + 1)
-      navigate('/guias', { replace: true })
+      navigate('/guias', {
+        replace: true,
+        ...(falhas.length > 0
+          ? { state: { warning: `Guia cadastrada, mas houve falha no envio dos documentos: ${falhas.join(' ')}` } }
+          : {}),
+      })
     } catch (err) {
       const conflito = mensagemConflitoNumeroGuia(err)
       if (conflito) setGuideNumberError(conflito)
@@ -111,7 +124,7 @@ export function NovaGuiaPage() {
             loading={loading}
             submitLabel="Cadastrar guia"
             guideNumberServerError={guideNumberError}
-            onSubmit={(values) => void onSubmit(values)}
+            onSubmit={(values, arquivos) => void onSubmit(values, arquivos)}
           />
         </Stack>
       ) : null}

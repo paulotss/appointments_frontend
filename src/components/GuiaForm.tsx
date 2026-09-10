@@ -1,23 +1,29 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import AddIcon from '@mui/icons-material/Add'
+import AttachFileIcon from '@mui/icons-material/AttachFile'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import {
   Alert,
   Autocomplete,
   Button,
   CircularProgress,
+  FormHelperText,
   IconButton,
   MenuItem,
   Stack,
   TextField,
   Typography,
 } from '@mui/material'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Controller, useFieldArray, useForm, useWatch, type DefaultValues } from 'react-hook-form'
 import { guiaSchema, type GuiaFormInput, type GuiaFormValues } from '../schemas/guia.schema'
 import { listarProcedimentos } from '../services/procedures.service'
 import { CampoData } from './CampoData'
-import { INSURANCE_GUIDE_STATUSES, INSURANCE_GUIDE_STATUS_LABELS } from '../types/guia'
+import {
+  GUIDE_DOCUMENT_MAX_FILES,
+  INSURANCE_GUIDE_STATUSES,
+  INSURANCE_GUIDE_STATUS_LABELS,
+} from '../types/guia'
 import type { Patient } from '../types/paciente'
 import type { HealthPlan } from '../types/planoSaude'
 import type { Procedure } from '../types/procedimento'
@@ -26,6 +32,8 @@ import type { HealthProfessional } from '../types/profissional'
 import { TISS_GUIDE_TYPE_LABELS } from '../types/tiss'
 import { mensagemErroApi } from '../utils/apiError'
 import { adicionarDiasISO } from '../utils/dataISO'
+import { ACCEPT_ARQUIVOS_GUIA, validarArquivosGuia } from '../utils/guiaArquivos'
+import { formatarTamanhoArquivo } from '../utils/pagamentoArquivos'
 import { CampoValorMoeda } from './CampoValorMoeda'
 import { PacienteBuscaAutocomplete } from './PacienteBuscaAutocomplete'
 import { ProfissionalBuscaAutocomplete } from './ProfissionalBuscaAutocomplete'
@@ -39,7 +47,7 @@ interface GuiaFormProps {
   submitLabel: string
   patientLocked?: boolean
   professionalLocked?: boolean
-  onSubmit: (values: GuiaFormValues) => void
+  onSubmit: (values: GuiaFormValues, arquivos: File[]) => void
   onCancel?: () => void
   guideNumberServerError?: string | null
 }
@@ -86,6 +94,9 @@ export function GuiaForm({
   const [profissionalSelecionado, setProfissionalSelecionado] = useState<HealthProfessional | null>(
     () => profissionais.find((item) => item.id === defaultValues.healthProfessionalId) ?? null,
   )
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [arquivos, setArquivos] = useState<File[]>([])
+  const [fileError, setFileError] = useState<string | null>(null)
 
   const especialidadeIdsDoProfissional = useMemo(() => {
     const profissional =
@@ -164,7 +175,7 @@ export function GuiaForm({
   }, [healthPlanId, procedimentosPlano, getValues, setValue])
 
   return (
-    <Stack component="form" spacing={2} onSubmit={handleSubmit(onSubmit)}>
+    <Stack component="form" spacing={2} onSubmit={handleSubmit((values) => onSubmit(values, arquivos))}>
       <Controller
         name="patientId"
         control={control}
@@ -438,6 +449,56 @@ export function GuiaForm({
       >
         Adicionar procedimento
       </Button>
+
+      <Stack spacing={1}>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPT_ARQUIVOS_GUIA}
+          multiple
+          hidden
+          onChange={(event) => {
+            const lista = event.target.files
+            if (!lista || lista.length === 0) return
+            const { aceitos, erro } = validarArquivosGuia(arquivos, lista)
+            if (aceitos.length > 0) setArquivos((atuais) => [...atuais, ...aceitos])
+            setFileError(erro)
+            if (fileInputRef.current) fileInputRef.current.value = ''
+          }}
+        />
+        <Button
+          type="button"
+          variant="outlined"
+          startIcon={<AttachFileIcon />}
+          onClick={() => fileInputRef.current?.click()}
+          disabled={loading || arquivos.length >= GUIDE_DOCUMENT_MAX_FILES}
+          sx={{ alignSelf: 'flex-start' }}
+        >
+          Anexar documento da guia
+        </Button>
+        <FormHelperText error={Boolean(fileError)}>
+          {fileError ??
+            `PDF, JPEG ou PNG. Até ${GUIDE_DOCUMENT_MAX_FILES} arquivos de 10 MB cada.`}
+        </FormHelperText>
+        {arquivos.map((arquivo, indice) => (
+          <Stack key={`${arquivo.name}-${arquivo.size}-${indice}`} direction="row" alignItems="center" gap={1}>
+            <Typography noWrap title={arquivo.name} sx={{ flex: 1 }}>
+              {arquivo.name} ({formatarTamanhoArquivo(arquivo.size)})
+            </Typography>
+            <IconButton
+              aria-label={`Remover ${arquivo.name}`}
+              onClick={() => {
+                setArquivos((atuais) => atuais.filter((_, i) => i !== indice))
+                setFileError(null)
+              }}
+              disabled={loading}
+              size="small"
+            >
+              <DeleteOutlineIcon />
+            </IconButton>
+          </Stack>
+        ))}
+      </Stack>
 
       <Stack direction="row" spacing={1} justifyContent="flex-end">
         {onCancel ? (

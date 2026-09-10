@@ -1,6 +1,7 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import FileDownloadIcon from '@mui/icons-material/FileDownload'
+import ImageIcon from '@mui/icons-material/Image'
 import {
   Alert,
   Button,
@@ -28,6 +29,7 @@ import { CampoData } from '../components/CampoData'
 import { ReceberLoteDialog } from '../components/ReceberLoteDialog'
 import {
   atualizarLoteTiss,
+  baixarImagensGuiasLote,
   buscarLoteTiss,
   exportarXmlTissLote,
   faturarLoteTiss,
@@ -92,6 +94,7 @@ export function LoteTissDetalhePage() {
   const [adicionarError, setAdicionarError] = useState<string | null>(null)
   const [removendoGuiaId, setRemovendoGuiaId] = useState<number | null>(null)
   const [exportando, setExportando] = useState(false)
+  const [baixandoImagens, setBaixandoImagens] = useState(false)
 
   useEffect(() => {
     if (!Number.isFinite(id)) {
@@ -249,6 +252,29 @@ export function LoteTissDetalhePage() {
       setError(await mensagemErroApiBlob(err, 'Não foi possível exportar o XML TISS.'))
     } finally {
       setExportando(false)
+    }
+  }
+
+  async function baixarImagensGuias() {
+    if (!lote) return
+    setBaixandoImagens(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const { blob, filename } = await baixarImagensGuiasLote(lote.id)
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      setSuccess('Imagens das guias baixadas.')
+    } catch (err) {
+      setError(await mensagemErroApiBlob(err, 'Não foi possível baixar as imagens das guias.'))
+    } finally {
+      setBaixandoImagens(false)
     }
   }
 
@@ -436,9 +462,17 @@ export function LoteTissDetalhePage() {
                   variant={lote.status === 'settled' ? 'contained' : 'outlined'}
                   startIcon={exportando ? <CircularProgress size={16} /> : <FileDownloadIcon />}
                   onClick={() => void exportarXmlTiss()}
-                  disabled={exportando || lote.guides.length === 0}
+                  disabled={exportando || baixandoImagens || lote.guides.length === 0}
                 >
                   {exportando ? 'Exportando...' : 'Exportar XML TISS'}
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={baixandoImagens ? <CircularProgress size={16} /> : <ImageIcon />}
+                  onClick={() => void baixarImagensGuias()}
+                  disabled={exportando || baixandoImagens || lote.guides.length === 0}
+                >
+                  {baixandoImagens ? 'Baixando...' : 'Baixar imagens das guias'}
                 </Button>
               </Stack>
             ) : null}
