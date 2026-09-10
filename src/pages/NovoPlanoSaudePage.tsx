@@ -96,7 +96,7 @@ export function NovoPlanoSaudePage() {
           error={Boolean(errors.providerCode)}
           helperText={
             errors.providerCode?.message ??
-            'O XML TISS usa o CNPJ da clínica, não este código'
+            'Usado no XML TISS como código do referenciado. Se vazio, usa o CNPJ da clínica.'
           }
           {...register('providerCode')}
         />
