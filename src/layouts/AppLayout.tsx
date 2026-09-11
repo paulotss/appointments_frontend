@@ -278,7 +278,15 @@ export function AppLayout() {
               alt="Clínica Seraphis"
               sx={{ height: 40, width: 'auto' }}
             />
-            <Typography component="p" sx={{ fontWeight: 700, fontSize: '1.05rem', lineHeight: 1.2 }}>
+            <Typography
+              component="p"
+              sx={{
+                fontWeight: 700,
+                fontSize: '1.05rem',
+                lineHeight: 1.2,
+                display: { xs: 'none', md: 'block' },
+              }}
+            >
               Clínica Seraphis
             </Typography>
           </Box>
