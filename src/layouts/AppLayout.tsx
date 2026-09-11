@@ -21,15 +21,51 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import logoSeraphisBranca from '../assets/logo-seraphis-branca.png'
 import { PortalRagChat } from '../components/PortalRagChat'
 import { clearToken, getIsAdmin, getLoggedUser } from '../services/authStorage'
-import { getMenuItems, getSubmenuIdForPath, type MenuDivider, type MenuLink } from './menuConfig'
+import {
+  getFirstSubmenuLink,
+  getMenuItems,
+  getSubmenuIdForPath,
+  isLinkActive,
+  type MenuDivider,
+  type MenuLink,
+} from './menuConfig'
 
 const DRAWER_WIDTH = 260
 const TOP_BAR_HEIGHT = 60
+const MENU_ITEM_MX = 1
+const MENU_ITEM_PL = 2
+const menuItemSx = {
+  mx: MENU_ITEM_MX,
+  my: 0.25,
+  py: 0.5,
+  pl: MENU_ITEM_PL,
+  pr: 1.5,
+  minHeight: 32,
+  borderRadius: 2,
+  color: 'inherit',
+  '& .MuiListItemIcon-root': {
+    color: 'inherit',
+    minWidth: 32,
+  },
+  '& .MuiListItemText-primary': {
+    fontSize: '0.8125rem',
+    lineHeight: 1.25,
+  },
+  '&.active, &.Mui-selected': {
+    bgcolor: 'rgba(255,255,255,0.18)',
+  },
+  '&:hover': {
+    bgcolor: 'rgba(255,255,255,0.12)',
+  },
+  '&.active:hover, &.Mui-selected:hover': {
+    bgcolor: 'rgba(255,255,255,0.22)',
+  },
+} as const
 
 function getUserInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -63,16 +99,26 @@ export function AppLayout() {
   )
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({})
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null)
+  const collapsedByUserRef = useRef(new Set<string>())
+  const previousPathRef = useRef(location.pathname)
 
   useEffect(() => {
     setDrawerOpen(isDesktop)
   }, [isDesktop])
 
   useEffect(() => {
-    const activeSubmenuId = getSubmenuIdForPath(location.pathname, menuItems)
-    if (activeSubmenuId) {
-      setOpenSubmenus((prev) => ({ ...prev, [activeSubmenuId]: true }))
+    const pathChanged = previousPathRef.current !== location.pathname
+    previousPathRef.current = location.pathname
+    if (pathChanged) {
+      collapsedByUserRef.current.clear()
     }
+
+    const activeSubmenuId = getSubmenuIdForPath(location.pathname, menuItems)
+    if (!activeSubmenuId || collapsedByUserRef.current.has(activeSubmenuId)) {
+      return
+    }
+
+    setOpenSubmenus((prev) => ({ ...prev, [activeSubmenuId]: true }))
   }, [location.pathname, menuItems])
 
   useEffect(() => {
@@ -83,10 +129,6 @@ export function AppLayout() {
 
   function toggleDrawer() {
     setDrawerOpen((prev) => !prev)
-  }
-
-  function toggleSubmenu(id: string) {
-    setOpenSubmenus((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
   function handleLogout() {
@@ -102,7 +144,7 @@ export function AppLayout() {
 
   const drawerContent = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+      <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', py: 1 }}>
         <List disablePadding>
           {menuItems.map((item) => {
             if (item.kind === 'link') {
@@ -111,19 +153,8 @@ export function AppLayout() {
                   key={item.id}
                   component={NavLink}
                   to={item.to}
-                  sx={{
-                    color: 'inherit',
-                    '& .MuiListItemIcon-root': {
-                      color: 'inherit',
-                      minWidth: 40,
-                    },
-                    '&.active': {
-                      bgcolor: 'rgba(255,255,255,0.18)',
-                    },
-                    '&:hover': {
-                      bgcolor: 'rgba(255,255,255,0.12)',
-                    },
-                  }}
+                  selected={isLinkActive(location.pathname, item.to)}
+                  sx={menuItemSx}
                 >
                   <ListItemIcon>{item.icon}</ListItemIcon>
                   <ListItemText primary={item.label} />
@@ -131,24 +162,31 @@ export function AppLayout() {
               )
             }
 
+            const firstLink = getFirstSubmenuLink(item)
+            const isSubmenuOpen = Boolean(openSubmenus[item.id])
+            const ExpandIcon = isSubmenuOpen ? ExpandLessIcon : ExpandMoreIcon
+
             return (
               <Box key={item.id}>
                 <ListItemButton
-                  onClick={() => toggleSubmenu(item.id)}
-                  sx={{
-                    color: 'inherit',
-                    '& .MuiListItemIcon-root': {
-                      color: 'inherit',
-                      minWidth: 40,
-                    },
-                    '&:hover': {
-                      bgcolor: 'rgba(255,255,255,0.12)',
-                    },
+                  onClick={() => {
+                    const isOpen = Boolean(openSubmenus[item.id])
+                    if (isOpen) {
+                      collapsedByUserRef.current.add(item.id)
+                      setOpenSubmenus((prev) => ({ ...prev, [item.id]: false }))
+                      return
+                    }
+                    collapsedByUserRef.current.delete(item.id)
+                    setOpenSubmenus((prev) => ({ ...prev, [item.id]: true }))
+                    if (firstLink) {
+                      navigate(firstLink.to)
+                    }
                   }}
+                  sx={menuItemSx}
                 >
                   <ListItemIcon>{item.icon}</ListItemIcon>
                   <ListItemText primary={item.label} />
-                  {openSubmenus[item.id] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                  <ExpandIcon fontSize="small" />
                 </ListItemButton>
                 <Collapse in={openSubmenus[item.id]} timeout="auto" unmountOnExit>
                   <List component="div" disablePadding>
@@ -161,9 +199,14 @@ export function AppLayout() {
                             sx={{
                               bgcolor: 'transparent',
                               color: 'rgba(255,255,255,0.7)',
-                              lineHeight: '32px',
-                              pl: 4,
-                              fontSize: '0.75rem',
+                              lineHeight: 1.25,
+                              minHeight: 28,
+                              display: 'flex',
+                              alignItems: 'center',
+                              mx: MENU_ITEM_MX,
+                              pl: 6,
+                              pr: 1.5,
+                              fontSize: '0.6875rem',
                               fontWeight: 700,
                               textTransform: 'uppercase',
                               letterSpacing: '0.05em',
@@ -180,15 +223,10 @@ export function AppLayout() {
                           key={link.to}
                           component={NavLink}
                           to={link.to}
+                          selected={isLinkActive(location.pathname, link.to)}
                           sx={{
-                            pl: 4,
-                            color: 'inherit',
-                            '&.active': {
-                              bgcolor: 'rgba(255,255,255,0.18)',
-                            },
-                            '&:hover': {
-                              bgcolor: 'rgba(255,255,255,0.12)',
-                            },
+                            ...menuItemSx,
+                            pl: 6,
                           }}
                         >
                           <ListItemText primary={link.label} />
