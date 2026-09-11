@@ -2,8 +2,8 @@ import AssessmentIcon from '@mui/icons-material/Assessment'
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
 import DescriptionIcon from '@mui/icons-material/Description'
-import DeskIcon from '@mui/icons-material/Desk'
 import Inventory2Icon from '@mui/icons-material/Inventory2'
+import PermPhoneMsgIcon from '@mui/icons-material/PermPhoneMsg'
 import SettingsIcon from '@mui/icons-material/Settings'
 import type { ReactNode } from 'react'
 
@@ -39,7 +39,7 @@ const allMenuItems: MenuItem[] = [
     kind: 'submenu',
     id: 'recepcao',
     label: 'Recepção',
-    icon: <DeskIcon />,
+    icon: <PermPhoneMsgIcon />,
     items: [
       { kind: 'link', label: 'Registros', to: '/registros' },
       { kind: 'link', label: 'Chamadas', to: '/chamadas' },
@@ -127,16 +127,24 @@ export function getMenuItems(isAdmin: boolean): MenuItem[] {
   return allMenuItems.filter((item) => !item.adminOnly || isAdmin)
 }
 
+export function isLinkActive(pathname: string, to: string): boolean {
+  return pathname === to || pathname.startsWith(`${to}/`)
+}
+
+export function getFirstSubmenuLink(item: MenuSubmenu): MenuLink | null {
+  return item.items.find((subitem): subitem is MenuLink => subitem.kind === 'link') ?? null
+}
+
 export function getSubmenuIdForPath(pathname: string, menuItems: MenuItem[]): string | null {
   for (const item of menuItems) {
     if (item.kind === 'link') {
-      if (pathname.startsWith(item.to)) {
+      if (isLinkActive(pathname, item.to)) {
         return item.id
       }
       continue
     }
     const hasMatch = item.items.some(
-      (subitem) => subitem.kind === 'link' && pathname.startsWith(subitem.to),
+      (subitem) => subitem.kind === 'link' && isLinkActive(pathname, subitem.to),
     )
     if (hasMatch) {
       return item.id
