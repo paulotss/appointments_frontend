@@ -36,7 +36,7 @@ import {
 } from './menuConfig'
 
 const DRAWER_WIDTH = 260
-const TOP_BAR_HEIGHT = 60
+export const TOP_BAR_HEIGHT = 60
 const MENU_ITEM_MX = 1
 const MENU_ITEM_PL = 2
 const menuItemSx = {

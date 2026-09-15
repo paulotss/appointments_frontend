@@ -14,6 +14,8 @@ interface ProfissionalBuscaAutocompleteProps {
   inputRef?: React.Ref<HTMLInputElement>
   onBlur?: () => void
   somenteAtivos?: boolean
+  disableListPortal?: boolean
+  fullWidth?: boolean
 }
 
 export function ProfissionalBuscaAutocomplete({
@@ -27,6 +29,8 @@ export function ProfissionalBuscaAutocomplete({
   inputRef,
   onBlur,
   somenteAtivos = false,
+  disableListPortal = false,
+  fullWidth,
 }: ProfissionalBuscaAutocompleteProps) {
   const [inputValue, setInputValue] = useState(value?.name ?? '')
   const [opcoes, setOpcoes] = useState<HealthProfessional[]>(value ? [value] : [])
@@ -97,6 +101,10 @@ export function ProfissionalBuscaAutocomplete({
       onBlur={onBlur}
       disabled={disabled}
       loading={loading}
+      fullWidth={fullWidth}
+      slotProps={{
+        popper: disableListPortal ? { disablePortal: true } : undefined,
+      }}
       renderInput={(params) => (
         <TextField
           {...params}

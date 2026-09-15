@@ -16,6 +16,7 @@ interface PacienteBuscaAutocompleteProps {
   onBlur?: () => void
   sx?: SxProps<Theme>
   fullWidth?: boolean
+  disableListPortal?: boolean
 }
 
 export function PacienteBuscaAutocomplete({
@@ -30,6 +31,7 @@ export function PacienteBuscaAutocomplete({
   onBlur,
   sx,
   fullWidth,
+  disableListPortal = false,
 }: PacienteBuscaAutocompleteProps) {
   const [inputValue, setInputValue] = useState(value?.name ?? '')
   const [opcoes, setOpcoes] = useState<Patient[]>(value ? [value] : [])
@@ -99,6 +101,9 @@ export function PacienteBuscaAutocomplete({
       loading={loading}
       sx={sx}
       fullWidth={fullWidth}
+      slotProps={{
+        popper: disableListPortal ? { disablePortal: true } : undefined,
+      }}
       renderInput={(params) => (
         <TextField
           {...params}
