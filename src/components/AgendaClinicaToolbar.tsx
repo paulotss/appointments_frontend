@@ -3,7 +3,7 @@ import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import SearchIcon from '@mui/icons-material/Search'
-import SettingsIcon from '@mui/icons-material/Settings'
+import TuneIcon from '@mui/icons-material/Tune'
 import {
   Badge,
   Box,
@@ -199,7 +199,7 @@ export function AgendaClinicaToolbar({
             size="small"
           >
             <Badge color="primary" variant="dot" invisible={!filtrosExtrasAtivos}>
-              <SettingsIcon />
+              <TuneIcon />
             </Badge>
           </IconButton>
 

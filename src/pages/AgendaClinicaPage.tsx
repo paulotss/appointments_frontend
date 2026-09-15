@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogTitle,
   Paper,
+  Snackbar,
   Stack,
   Typography,
 } from '@mui/material'
@@ -248,6 +249,11 @@ export function AgendaClinicaPage() {
     setEditando(null)
   }
 
+  function fecharAlerta() {
+    setError(null)
+    setSuccess(null)
+  }
+
   async function salvar(values: AgendamentoClinicoFormValues) {
     setSaving(true)
     setError(null)
@@ -321,17 +327,6 @@ export function AgendaClinicaPage() {
           onFiltroStatusChange={setFiltroStatus}
           onNovoAgendamento={() => abrirNovo()}
         />
-
-        {error ? (
-          <Alert severity="error" sx={{ mt: 1 }}>
-            {error}
-          </Alert>
-        ) : null}
-        {success ? (
-          <Alert severity="success" sx={{ mt: 1 }}>
-            {success}
-          </Alert>
-        ) : null}
 
         {calendarioVisivel ? (
           <Paper
@@ -421,6 +416,26 @@ export function AgendaClinicaPage() {
           />
         </Paper>
       )}
+
+      <Snackbar
+        open={Boolean(error || success)}
+        autoHideDuration={6000}
+        onClose={(_event, reason) => {
+          if (reason === 'clickaway') return
+          fecharAlerta()
+        }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        sx={{ position: 'fixed', zIndex: 0 }}
+      >
+        <Alert
+          severity={error ? 'error' : 'success'}
+          variant="filled"
+          onClose={fecharAlerta}
+          sx={{ width: '100%' }}
+        >
+          {error ?? success}
+        </Alert>
+      </Snackbar>
 
       <Dialog
         open={dialogAberto}
