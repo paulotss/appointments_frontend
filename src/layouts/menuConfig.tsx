@@ -1,6 +1,7 @@
 import AssessmentIcon from '@mui/icons-material/Assessment'
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
+import ChatIcon from '@mui/icons-material/Chat'
 import DescriptionIcon from '@mui/icons-material/Description'
 import Inventory2Icon from '@mui/icons-material/Inventory2'
 import PermPhoneMsgIcon from '@mui/icons-material/PermPhoneMsg'
@@ -82,6 +83,13 @@ const allMenuItems: MenuItem[] = [
       { kind: 'link', label: 'Entradas', to: '/estoque/lotes' },
       { kind: 'link', label: 'Saídas', to: '/estoque/saidas' },
     ],
+  },
+  {
+    kind: 'link',
+    id: 'higia',
+    label: 'Higia',
+    to: '/higia',
+    icon: <ChatIcon />,
   },
   {
     kind: 'submenu',

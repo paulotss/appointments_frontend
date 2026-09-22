@@ -33,6 +33,7 @@ import { FinanceiroPagamentosPage } from './pages/FinanceiroPagamentosPage'
 import { FinanceiroSaidasPage } from './pages/FinanceiroSaidasPage'
 import { GuiaDetalhePage } from './pages/GuiaDetalhePage'
 import { GuiasPage } from './pages/GuiasPage'
+import { HigiaPage } from './pages/HigiaPage'
 import { LoteTissDetalhePage } from './pages/LoteTissDetalhePage'
 import { NovaEntradaFinanceiraPage } from './pages/NovaEntradaFinanceiraPage'
 import { NovaGuiaPage } from './pages/NovaGuiaPage'
@@ -76,6 +77,7 @@ function App() {
         <Route path="/chamadas/:callId" element={<ChamadaDetalhePage />} />
         <Route path="/mensagens" element={<MensagensPage />} />
         <Route path="/mensagens/:messageId" element={<MensagemDetalhePage />} />
+        <Route path="/higia" element={<HigiaPage />} />
         <Route path="/relatorios/horarios" element={<HorariosPage />} />
         <Route path="/relatorios/atendimentos" element={<AtendimentosPage />} />
         <Route path="/relatorios/taxa-conversao" element={<TaxaConversaoPage />} />
