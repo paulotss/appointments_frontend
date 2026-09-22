@@ -43,18 +43,16 @@ const MENSAGENS_EXATAS: Record<string, string> = {
     'Não foi possível conectar ao OpenRouter para ler a guia.',
   'OpenRouter vision model is unavailable':
     'O modelo de visão do OpenRouter não está disponível no momento.',
+  'OpenRouter is unreachable':
+    'Não foi possível conectar ao OpenRouter no momento.',
+  'Higia model request failed':
+    'Não foi possível obter a resposta da Higia.',
+  'Higia model returned an empty response':
+    'A Higia não retornou uma resposta utilizável.',
+  'Higia exceeded the tool call limit':
+    'A Higia precisou de demasiadas consultas para responder. Tente uma pergunta mais específica.',
   'Vision provider failed to extract guide data':
     'Não foi possível ler a guia. Tente outra imagem ou um PDF mais nítido.',
-  'Local vision model is unreachable':
-    'O modelo local não está acessível neste servidor. Na nuvem, use Gemini: GUIDE_VISION_PROVIDER=gemini e GEMINI_API_KEY.',
-  'Local model is unreachable':
-    'O assistente interno não está disponível neste servidor.',
-  'Portal knowledge service is unreachable':
-    'O assistente interno não está acessível no momento.',
-  'Portal knowledge service failed':
-    'Não foi possível obter a resposta do assistente interno.',
-  'Local vision model requires a JPEG or PNG image (not PDF)':
-    'O modelo local só processa imagens JPEG ou PNG. Envie uma foto da guia.',
   'health plan was not found in the system; register it before importing':
     'Cadastre o plano de saúde antes de importar a guia.',
   'health professional was not found in the system; register it before importing':
@@ -165,6 +163,10 @@ function formatarMensagemApi(raw: string | string[] | undefined, fallback: strin
     return raw.map((item) => traduzirMensagem(String(item))).join('\n')
   }
   return fallback
+}
+
+export function traduzirMensagemErro(raw: string, fallback: string): string {
+  return formatarMensagemApi(raw, fallback)
 }
 
 export function mensagemErroApi(error: unknown, fallback: string): string {

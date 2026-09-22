@@ -24,7 +24,6 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import logoSeraphisBranca from '../assets/logo-seraphis-branca.png'
-import { PortalRagChat } from '../components/PortalRagChat'
 import { clearToken, getIsAdmin, getLoggedUser } from '../services/authStorage'
 import {
   getFirstSubmenuLink,
@@ -375,7 +374,6 @@ export function AppLayout() {
           <Outlet />
         </Box>
       </Box>
-      <PortalRagChat />
     </Box>
   )
 }
