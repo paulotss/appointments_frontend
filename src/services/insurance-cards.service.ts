@@ -12,7 +12,7 @@ interface BackendInsuranceCard {
   patientId: number
   healthPlanId: number
   cardNumber: string
-  expirationDate?: string
+  expirationDate?: string | null
   healthPlan?: BackendPlanRef
 }
 

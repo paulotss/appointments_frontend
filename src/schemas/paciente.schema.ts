@@ -12,11 +12,16 @@ const optionalEmail = optionalText.refine((v) => v === null || z.string().email(
   message: 'E-mail invalido',
 })
 
-const carteirinhaSchema = z.object({
+const cartaoSchema = z.object({
   cardId: z.number().int().positive().optional(),
   healthPlanId: z.number({ error: 'Selecione o plano de saúde' }).int().positive('Selecione o plano de saúde'),
-  cardNumber: z.string().trim().min(1, 'Informe o número da carteirinha'),
-  expirationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe a validade da carteirinha'),
+  cardNumber: z.string().trim().min(1, 'Informe o número do cartão'),
+  expirationDate: z
+    .string()
+    .trim()
+    .refine((value) => value === '' || /^\d{4}-\d{2}-\d{2}$/.test(value), {
+      message: 'Informe uma validade válida',
+    }),
 })
 
 export const pacienteSchema = z.object({
@@ -35,13 +40,13 @@ export const pacienteSchema = z.object({
     })
     .refine((v) => v === null || v.length === 11, { message: 'CPF deve ter 11 digitos' }),
   insuranceCards: z
-    .array(carteirinhaSchema)
+    .array(cartaoSchema)
     .superRefine((items, ctx) => {
       const ids = items.map((item) => item.healthPlanId)
       if (new Set(ids).size !== ids.length) {
         ctx.addIssue({
           code: 'custom',
-          message: 'Já existe uma carteirinha para este plano',
+          message: 'Já existe um cartão para este plano',
           path: [],
         })
       }

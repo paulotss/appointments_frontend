@@ -16,7 +16,7 @@ export interface InsuranceCardInput {
   id?: number
   healthPlanId: number
   cardNumber: string
-  expirationDate: string
+  expirationDate: string | null
 }
 
 export interface Patient {

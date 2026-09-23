@@ -56,14 +56,15 @@ export const importarGuiaSchema = z
     if (!values.cardNumber.trim()) {
       ctx.addIssue({
         code: 'custom',
-        message: 'Informe o número da carteirinha',
+        message: 'Informe o número do cartão',
         path: ['cardNumber'],
       })
     }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(values.cardExpirationDate)) {
+    const validadeCartao = values.cardExpirationDate.trim()
+    if (validadeCartao && !/^\d{4}-\d{2}-\d{2}$/.test(validadeCartao)) {
       ctx.addIssue({
         code: 'custom',
-        message: 'Informe a validade da carteirinha',
+        message: 'Informe uma validade válida',
         path: ['cardExpirationDate'],
       })
     }

@@ -62,7 +62,8 @@ const MENSAGENS_EXATAS: Record<string, string> = {
   'procedure has no price for this health plan; register it before importing':
     'Cadastre o preço deste procedimento no plano antes de importar.',
   'insurance card number and expiration date are required':
-    'Informe o número e a validade da carteirinha.',
+    'Informe o número do cartão.',
+  'insurance card number is required': 'Informe o número do cartão.',
   'patient name and phone are required': 'Informe o nome e o telefone do paciente.',
   'patientId is required': 'Selecione o paciente.',
   'Only PDF, JPEG and PNG documents are allowed':
@@ -91,14 +92,14 @@ const MENSAGENS_EXATAS: Record<string, string> = {
   'Cancelled billing batches cannot export TISS XML':
     'Lotes cancelados não podem exportar o XML TISS.',
   'patient already has a card for this health plan':
-    'Este paciente já tem carteirinha neste plano de saúde.',
+    'Este paciente já tem cartão neste plano de saúde.',
 }
 
 const PADROES: Array<[RegExp, string]> = [
   [/^Specialty \d+ not found$/i, 'Especialidade não encontrada.'],
   [/^Health plan \d+ not found$/i, 'Plano de saúde não encontrado.'],
   [/^Procedure \d+ not found$/i, 'Procedimento não encontrado.'],
-  [/^Insurance card \d+ not found$/i, 'Carteirinha não encontrada.'],
+  [/^Insurance card \d+ not found$/i, 'Cartão não encontrado.'],
   [/^Patient \d+ not found$/i, 'Paciente não encontrado.'],
   [/^Clinical appointment \d+ not found$/i, 'Agendamento clínico não encontrado.'],
   [
