@@ -89,10 +89,10 @@ export function PacienteForm({
       />
 
       <Typography variant="subtitle2" fontWeight={700}>
-        Carteirinhas de plano
+        Cartões de plano
       </Typography>
       <Typography variant="body2" color="text.secondary">
-        Necessárias para o XML TISS. Uma carteirinha por plano.
+        Necessários para o XML TISS. Um cartão por plano.
       </Typography>
       {errors.insuranceCards?.root?.message || errors.insuranceCards?.message ? (
         <Typography color="error" variant="body2">
@@ -101,7 +101,7 @@ export function PacienteForm({
       ) : null}
       {planos.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
-          Cadastre um plano de saúde para informar carteirinhas.
+          Cadastre um plano de saúde para informar cartões.
         </Typography>
       ) : null}
 
@@ -155,7 +155,7 @@ export function PacienteForm({
               )}
             />
             <TextField
-              label="Número da carteirinha"
+              label="Número do cartão"
               error={Boolean(itemError?.cardNumber)}
               helperText={itemError?.cardNumber?.message ?? ' '}
               sx={{ flex: 1, minWidth: 180 }}
@@ -166,7 +166,7 @@ export function PacienteForm({
               control={control}
               render={({ field }) => (
                 <CampoData
-                  label="Validade"
+                  label="Validade (opcional)"
                   value={field.value}
                   onChange={field.onChange}
                   onBlur={field.onBlur}
@@ -177,7 +177,7 @@ export function PacienteForm({
                 />
               )}
             />
-            <IconButton aria-label="Remover carteirinha" onClick={() => remove(index)} sx={{ mt: 0.5 }}>
+            <IconButton aria-label="Remover cartão" onClick={() => remove(index)} sx={{ mt: 0.5 }}>
               <DeleteOutlineIcon />
             </IconButton>
           </Stack>
@@ -197,7 +197,7 @@ export function PacienteForm({
         disabled={planos.length === 0 || fields.length >= planos.length}
         sx={{ alignSelf: 'flex-start' }}
       >
-        Adicionar carteirinha
+        Adicionar cartão
       </Button>
 
       <Stack direction="row" spacing={1.5}>

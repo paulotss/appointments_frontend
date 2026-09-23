@@ -38,7 +38,7 @@ interface BackendPatient {
     patientId: number
     healthPlanId: number
     cardNumber: string
-    expirationDate?: string
+    expirationDate?: string | null
     healthPlan?: { id: number; name: string }
   }>
 }

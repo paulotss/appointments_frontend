@@ -530,13 +530,13 @@ export function ImportarGuiaForm({
             )}
 
             {precisaCarteirinha ? (
-              <Alert severity="info">Informe a carteirinha deste plano. A validade quase nunca vem na guia.</Alert>
+              <Alert severity="info">Informe o cartão deste plano. A validade quase nunca vem na guia.</Alert>
             ) : (
-              <Alert severity="success">Este paciente já possui carteirinha neste plano.</Alert>
+              <Alert severity="success">Este paciente já possui cartão neste plano.</Alert>
             )}
 
             <TextField
-              label="Número da carteirinha"
+              label="Número do cartão"
               error={Boolean(errors.cardNumber)}
               helperText={
                 errors.cardNumber?.message ?? `Lido na guia: ${textoOuAusente(analise?.extracted.patient.cardNumber)}`
@@ -549,7 +549,7 @@ export function ImportarGuiaForm({
               control={control}
               render={({ field }) => (
                 <CampoData
-                  label="Validade da carteirinha"
+                  label="Validade do cartão (opcional)"
                   value={field.value}
                   onChange={field.onChange}
                   onBlur={field.onBlur}

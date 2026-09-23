@@ -100,7 +100,7 @@ export function PacientesPage() {
           id: item.cardId,
           healthPlanId: item.healthPlanId,
           cardNumber: item.cardNumber,
-          expirationDate: item.expirationDate,
+          expirationDate: item.expirationDate || null,
         })),
       )
       const atualizado = await buscarPaciente(editando.id)

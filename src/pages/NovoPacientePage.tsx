@@ -50,7 +50,7 @@ export function NovoPacientePage() {
           id: item.cardId,
           healthPlanId: item.healthPlanId,
           cardNumber: item.cardNumber,
-          expirationDate: item.expirationDate,
+          expirationDate: item.expirationDate || null,
         })),
       )
       navigate('/pacientes', { replace: true })

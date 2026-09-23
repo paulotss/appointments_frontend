@@ -182,7 +182,7 @@ export function ImportarGuiaPage() {
               mode: 'existing' as const,
               patientId: values.patientId!,
               cardNumber: values.cardNumber,
-              cardExpirationDate: values.cardExpirationDate,
+              ...(values.cardExpirationDate ? { cardExpirationDate: values.cardExpirationDate } : {}),
             }
           : {
               mode: 'create' as const,
@@ -192,7 +192,7 @@ export function ImportarGuiaPage() {
               ...(values.birthDate ? { birthDate: values.birthDate } : {}),
               ...(values.cpf?.trim() ? { cpf: values.cpf.trim() } : {}),
               cardNumber: values.cardNumber,
-              cardExpirationDate: values.cardExpirationDate,
+              ...(values.cardExpirationDate ? { cardExpirationDate: values.cardExpirationDate } : {}),
             }
 
       const criada = await confirmarImportacaoGuia({

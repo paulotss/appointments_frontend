@@ -98,7 +98,7 @@ export interface CommitGuideImportRequest {
         birthDate?: string
         cpf?: string
         cardNumber: string
-        cardExpirationDate: string
+        cardExpirationDate?: string
       }
   guideNumber?: string
   authorizationDate?: string
