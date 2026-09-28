@@ -131,6 +131,7 @@ export async function listarGuias(params?: ListarGuiasParams): Promise<PagedList
         ...(params.healthProfessionalId != null ? { healthProfessionalId: params.healthProfessionalId } : {}),
         ...(params.healthPlanId != null ? { healthPlanId: params.healthPlanId } : {}),
         ...(params.availableForBilling != null ? { availableForBilling: params.availableForBilling } : {}),
+        ...(params.withoutAppointment != null ? { withoutAppointment: params.withoutAppointment } : {}),
         ...(params.page != null ? { page: params.page } : {}),
         ...(params.limit != null ? { limit: params.limit } : {}),
       }

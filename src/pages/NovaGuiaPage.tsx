@@ -54,6 +54,9 @@ export function NovaGuiaPage() {
           procedureId: item.procedureId,
           authorizedQuantity: item.authorizedQuantity,
           value: item.value,
+          ...(values.usarQuantidade && item.usedQuantity != null
+            ? { usedQuantity: item.usedQuantity }
+            : {}),
         })),
       })
       const falhas: string[] = []
@@ -114,9 +117,10 @@ export function NovaGuiaPage() {
               healthProfessionalId: undefined,
               status: 'pending',
               guideNumber: '',
-              authorizationDate: hojeLocalISO(),
-              expirationDate: '',
-              procedures: [{ procedureId: undefined, authorizedQuantity: 1, value: undefined }],
+                authorizationDate: hojeLocalISO(),
+                expirationDate: '',
+                usarQuantidade: false,
+                procedures: [{ procedureId: undefined, authorizedQuantity: 1, value: undefined }],
             }}
             pacientes={[]}
             profissionais={[]}
