@@ -87,6 +87,8 @@ const MENSAGENS_EXATAS: Record<string, string> = {
   'Billing batch is already cancelled': 'O lote já está cancelado.',
   'procedures cannot mix consulta and sp_sadt tissGuideType':
     'Não misture procedimentos de consulta e SP/SADT na mesma guia.',
+  'Only admins can set used quantity without an appointment':
+    'Somente administradores podem usar quantidade sem agendamento.',
   'consulta guides must contain exactly one procedure':
     'A guia de consulta deve ter exatamente um procedimento.',
   'Cancelled billing batches cannot export TISS XML':
@@ -117,6 +119,10 @@ const PADROES: Array<[RegExp, string]> = [
   [
     /^authorizedQuantity for procedure \d+ cannot be less than usedQuantity \d+$/i,
     'A quantidade autorizada não pode ser menor que a quantidade já utilizada.',
+  ],
+  [
+    /^usedQuantity for procedure \d+ cannot exceed authorizedQuantity \d+$/i,
+    'A quantidade utilizada não pode ser maior que a autorizada.',
   ],
   [/^Insurance guide \d+ not found$/i, 'Guia não encontrada.'],
   [

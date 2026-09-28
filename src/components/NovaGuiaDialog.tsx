@@ -71,6 +71,9 @@ export function NovaGuiaDialog({
           procedureId: item.procedureId,
           authorizedQuantity: item.authorizedQuantity,
           value: item.value,
+          ...(values.usarQuantidade && item.usedQuantity != null
+            ? { usedQuantity: item.usedQuantity }
+            : {}),
         })),
       })
       for (const arquivo of arquivos) {
@@ -120,6 +123,7 @@ export function NovaGuiaDialog({
                 guideNumber: '',
                 authorizationDate: hojeLocalISO(),
                 expirationDate: '',
+                usarQuantidade: false,
                 procedures: [{ procedureId: undefined, authorizedQuantity: 1, value: undefined }],
               }}
               pacientes={pacientes}

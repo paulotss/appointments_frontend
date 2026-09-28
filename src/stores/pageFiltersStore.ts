@@ -39,6 +39,7 @@ export type GuiasFiltros = {
   filtroVencidas: boolean
   filtroMostrarFaturadas: boolean
   filtroSemSaldo: boolean
+  filtroSemAgendamento: boolean
 }
 
 function createDefaultMensagensFiltros(): MensagensFiltros {
@@ -72,6 +73,7 @@ function createDefaultGuiasFiltros(): GuiasFiltros {
     filtroVencidas: false,
     filtroMostrarFaturadas: false,
     filtroSemSaldo: false,
+    filtroSemAgendamento: false,
   }
 }
 

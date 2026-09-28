@@ -8,6 +8,7 @@ const procedimentoGuiaSchema = z.object({
     .int('Informe um número inteiro')
     .min(1, 'Quantidade autorizada deve ser no mínimo 1'),
   value: z.number({ error: 'Informe o valor' }).min(0, 'Informe o valor'),
+  usedQuantity: z.number().int().optional(),
 })
 
 export const guiaSchema = z.object({
@@ -24,6 +25,7 @@ export const guiaSchema = z.object({
     .min(1, 'Informe o número da guia'),
   authorizationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe a data de autorização'),
   expirationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe a data de validade'),
+  usarQuantidade: z.boolean().optional(),
   procedures: z
     .array(procedimentoGuiaSchema)
     .min(1, 'Informe ao menos um procedimento')
@@ -37,6 +39,26 @@ export const guiaSchema = z.object({
         })
       }
     }),
+}).superRefine((values, ctx) => {
+  if (!values.usarQuantidade) return
+  values.procedures.forEach((item, index) => {
+    const used = item.usedQuantity
+    if (used == null || !Number.isInteger(used) || used < 1) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Informe a quantidade utilizada',
+        path: ['procedures', index, 'usedQuantity'],
+      })
+      return
+    }
+    if (used > item.authorizedQuantity) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'A quantidade utilizada não pode passar da autorizada',
+        path: ['procedures', index, 'usedQuantity'],
+      })
+    }
+  })
 })
 
 export type GuiaFormInput = z.input<typeof guiaSchema>

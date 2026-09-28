@@ -45,6 +45,7 @@ function aplicarAnalise(analise: GuideImportAnalysis): DefaultValues<ImportarGui
             authorizedQuantity: item.extracted.authorizedQuantity ?? item.extracted.requestedQuantity ?? 1,
           }))
         : [{ procedureId: undefined, authorizedQuantity: 1 }],
+    usarQuantidade: false,
     patientMode: analise.patient ? 'existing' : 'create',
     patientId: analise.patient?.id ?? null,
     patientName: analise.extracted.patient.name ?? analise.patient?.name ?? '',
@@ -101,6 +102,7 @@ export function ImportarGuiaPage() {
       guideNumber: '',
       authorizationDate: hojeLocalISO(),
       expirationDate: '',
+      usarQuantidade: false,
     },
   })
 
@@ -198,7 +200,13 @@ export function ImportarGuiaPage() {
       const criada = await confirmarImportacaoGuia({
         healthPlanId: values.healthPlanId,
         healthProfessionalId: values.healthProfessionalId,
-        procedures: values.procedures,
+        procedures: values.procedures.map((item) => ({
+          procedureId: item.procedureId,
+          authorizedQuantity: item.authorizedQuantity,
+          ...(values.usarQuantidade && item.usedQuantity != null
+            ? { usedQuantity: item.usedQuantity }
+            : {}),
+        })),
         patient: paciente,
         guideNumber: values.guideNumber,
         authorizationDate: values.authorizationDate,

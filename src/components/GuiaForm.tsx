@@ -6,7 +6,9 @@ import {
   Alert,
   Autocomplete,
   Button,
+  Checkbox,
   CircularProgress,
+  FormControlLabel,
   FormHelperText,
   IconButton,
   MenuItem,
@@ -17,6 +19,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Controller, useFieldArray, useForm, useWatch, type DefaultValues } from 'react-hook-form'
 import { guiaSchema, type GuiaFormInput, type GuiaFormValues } from '../schemas/guia.schema'
+import { getIsAdmin } from '../services/authStorage'
 import { listarProcedimentos } from '../services/procedures.service'
 import { CampoData } from './CampoData'
 import {
@@ -83,6 +86,9 @@ export function GuiaForm({
   const authorizationDate = useWatch({ control, name: 'authorizationDate' })
   const healthProfessionalId = useWatch({ control, name: 'healthProfessionalId' })
   const proceduresWatch = useWatch({ control, name: 'procedures' })
+  const usarQuantidade = useWatch({ control, name: 'usarQuantidade' })
+  const isAdmin = getIsAdmin()
+  const [usedTouched, setUsedTouched] = useState<Set<number>>(new Set())
 
   const [procedimentosPlano, setProcedimentosPlano] = useState<Procedure[]>([])
   const [loadingProcedimentos, setLoadingProcedimentos] = useState(false)
@@ -333,6 +339,35 @@ export function GuiaForm({
           Selecione o profissional para filtrar procedimentos das especialidades atendidas.
         </Alert>
       ) : null}
+      {isAdmin ? (
+        <Controller
+          name="usarQuantidade"
+          control={control}
+          render={({ field }) => (
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={Boolean(field.value)}
+                  onChange={(_, checked) => {
+                    field.onChange(checked)
+                    setUsedTouched(new Set())
+                    const atuais = getValues('procedures') ?? []
+                    atuais.forEach((item, index) => {
+                      const autorizada = item?.authorizedQuantity
+                      const quantidade = typeof autorizada === 'number' ? autorizada : 1
+                      setValue(
+                        `procedures.${index}.usedQuantity`,
+                        checked ? quantidade : undefined,
+                      )
+                    })
+                  }}
+                />
+              }
+              label="Usar quantidade sem agendamento"
+            />
+          )}
+        />
+      ) : null}
       {loadingProcedimentos ? (
         <Stack direction="row" alignItems="center" gap={1}>
           <CircularProgress size={16} />
@@ -396,7 +431,12 @@ export function GuiaForm({
                   type="number"
                   inputProps={{ min: 1, step: 1 }}
                   value={qtyField.value ?? ''}
-                  onChange={(event) => qtyField.onChange(Number(event.target.value))}
+                  onChange={(event) => {
+                    const next = Number(event.target.value)
+                    qtyField.onChange(next)
+                    if (!getValues('usarQuantidade') || usedTouched.has(index) || !Number.isFinite(next)) return
+                    setValue(`procedures.${index}.usedQuantity`, next)
+                  }}
                   error={Boolean(itemError?.authorizedQuantity)}
                   helperText={itemError?.authorizedQuantity?.message ?? ' '}
                   sx={{ width: { xs: '100%', sm: 140 } }}
@@ -418,9 +458,41 @@ export function GuiaForm({
                 />
               )}
             />
+            {usarQuantidade ? (
+              <Controller
+                name={`procedures.${index}.usedQuantity`}
+                control={control}
+                render={({ field: usedField }) => (
+                  <TextField
+                    label="Qtd. utilizada"
+                    type="number"
+                    inputProps={{ min: 1, step: 1 }}
+                    value={usedField.value ?? ''}
+                    onChange={(event) => {
+                      const raw = event.target.value
+                      usedField.onChange(raw === '' ? undefined : Number(raw))
+                      setUsedTouched((atual) => new Set(atual).add(index))
+                    }}
+                    error={Boolean(itemError?.usedQuantity)}
+                    helperText={itemError?.usedQuantity?.message ?? ' '}
+                    sx={{ width: { xs: '100%', sm: 140 } }}
+                  />
+                )}
+              />
+            ) : null}
             <IconButton
               aria-label="Remover procedimento"
-              onClick={() => remove(index)}
+              onClick={() => {
+                remove(index)
+                setUsedTouched((atual) => {
+                  const next = new Set<number>()
+                  for (const item of atual) {
+                    if (item < index) next.add(item)
+                    else if (item > index) next.add(item - 1)
+                  }
+                  return next
+                })
+              }}
               disabled={fields.length === 1}
               sx={{ mt: 0.5 }}
             >
@@ -438,6 +510,7 @@ export function GuiaForm({
             procedureId: undefined as unknown as number,
             authorizedQuantity: 1,
             value: undefined as unknown as number,
+            ...(getValues('usarQuantidade') ? { usedQuantity: 1 } : {}),
           })
         }
         disabled={

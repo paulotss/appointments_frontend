@@ -6,6 +6,7 @@ const procedimentoImportadoSchema = z.object({
     .number({ error: 'Informe a quantidade autorizada' })
     .int('Informe um número inteiro')
     .min(1, 'Quantidade autorizada deve ser no mínimo 1'),
+  usedQuantity: z.number().int().optional(),
 })
 
 export const importarGuiaSchema = z
@@ -28,6 +29,7 @@ export const importarGuiaSchema = z
     guideNumber: z.string().trim().min(1, 'Informe o número da guia'),
     authorizationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe a data de autorização'),
     expirationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe a data de validade'),
+    usarQuantidade: z.boolean().optional(),
   })
   .superRefine((values, ctx) => {
     if (values.patientMode === 'existing' && (values.patientId == null || values.patientId < 1)) {
@@ -66,6 +68,26 @@ export const importarGuiaSchema = z
         code: 'custom',
         message: 'Informe uma validade válida',
         path: ['cardExpirationDate'],
+      })
+    }
+    if (values.usarQuantidade) {
+      values.procedures.forEach((item, index) => {
+        const used = item.usedQuantity
+        if (used == null || !Number.isInteger(used) || used < 1) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Informe a quantidade utilizada',
+            path: ['procedures', index, 'usedQuantity'],
+          })
+          return
+        }
+        if (used > item.authorizedQuantity) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'A quantidade utilizada não pode passar da autorizada',
+            path: ['procedures', index, 'usedQuantity'],
+          })
+        }
       })
     }
   })

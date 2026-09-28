@@ -137,6 +137,7 @@ export function GuiasPage() {
     filtroVencidas,
     filtroMostrarFaturadas,
     filtroSemSaldo,
+    filtroSemAgendamento,
   } = filtros
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(50)
@@ -397,8 +398,9 @@ export function GuiasPage() {
       ...(filtroPaciente ? { patientId: filtroPaciente.id } : {}),
       ...(filtroPlanoId === '' ? {} : { healthPlanId: filtroPlanoId }),
       ...(filtroStatus === '' ? {} : { status: filtroStatus }),
+      ...(filtroSemAgendamento ? { withoutAppointment: true } : {}),
     }),
-    [filtroPaciente, filtroPlanoId, filtroStatus],
+    [filtroPaciente, filtroPlanoId, filtroStatus, filtroSemAgendamento],
   )
 
   const guiasFiltradas = useMemo(() => {
@@ -665,6 +667,17 @@ export function GuiasPage() {
                 />
               }
               label="Sem saldo"
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={filtroSemAgendamento}
+                  onChange={(_, checked) => {
+                    atualizarFiltros({ filtroSemAgendamento: checked })
+                  }}
+                />
+              }
+              label="Sem agendamento"
             />
           </Stack>
           <Stack direction="row" spacing={2} flexWrap="wrap">

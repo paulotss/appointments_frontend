@@ -3,6 +3,7 @@ import {
   Autocomplete,
   Box,
   Button,
+  Checkbox,
   FormControl,
   FormControlLabel,
   Link,
@@ -29,6 +30,7 @@ import {
 } from 'react-hook-form'
 import { Link as RouterLink } from 'react-router-dom'
 import type { ImportarGuiaFormInput } from '../schemas/importarGuia.schema'
+import { getIsAdmin } from '../services/authStorage'
 import { buscarPaciente } from '../services/patients.service'
 import { listarProcedimentos } from '../services/procedures.service'
 import type { GuideImportAnalysis } from '../types/guideImport'
@@ -128,15 +130,19 @@ export function ImportarGuiaForm({
   const [profissionalSelecionado, setProfissionalSelecionado] = useState<HealthProfessional | null>(
     analise?.healthProfessional ?? null,
   )
+  const [usedTouched, setUsedTouched] = useState<Set<number>>(new Set())
+  const isAdmin = getIsAdmin()
 
   if (analise !== analiseAtual) {
     setAnaliseAtual(analise)
     setPacienteDetalhe(analise?.patient ?? null)
     setProfissionalSelecionado(analise?.healthProfessional ?? null)
+    setUsedTouched(new Set())
   }
 
   const healthPlanId = watch('healthPlanId')
   const procedures = watch('procedures')
+  const usarQuantidade = watch('usarQuantidade')
   const patientMode = watch('patientMode')
   const patientId = watch('patientId')
   const patientName = watch('patientName')
@@ -631,15 +637,70 @@ export function ImportarGuiaForm({
               )}
             />
 
-            {(analise?.procedures ?? []).map((item, index) => (
-              <TextField
-                key={`qtd-${index}`}
-                label={`Quantidade autorizada — ${item.extracted.description ?? item.extracted.tissCode ?? `procedimento ${index + 1}`}`}
-                type="number"
-                error={Boolean(errors.procedures?.[index]?.authorizedQuantity)}
-                helperText={errors.procedures?.[index]?.authorizedQuantity?.message}
-                {...register(`procedures.${index}.authorizedQuantity`, { valueAsNumber: true })}
+            {isAdmin ? (
+              <Controller
+                name="usarQuantidade"
+                control={control}
+                render={({ field }) => (
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={Boolean(field.value)}
+                        onChange={(_, checked) => {
+                          field.onChange(checked)
+                          setUsedTouched(new Set())
+                          const atuais = getValues('procedures') ?? []
+                          atuais.forEach((item, index) => {
+                            setValue(
+                              `procedures.${index}.usedQuantity`,
+                              checked ? item.authorizedQuantity : undefined,
+                            )
+                          })
+                        }}
+                      />
+                    }
+                    label="Usar quantidade sem agendamento"
+                  />
+                )}
               />
+            ) : null}
+
+            {(analise?.procedures ?? []).map((item, index) => (
+              <Stack key={`qtd-${index}`} spacing={1.5}>
+                <TextField
+                  label={`Quantidade autorizada — ${item.extracted.description ?? item.extracted.tissCode ?? `procedimento ${index + 1}`}`}
+                  type="number"
+                  error={Boolean(errors.procedures?.[index]?.authorizedQuantity)}
+                  helperText={errors.procedures?.[index]?.authorizedQuantity?.message}
+                  {...register(`procedures.${index}.authorizedQuantity`, {
+                    valueAsNumber: true,
+                    onChange: (event) => {
+                      if (!getValues('usarQuantidade') || usedTouched.has(index)) return
+                      const next = Number(event.target.value)
+                      if (!Number.isFinite(next)) return
+                      setValue(`procedures.${index}.usedQuantity`, next)
+                    },
+                  })}
+                />
+                {usarQuantidade ? (
+                  <TextField
+                    label="Qtd. utilizada"
+                    type="number"
+                    inputProps={{ min: 1, step: 1 }}
+                    error={Boolean(errors.procedures?.[index]?.usedQuantity)}
+                    helperText={errors.procedures?.[index]?.usedQuantity?.message}
+                    {...register(`procedures.${index}.usedQuantity`, {
+                      setValueAs: (value) =>
+                        value === '' || value == null || Number.isNaN(Number(value))
+                          ? undefined
+                          : Number(value),
+                      onChange: () => {
+                        setUsedTouched((atual) => new Set(atual).add(index))
+                      },
+                    })}
+                  />
+                ) : null}
+              </Stack>
             ))}
 
             <Typography variant="body2" color="text.secondary">

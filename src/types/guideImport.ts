@@ -82,7 +82,7 @@ export interface GuideImportAnalysis {
 export interface CommitGuideImportRequest {
   healthPlanId: number
   healthProfessionalId: number
-  procedures: Array<{ procedureId: number; authorizedQuantity: number }>
+  procedures: Array<{ procedureId: number; authorizedQuantity: number; usedQuantity?: number }>
   patient:
     | {
         mode: 'existing'

@@ -46,6 +46,7 @@ export interface InsuranceGuideProcedure {
 export interface InsuranceGuideProcedureInput {
   procedureId: number
   authorizedQuantity: number
+  usedQuantity?: number
   value?: number
 }
 
@@ -108,6 +109,7 @@ export interface ListarGuiasParams {
   healthProfessionalId?: number
   healthPlanId?: number
   availableForBilling?: boolean
+  withoutAppointment?: boolean
   page?: number
   limit?: number
 }
