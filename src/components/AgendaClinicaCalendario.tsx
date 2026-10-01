@@ -1,5 +1,6 @@
-import { Box, Typography } from '@mui/material'
+import { Box, Button, Typography } from '@mui/material'
 import type { ClinicalAppointment } from '../types/agendamentoClinico'
+import type { ScheduleInterval } from '../types/bloqueioHorario'
 import { EventoAgendaChip } from './AgendamentosClinicosTable'
 import {
   DIAS_SEMANA_CURTOS,
@@ -11,6 +12,7 @@ import {
   mesmoMes,
   ymdEmSaoPaulo,
 } from '../utils/dataHoraSaoPaulo'
+import { horarioParaMinuto, slotCruzaBloqueio } from '../utils/bloqueioHorario'
 
 export type VisaoAgenda = 'dia' | 'semana' | 'mes'
 
@@ -33,7 +35,9 @@ interface AgendaClinicaCalendarioProps {
   visao: VisaoAgenda
   dataRef: string
   agendamentos: ClinicalAppointment[]
+  bloqueiosPorDia?: Record<string, ScheduleInterval[]>
   onSlotClick: (ymd: string, hm: string) => void
+  onSlotBloqueado?: (ymd: string, hm: string) => void
   onEventoClick: (item: ClinicalAppointment) => void
   onDiaClick: (ymd: string) => void
 }
@@ -118,7 +122,26 @@ function sxGradeColunas(qtdDias: number) {
   } as const
 }
 
-function CabecalhoDias({ dias }: { dias: string[] }) {
+function faixaBloqueio(intervalo: ScheduleInterval): { top: number; height: number } | null {
+  const inicio = horarioParaMinuto(intervalo.startTime)
+  const fim = horarioParaMinuto(intervalo.endTime, true)
+  if (inicio == null || fim == null) return null
+  const visivelInicio = Math.max(inicio, HORA_INICIO * 60)
+  const visivelFim = Math.min(fim, HORA_FIM * 60)
+  if (visivelFim <= visivelInicio) return null
+  return {
+    top: ((visivelInicio - HORA_INICIO * 60) / 60) * PX_POR_HORA,
+    height: ((visivelFim - visivelInicio) / 60) * PX_POR_HORA,
+  }
+}
+
+function CabecalhoDias({
+  dias,
+  onAjustarBloqueio,
+}: {
+  dias: string[]
+  onAjustarBloqueio?: (ymd: string) => void
+}) {
   const hoje = ymdEmSaoPaulo()
   return (
     <Box sx={sxGradeColunas(dias.length)}>
@@ -143,6 +166,15 @@ function CabecalhoDias({ dias }: { dias: string[] }) {
             <Typography variant="h6" fontWeight={700} color={isHoje ? 'primary.dark' : 'text.primary'}>
               {Number(d)}/{m}
             </Typography>
+            {onAjustarBloqueio ? (
+              <Button
+                size="small"
+                onClick={() => onAjustarBloqueio(ymd)}
+                sx={{ fontSize: 11, lineHeight: 1.2, minWidth: 0, py: 0.25, textTransform: 'none' }}
+              >
+                Ajustar bloqueio
+              </Button>
+            ) : null}
             <Typography variant="caption" sx={{ display: 'none' }}>
               {y}
             </Typography>
@@ -178,23 +210,35 @@ function CabecalhoMes() {
   )
 }
 
-export function AgendaClinicaCabecalho({ visao, dataRef }: { visao: VisaoAgenda; dataRef: string }) {
+export function AgendaClinicaCabecalho({
+  visao,
+  dataRef,
+  onAjustarBloqueio,
+}: {
+  visao: VisaoAgenda
+  dataRef: string
+  onAjustarBloqueio?: (ymd: string) => void
+}) {
   if (visao === 'mes') {
     return <CabecalhoMes />
   }
   const dias = visao === 'dia' ? [dataRef] : diasDaSemana(dataRef)
-  return <CabecalhoDias dias={dias} />
+  return <CabecalhoDias dias={dias} onAjustarBloqueio={onAjustarBloqueio} />
 }
 
 function GradeHorarios({
   dias,
   agendamentos,
+  bloqueiosPorDia,
   onSlotClick,
+  onSlotBloqueado,
   onEventoClick,
 }: {
   dias: string[]
   agendamentos: ClinicalAppointment[]
+  bloqueiosPorDia: Record<string, ScheduleInterval[]>
   onSlotClick: (ymd: string, hm: string) => void
+  onSlotBloqueado?: (ymd: string, hm: string) => void
   onEventoClick: (item: ClinicalAppointment) => void
 }) {
   const hoje = ymdEmSaoPaulo()
@@ -228,6 +272,7 @@ function GradeHorarios({
 
       {dias.map((ymd) => {
         const eventos = posicionarEventos(agendamentosDoDia(agendamentos, ymd))
+        const bloqueios = bloqueiosPorDia[ymd] ?? []
         return (
           <Box
             key={ymd}
@@ -241,18 +286,49 @@ function GradeHorarios({
           >
             {SLOTS.map((minutos) => {
               const ehHoraCheia = minutos % 60 === 0
+              const bloqueado = slotCruzaBloqueio(minutos, SLOT_MIN, bloqueios)
+              const hm = formatarMinutosDoDia(minutos)
               return (
                 <Box
                   key={`${ymd}-${minutos}`}
-                  onClick={() => onSlotClick(ymd, formatarMinutosDoDia(minutos))}
+                  onClick={() => (bloqueado ? onSlotBloqueado?.(ymd, hm) : onSlotClick(ymd, hm))}
                   sx={{
                     height: PX_POR_HORA / 2,
                     borderBottom: '1px solid',
                     borderColor: ehHoraCheia ? 'grey.200' : 'grey.100',
-                    cursor: 'pointer',
-                    '&:hover': { bgcolor: 'action.hover' },
+                    cursor: bloqueado ? 'not-allowed' : 'pointer',
+                    '&:hover': { bgcolor: bloqueado ? 'transparent' : 'action.hover' },
                   }}
                 />
+              )
+            })}
+            {bloqueios.map((bloqueio) => {
+              const faixa = faixaBloqueio(bloqueio)
+              if (!faixa) return null
+              return (
+                <Box
+                  key={`${ymd}-${bloqueio.startTime}-${bloqueio.endTime}`}
+                  onClick={() => onSlotBloqueado?.(ymd, bloqueio.startTime)}
+                  sx={{
+                    position: 'absolute',
+                    top: faixa.top,
+                    height: faixa.height,
+                    left: 0,
+                    right: 0,
+                    zIndex: 1,
+                    bgcolor: 'grey.400',
+                    cursor: 'not-allowed',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                  }}
+                >
+                  {faixa.height >= 18 ? (
+                    <Typography variant="caption" sx={{ px: 0.5, color: 'grey.900', fontWeight: 700 }}>
+                      Bloqueado
+                    </Typography>
+                  ) : null}
+                </Box>
               )
             })}
             {eventos.map((ev) => (
@@ -264,7 +340,7 @@ function GradeHorarios({
                   height: ev.height - 4,
                   left: `calc(${(ev.col / ev.colCount) * 100}% + 2px)`,
                   width: `calc(${100 / ev.colCount}% - 4px)`,
-                  zIndex: 1,
+                  zIndex: 2,
                 }}
               >
                 <Box sx={{ height: '100%' }}>
@@ -358,7 +434,9 @@ export function AgendaClinicaCalendario({
   visao,
   dataRef,
   agendamentos,
+  bloqueiosPorDia = {},
   onSlotClick,
+  onSlotBloqueado,
   onEventoClick,
   onDiaClick,
 }: AgendaClinicaCalendarioProps) {
@@ -378,7 +456,9 @@ export function AgendaClinicaCalendario({
     <GradeHorarios
       dias={dias}
       agendamentos={agendamentos}
+      bloqueiosPorDia={bloqueiosPorDia}
       onSlotClick={onSlotClick}
+      onSlotBloqueado={onSlotBloqueado}
       onEventoClick={onEventoClick}
     />
   )

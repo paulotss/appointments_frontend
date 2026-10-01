@@ -4,6 +4,10 @@ const MENSAGENS_EXATAS: Record<string, string> = {
   'tissCode already exists': 'Já existe um procedimento com este código TISS.',
   'tissCode already exists for this health plan': 'Já existe este código TISS neste plano de saúde.',
   'endsAt must be after scheduledAt': 'O horário final deve ser depois do horário de início.',
+  'endTime must be after startTime': 'O horário final deve ser depois do horário de início.',
+  'Schedule slot is blocked': 'Horário bloqueado.',
+  'Weekly blocks on the same weekday cannot overlap':
+    'Há períodos bloqueados sobrepostos no mesmo dia da semana.',
   'Procedure cannot be removed because it is in use':
     'O procedimento não pode ser removido porque está em uso.',
   'healthPlanPrices cannot contain duplicate healthPlanId':

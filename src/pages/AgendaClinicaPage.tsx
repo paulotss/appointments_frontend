@@ -19,6 +19,7 @@ import {
 import { AgendaClinicaToolbar, type VisaoTela } from '../components/AgendaClinicaToolbar'
 import { AgendamentoClinicoForm } from '../components/AgendamentoClinicoForm'
 import { AgendamentosClinicosTable } from '../components/AgendamentosClinicosTable'
+import { AjusteBloqueioDiaDialog } from '../components/AjusteBloqueioDiaDialog'
 import { TOP_BAR_HEIGHT } from '../layouts/AppLayout'
 import type { AgendamentoClinicoFormValues } from '../schemas/agendamentoClinico.schema'
 import {
@@ -28,6 +29,10 @@ import {
   excluirAgendamentoClinico,
   listarAgendamentosClinicos,
 } from '../services/clinical-appointments.service'
+import {
+  buscarAgendaProfissional,
+  substituirExcecoesAgenda,
+} from '../services/health-professionals.service'
 import {
   CLINICAL_APPOINTMENT_STATUSES,
   CLINICAL_APPOINTMENT_STATUS_CORES,
@@ -47,6 +52,7 @@ import {
 } from '../types/agendamentoClinico'
 import type { Patient } from '../types/paciente'
 import type { HealthProfessional } from '../types/profissional'
+import type { ProfessionalScheduleDay, ScheduleExceptionInput } from '../types/bloqueioHorario'
 import { mensagemErroApi } from '../utils/apiError'
 import {
   adicionarDiasYmd,
@@ -153,6 +159,9 @@ export function AgendaClinicaPage() {
   const [visao, setVisao] = useState<VisaoTela>('semana')
   const [dataRef, setDataRef] = useState(() => ymdEmSaoPaulo())
   const [agendamentos, setAgendamentos] = useState<ClinicalAppointment[]>([])
+  const [diasAgenda, setDiasAgenda] = useState<ProfessionalScheduleDay[]>([])
+  const [ajusteDia, setAjusteDia] = useState<string | null>(null)
+  const [salvandoBloqueio, setSalvandoBloqueio] = useState(false)
   const [filtroPaciente, setFiltroPaciente] = useState<Patient | null>(null)
   const [filtroProfissional, setFiltroProfissional] = useState<HealthProfessional | null>(null)
   const [loading, setLoading] = useState(false)
@@ -176,21 +185,30 @@ export function AgendaClinicaPage() {
   const carregarAgendamentos = useCallback(async () => {
     if (!filtroAgendaAtivo) {
       setAgendamentos([])
+      setDiasAgenda([])
       setLoading(false)
       return
     }
     setLoading(true)
     setError(null)
     try {
-      const data = await listarAgendamentosClinicos({
-        from,
-        to,
-        ...(filtroPacienteId === '' ? {} : { patientId: filtroPacienteId }),
-        ...(filtroProfissionalId === '' ? {} : { healthProfessionalId: filtroProfissionalId }),
-        ...(filtroTipo === '' ? {} : { type: filtroTipo }),
-        ...(filtroStatus === '' ? {} : { status: filtroStatus }),
-      })
+      const agendaPromise =
+        filtroProfissionalId === ''
+          ? Promise.resolve(null)
+          : buscarAgendaProfissional(filtroProfissionalId, from, to)
+      const [data, agenda] = await Promise.all([
+        listarAgendamentosClinicos({
+          from,
+          to,
+          ...(filtroPacienteId === '' ? {} : { patientId: filtroPacienteId }),
+          ...(filtroProfissionalId === '' ? {} : { healthProfessionalId: filtroProfissionalId }),
+          ...(filtroTipo === '' ? {} : { type: filtroTipo }),
+          ...(filtroStatus === '' ? {} : { status: filtroStatus }),
+        }),
+        agendaPromise,
+      ])
       setAgendamentos(data)
+      setDiasAgenda(agenda?.days ?? [])
     } catch (err) {
       setError(mensagemErroApi(err, 'Não foi possível carregar a agenda clínica.'))
     } finally {
@@ -298,6 +316,31 @@ export function AgendaClinicaPage() {
 
   const visaoCalendario: VisaoAgenda = visao === 'lista' ? 'semana' : visao
   const calendarioVisivel = filtroAgendaAtivo && !loading && visao !== 'lista'
+  const bloqueiosPorDia = useMemo(() => {
+    const mapa: Record<string, ProfessionalScheduleDay['effectiveBlocks']> = {}
+    if (!filtroProfissional) return mapa
+    for (const dia of diasAgenda) mapa[dia.date] = dia.effectiveBlocks
+    return mapa
+  }, [diasAgenda, filtroProfissional])
+  const diaEmAjuste = diasAgenda.find((dia) => dia.date === ajusteDia) ?? null
+  const podeAjustarBloqueio = Boolean(filtroProfissional) && (visao === 'dia' || visao === 'semana')
+
+  async function salvarExcecoes(exceptions: ScheduleExceptionInput[]) {
+    if (!filtroProfissional || !ajusteDia) return
+    setSalvandoBloqueio(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      await substituirExcecoesAgenda(filtroProfissional.id, { date: ajusteDia, exceptions })
+      setAjusteDia(null)
+      setSuccess('Bloqueio do dia atualizado.')
+      await carregarAgendamentos()
+    } catch (err) {
+      setError(mensagemErroApi(err, 'Não foi possível atualizar o bloqueio do dia.'))
+    } finally {
+      setSalvandoBloqueio(false)
+    }
+  }
 
   return (
     <Box>
@@ -374,7 +417,11 @@ export function AgendaClinicaPage() {
                 </Typography>
               ))}
             </Stack>
-            <AgendaClinicaCabecalho visao={visaoCalendario} dataRef={dataRef} />
+            <AgendaClinicaCabecalho
+              visao={visaoCalendario}
+              dataRef={dataRef}
+              onAjustarBloqueio={podeAjustarBloqueio ? setAjusteDia : undefined}
+            />
           </Paper>
         ) : null}
       </Box>
@@ -407,7 +454,12 @@ export function AgendaClinicaPage() {
             visao={visaoCalendario}
             dataRef={dataRef}
             agendamentos={agendamentos}
+            bloqueiosPorDia={bloqueiosPorDia}
             onSlotClick={(ymd, hm) => abrirNovo(ymd, hm)}
+            onSlotBloqueado={() => {
+              setSuccess(null)
+              setError('Horário bloqueado.')
+            }}
             onEventoClick={abrirEvento}
             onDiaClick={(ymd) => {
               setDataRef(ymd)
@@ -492,6 +544,18 @@ export function AgendaClinicaPage() {
           </Box>
         </DialogContent>
       </Dialog>
+
+      <AjusteBloqueioDiaDialog
+        open={Boolean(ajusteDia) && Boolean(filtroProfissional)}
+        profissionalNome={filtroProfissional?.name ?? ''}
+        dia={diaEmAjuste}
+        saving={salvandoBloqueio}
+        onClose={() => {
+          if (salvandoBloqueio) return
+          setAjusteDia(null)
+        }}
+        onSave={(exceptions) => void salvarExcecoes(exceptions)}
+      />
     </Box>
   )
 }

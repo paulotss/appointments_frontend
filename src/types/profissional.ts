@@ -1,4 +1,5 @@
 import type { UfBrasil } from '../utils/ufBrasil'
+import type { ScheduleInterval } from './bloqueioHorario'
 
 export type CouncilType = 'CRM' | 'CRO' | 'CRP' | 'COREN' | 'OTHER'
 
@@ -18,6 +19,10 @@ export interface HealthProfessionalSpecialtyInput {
   specialtyId: number
 }
 
+export interface WeeklyBlockInput extends ScheduleInterval {
+  weekday: number
+}
+
 export interface HealthProfessional {
   id: number
   name: string
@@ -30,6 +35,7 @@ export interface HealthProfessional {
   email: string | null
   isActive: boolean
   specialties: HealthProfessionalSpecialtyLink[]
+  weeklyBlocks: WeeklyBlockInput[]
 }
 
 export interface CreateHealthProfessionalRequest {
@@ -43,6 +49,7 @@ export interface CreateHealthProfessionalRequest {
   phone?: string
   email?: string
   isActive?: boolean
+  weeklyBlocks?: WeeklyBlockInput[]
 }
 
 export interface UpdateHealthProfessionalRequest {
@@ -56,4 +63,5 @@ export interface UpdateHealthProfessionalRequest {
   phone?: string | null
   email?: string | null
   isActive?: boolean
+  weeklyBlocks?: WeeklyBlockInput[]
 }
