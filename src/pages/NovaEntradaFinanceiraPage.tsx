@@ -26,6 +26,7 @@ import {
   type EntradaParticularFormValues,
 } from '../schemas/financeiro.schema'
 import { buscarAgendamentoClinico } from '../services/clinical-appointments.service'
+import { listarAssinaturasDoPaciente } from '../services/benefit-subscriptions.service'
 import { criarEntradaParticular } from '../services/financial-entries.service'
 import { temAvulsoParaCobrar, type ClinicalAppointment } from '../types/agendamentoClinico'
 import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from '../types/financeiro'
@@ -56,10 +57,13 @@ export function NovaEntradaFinanceiraPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [descontoCartao, setDescontoCartao] = useState<number | null>(null)
+
   const {
     control,
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<EntradaParticularFormInput, unknown, EntradaParticularFormValues>({
     resolver: zodResolver(entradaParticularSchema),
@@ -88,6 +92,23 @@ export function NovaEntradaFinanceiraPage() {
       try {
         const item = await buscarAgendamentoClinico(agendamentoId)
         setAgendamento(item)
+        const assinaturas = await listarAssinaturasDoPaciente(item.patientId).catch(() => [])
+        const vigente = assinaturas.find((assinatura) => assinatura.isCurrent)
+        if (vigente?.discountPercent != null && vigente.discountPercent > 0) {
+          const linhasParticulares = item.procedures.filter(
+            (linha) => (linha.origin ?? 'private') === 'private',
+          )
+          const bruto = linhasParticulares.reduce(
+            (total, linha) => total + (valorParticular(linha.procedure) ?? 0),
+            0,
+          )
+          const cents = Math.round(bruto * 100)
+          const desconto = Math.round((cents * vigente.discountPercent) / 100) / 100
+          setDescontoCartao(vigente.discountPercent)
+          setValue('discountAmount', desconto)
+        } else {
+          setDescontoCartao(null)
+        }
       } catch (err) {
         setError(mensagemErroApi(err, 'Não foi possível carregar o agendamento.'))
       } finally {
@@ -95,7 +116,7 @@ export function NovaEntradaFinanceiraPage() {
       }
     }
     void carregar()
-  }, [agendamentoId])
+  }, [agendamentoId, setValue])
 
   const linhas = useMemo(() => {
     if (!agendamento) return []
@@ -172,8 +193,13 @@ export function NovaEntradaFinanceiraPage() {
             </Typography>
             {!temAvulsoParaCobrar(agendamento) ? (
               <Alert severity="warning">
-                Somente procedimentos avulsos geram esta entrada. Pacote já foi pago na atribuição e
-                plano segue o faturamento TISS.
+                Somente procedimentos avulsos geram esta entrada. Pacote e cota do cartão já estão
+                incluídos. Plano segue o faturamento TISS.
+              </Alert>
+            ) : null}
+            {descontoCartao != null ? (
+              <Alert severity="info">
+                Desconto de {descontoCartao}% do cartão sugerido no campo abaixo. Ajuste se precisar.
               </Alert>
             ) : null}
             {agendamento.status !== 'finished' ? (

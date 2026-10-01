@@ -1,6 +1,7 @@
 import AssessmentIcon from '@mui/icons-material/Assessment'
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
+import CreditCardIcon from '@mui/icons-material/CreditCard'
 import ChatIcon from '@mui/icons-material/Chat'
 import DescriptionIcon from '@mui/icons-material/Description'
 import Inventory2Icon from '@mui/icons-material/Inventory2'
@@ -59,6 +60,14 @@ const allMenuItems: MenuItem[] = [
       { kind: 'link', label: 'Lotes', to: '/tiss/lotes' },
       { kind: 'link', label: 'Planos de saúde', to: '/planos-saude' },
     ],
+  },
+  {
+    kind: 'submenu',
+    id: 'cartao',
+    label: 'Cartão',
+    icon: <CreditCardIcon />,
+    adminOnly: true,
+    items: [{ kind: 'link', label: 'Planos', to: '/cartao/planos' }],
   },
   {
     kind: 'submenu',

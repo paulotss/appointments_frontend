@@ -156,7 +156,7 @@ export function FinanceiroEntradasPage() {
             </Paper>
           ) : (
             <Paper sx={{ p: 0 }}>
-              <FinanceiroEntradasTable entradas={entradas} />
+              <FinanceiroEntradasTable entradas={entradas} onChanged={() => void carregar()} />
               <TablePagination
                 component="div"
                 count={meta.total}

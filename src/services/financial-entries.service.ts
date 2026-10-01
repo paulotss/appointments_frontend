@@ -1,4 +1,5 @@
 import type { ListEnvelope } from '../types/listEnvelope'
+import type { PaymentMethod } from '../types/financeiro'
 import {
   mapMoney,
   type CreatePrivateFinancialEntryRequest,
@@ -57,6 +58,9 @@ interface BackendFinancialEntry {
   clinicalAppointmentId: number | null
   billingBatchId: number | null
   patientPackageId: number | null
+  benefitSubscriptionId?: number | null
+  dueDate?: string | null
+  installmentNumber?: number | null
   createdAt: string
   items?: BackendEntryItem[]
   clinicalAppointment?: BackendAppointment | null
@@ -65,6 +69,12 @@ interface BackendFinancialEntry {
     id: number
     patient?: BackendRef
     package?: BackendRef
+  } | null
+  benefitSubscription?: {
+    id: number
+    cardNumber: string
+    patient?: BackendRef
+    plan?: BackendRef
   } | null
 }
 
@@ -96,11 +106,15 @@ export function mapBackendFinancialEntry(item: BackendFinancialEntry): Financial
     clinicalAppointmentId: item.clinicalAppointmentId ?? null,
     billingBatchId: item.billingBatchId ?? null,
     patientPackageId: item.patientPackageId ?? null,
+    benefitSubscriptionId: item.benefitSubscriptionId ?? null,
+    dueDate: item.dueDate ?? null,
+    installmentNumber: item.installmentNumber ?? null,
     createdAt: item.createdAt,
     items: (item.items ?? []).map(mapItem),
     clinicalAppointment: item.clinicalAppointment ?? null,
     billingBatch: item.billingBatch ?? null,
     patientPackage: item.patientPackage ?? null,
+    benefitSubscription: item.benefitSubscription ?? null,
   }
 }
 
@@ -157,6 +171,17 @@ export async function listarEntradasFinanceiras(
 
 export async function buscarEntradaFinanceira(id: number): Promise<FinancialEntry> {
   const response = await apiClient.get<BackendFinancialEntry>(`/financial-entries/${id}`)
+  return mapBackendFinancialEntry(response.data)
+}
+
+export async function receberParcelaCartao(
+  id: number,
+  payload: { paymentMethod: PaymentMethod; paidAt?: string },
+): Promise<FinancialEntry> {
+  const response = await apiClient.post<BackendFinancialEntry>(
+    `/financial-entries/${id}/receive`,
+    payload,
+  )
   return mapBackendFinancialEntry(response.data)
 }
 

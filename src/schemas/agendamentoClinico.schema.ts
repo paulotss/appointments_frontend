@@ -16,6 +16,14 @@ const baseSchema = z.object({
   status: z.enum(CLINICAL_APPOINTMENT_STATUSES),
   procedureIds: z.array(z.number().int().positive()).default([]),
   patientPackageItemIds: z.array(z.number().int().positive()).default([]),
+  benefitUses: z
+    .array(
+      z.object({
+        entitlementId: z.number().int().positive(),
+        procedureId: z.number().int().positive(),
+      }),
+    )
+    .default([]),
   insuranceGuideIds: z.array(z.number().int().positive()).default([]),
   notes: z.string().optional(),
 })
@@ -24,11 +32,12 @@ export const agendamentoClinicoSchema = baseSchema.superRefine((values, ctx) => 
   if (
     values.procedureIds.length === 0 &&
     values.patientPackageItemIds.length === 0 &&
+    values.benefitUses.length === 0 &&
     values.insuranceGuideIds.length === 0
   ) {
     ctx.addIssue({
       code: 'custom',
-      message: 'Selecione ao menos um procedimento avulso, de pacote ou uma guia',
+      message: 'Selecione ao menos um procedimento avulso, de pacote, do cartão ou uma guia',
       path: ['procedureIds'],
     })
   }
@@ -44,6 +53,13 @@ export const agendamentoClinicoSchema = baseSchema.superRefine((values, ctx) => 
       code: 'custom',
       message: 'Itens de pacote duplicados não são permitidos',
       path: ['patientPackageItemIds'],
+    })
+  }
+  if (new Set(values.benefitUses.map((item) => `${item.entitlementId}:${item.procedureId}`)).size !== values.benefitUses.length) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'Cotas duplicadas não são permitidas',
+      path: ['benefitUses'],
     })
   }
   if (new Set(values.insuranceGuideIds).size !== values.insuranceGuideIds.length) {

@@ -16,6 +16,7 @@ import {
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PacienteForm } from '../components/PacienteForm'
+import { PacienteCartaoSecao } from '../components/PacienteCartaoSecao'
 import { PacientePacotesSecao } from '../components/PacientePacotesSecao'
 import { PacientesTable } from '../components/PacientesTable'
 import { listarPlanosSaude } from '../services/health-plans.service'
@@ -228,6 +229,7 @@ export function PacientesPage() {
                 onSubmit={(values) => void salvarEdicao(values)}
               />
               <PacientePacotesSecao key={`pacotes-${editando.id}`} patientId={editando.id} />
+              <PacienteCartaoSecao key={`cartao-${editando.id}`} patientId={editando.id} />
               </>
             )}
           </Stack>

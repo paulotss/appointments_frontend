@@ -38,6 +38,7 @@ import {
   idsAvulsosDoAgendamento,
   idsGuiasDoAgendamento,
   idsItensPacoteDoAgendamento,
+  usosCartaoDoAgendamento,
   type ClinicalAppointment,
   type ClinicalAppointmentStatus,
   type ClinicalAppointmentType,
@@ -96,6 +97,7 @@ function montarPayloadCriacao(values: AgendamentoClinicoFormValues): CreateClini
     ...(values.patientPackageItemIds.length > 0
       ? { patientPackageItemIds: values.patientPackageItemIds }
       : {}),
+    ...(values.benefitUses.length > 0 ? { benefitUses: values.benefitUses } : {}),
     ...(values.insuranceGuideIds.length > 0 ? { insuranceGuideIds: values.insuranceGuideIds } : {}),
     ...(notes ? { notes } : {}),
   }
@@ -127,6 +129,18 @@ function montarPayloadAtualizacao(
   }
   if (!idsIguais(values.patientPackageItemIds, idsItensPacoteDoAgendamento(atual))) {
     payload.patientPackageItemIds = values.patientPackageItemIds
+  }
+  const usosAtuais = usosCartaoDoAgendamento(atual)
+  const usosIguais =
+    values.benefitUses.length === usosAtuais.length &&
+    values.benefitUses.every((uso) =>
+      usosAtuais.some(
+        (atualUso) =>
+          atualUso.entitlementId === uso.entitlementId && atualUso.procedureId === uso.procedureId,
+      ),
+    )
+  if (!usosIguais) {
+    payload.benefitUses = values.benefitUses
   }
   if (!idsIguais(values.insuranceGuideIds, idsGuiasDoAgendamento(atual))) {
     payload.insuranceGuideIds = values.insuranceGuideIds
@@ -447,6 +461,7 @@ export function AgendaClinicaPage() {
                         status: editando.status,
                         procedureIds: idsAvulsosDoAgendamento(editando),
                         patientPackageItemIds: idsItensPacoteDoAgendamento(editando),
+                        benefitUses: usosCartaoDoAgendamento(editando),
                         insuranceGuideIds: idsGuiasDoAgendamento(editando),
                         notes: editando.notes ?? '',
                       }
@@ -459,6 +474,7 @@ export function AgendaClinicaPage() {
                         status: 'marked',
                         procedureIds: [],
                         patientPackageItemIds: [],
+                        benefitUses: [],
                         insuranceGuideIds: [],
                         notes: '',
                       }

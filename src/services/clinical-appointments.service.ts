@@ -38,6 +38,7 @@ interface BackendAppointmentProcedure {
   origin?: ClinicalAppointmentProcedure['origin']
   patientPackageItemId?: number | null
   insuranceGuideId?: number | null
+  benefitEntitlementId?: number | null
   procedure?: BackendProcedureRef
 }
 
@@ -71,6 +72,7 @@ function mapAppointmentProcedure(item: BackendAppointmentProcedure): ClinicalApp
     origin: item.origin ?? 'private',
     patientPackageItemId: item.patientPackageItemId ?? null,
     insuranceGuideId: item.insuranceGuideId ?? null,
+    benefitEntitlementId: item.benefitEntitlementId ?? null,
     procedure: item.procedure,
   }
 }

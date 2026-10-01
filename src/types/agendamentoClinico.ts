@@ -45,7 +45,12 @@ export const CLINICAL_APPOINTMENT_TYPE_CORES: Record<ClinicalAppointmentType, st
   mixed: '#6a1b9a',
 }
 
-export const CLINICAL_APPOINTMENT_PROCEDURE_ORIGINS = ['private', 'package', 'health_plan'] as const
+export const CLINICAL_APPOINTMENT_PROCEDURE_ORIGINS = [
+  'private',
+  'package',
+  'health_plan',
+  'benefit',
+] as const
 export type ClinicalAppointmentProcedureOrigin =
   (typeof CLINICAL_APPOINTMENT_PROCEDURE_ORIGINS)[number]
 
@@ -56,6 +61,7 @@ export interface ClinicalAppointmentProcedure {
   origin: ClinicalAppointmentProcedureOrigin
   patientPackageItemId?: number | null
   insuranceGuideId?: number | null
+  benefitEntitlementId?: number | null
   procedure?: InsuranceGuideProcedureRef
 }
 
@@ -81,6 +87,11 @@ export interface ClinicalAppointment {
   procedures: ClinicalAppointmentProcedure[]
 }
 
+export interface BenefitEntitlementUse {
+  entitlementId: number
+  procedureId: number
+}
+
 export interface CreateClinicalAppointmentRequest {
   patientId: number
   healthProfessionalId: number
@@ -92,6 +103,7 @@ export interface CreateClinicalAppointmentRequest {
   insuranceGuideIds?: number[]
   procedureIds?: number[]
   patientPackageItemIds?: number[]
+  benefitUses?: BenefitEntitlementUse[]
 }
 
 export interface UpdateClinicalAppointmentRequest {
@@ -105,6 +117,7 @@ export interface UpdateClinicalAppointmentRequest {
   insuranceGuideIds?: number[]
   procedureIds?: number[]
   patientPackageItemIds?: number[]
+  benefitUses?: BenefitEntitlementUse[]
 }
 
 export interface ListarAgendamentosClinicosParams {
@@ -137,6 +150,15 @@ export function idsItensPacoteDoAgendamento(item: ClinicalAppointment): number[]
   return (item.procedures ?? [])
     .filter((linha) => linha.origin === 'package' && linha.patientPackageItemId != null)
     .map((linha) => linha.patientPackageItemId as number)
+}
+
+export function usosCartaoDoAgendamento(item: ClinicalAppointment): BenefitEntitlementUse[] {
+  return (item.procedures ?? [])
+    .filter((linha) => linha.origin === 'benefit' && linha.benefitEntitlementId != null)
+    .map((linha) => ({
+      entitlementId: linha.benefitEntitlementId as number,
+      procedureId: linha.procedureId,
+    }))
 }
 
 export function temAvulsoParaCobrar(item: ClinicalAppointment): boolean {
