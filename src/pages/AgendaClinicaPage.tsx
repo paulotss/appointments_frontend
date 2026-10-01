@@ -35,7 +35,9 @@ import {
   CLINICAL_APPOINTMENT_TYPES,
   CLINICAL_APPOINTMENT_TYPE_CORES,
   CLINICAL_APPOINTMENT_TYPE_LABELS,
+  idsAvulsosDoAgendamento,
   idsGuiasDoAgendamento,
+  idsItensPacoteDoAgendamento,
   type ClinicalAppointment,
   type ClinicalAppointmentStatus,
   type ClinicalAppointmentType,
@@ -84,26 +86,17 @@ function notesDoFormulario(values: AgendamentoClinicoFormValues): string | null 
 function montarPayloadCriacao(values: AgendamentoClinicoFormValues): CreateClinicalAppointmentRequest {
   const { scheduledAt, endsAt } = montarIntervalo(values)
   const notes = notesDoFormulario(values)
-  if (values.type === 'private') {
-    return {
-      patientId: values.patientId,
-      healthProfessionalId: values.healthProfessionalId,
-      scheduledAt,
-      endsAt,
-      type: 'private',
-      status: values.status,
-      procedureIds: values.procedureIds,
-      ...(notes ? { notes } : {}),
-    }
-  }
   return {
     patientId: values.patientId,
     healthProfessionalId: values.healthProfessionalId,
     scheduledAt,
     endsAt,
-    type: 'health_plan',
     status: values.status,
-    insuranceGuideIds: values.insuranceGuideIds,
+    ...(values.procedureIds.length > 0 ? { procedureIds: values.procedureIds } : {}),
+    ...(values.patientPackageItemIds.length > 0
+      ? { patientPackageItemIds: values.patientPackageItemIds }
+      : {}),
+    ...(values.insuranceGuideIds.length > 0 ? { insuranceGuideIds: values.insuranceGuideIds } : {}),
     ...(notes ? { notes } : {}),
   }
 }
@@ -120,7 +113,6 @@ function montarPayloadAtualizacao(
   atual: ClinicalAppointment,
 ): UpdateClinicalAppointmentRequest {
   const { scheduledAt, endsAt } = montarIntervalo(values)
-  const tipoMudou = values.type !== atual.type
   const payload: UpdateClinicalAppointmentRequest = {
     patientId: values.patientId,
     healthProfessionalId: values.healthProfessionalId,
@@ -130,20 +122,14 @@ function montarPayloadAtualizacao(
     notes: notesDoFormulario(values),
   }
 
-  if (tipoMudou) {
-    payload.type = values.type
+  if (!idsIguais(values.procedureIds, idsAvulsosDoAgendamento(atual))) {
+    payload.procedureIds = values.procedureIds
   }
-
-  if (values.type === 'private') {
-    const atuais = atual.procedures.map((item) => item.procedureId)
-    if (tipoMudou || !idsIguais(values.procedureIds, atuais)) {
-      payload.procedureIds = values.procedureIds
-    }
-  } else {
-    const atuais = idsGuiasDoAgendamento(atual)
-    if (tipoMudou || !idsIguais(values.insuranceGuideIds, atuais)) {
-      payload.insuranceGuideIds = values.insuranceGuideIds
-    }
+  if (!idsIguais(values.patientPackageItemIds, idsItensPacoteDoAgendamento(atual))) {
+    payload.patientPackageItemIds = values.patientPackageItemIds
+  }
+  if (!idsIguais(values.insuranceGuideIds, idsGuiasDoAgendamento(atual))) {
+    payload.insuranceGuideIds = values.insuranceGuideIds
   }
 
   return payload
@@ -459,8 +445,8 @@ export function AgendaClinicaPage() {
                         scheduledTime: isoParaHmSaoPaulo(editando.scheduledAt),
                         durationMinutes: duracaoMinutosEntre(editando.scheduledAt, editando.endsAt),
                         status: editando.status,
-                        type: editando.type,
-                        procedureIds: editando.procedures.map((item) => item.procedureId),
+                        procedureIds: idsAvulsosDoAgendamento(editando),
+                        patientPackageItemIds: idsItensPacoteDoAgendamento(editando),
                         insuranceGuideIds: idsGuiasDoAgendamento(editando),
                         notes: editando.notes ?? '',
                       }
@@ -471,8 +457,8 @@ export function AgendaClinicaPage() {
                         scheduledTime: horaPreenchida,
                         durationMinutes: 30,
                         status: 'marked',
-                        type: 'private',
                         procedureIds: [],
+                        patientPackageItemIds: [],
                         insuranceGuideIds: [],
                         notes: '',
                       }

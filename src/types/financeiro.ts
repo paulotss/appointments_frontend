@@ -12,12 +12,13 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   transfer: 'Transferência',
 }
 
-export const FINANCIAL_ENTRY_TYPES = ['private_procedure', 'health_plan'] as const
+export const FINANCIAL_ENTRY_TYPES = ['private_procedure', 'health_plan', 'procedure_package'] as const
 export type FinancialEntryType = (typeof FINANCIAL_ENTRY_TYPES)[number]
 
 export const FINANCIAL_ENTRY_TYPE_LABELS: Record<FinancialEntryType, string> = {
   private_procedure: 'Particular',
   health_plan: 'Plano de saúde',
+  procedure_package: 'Pacote',
 }
 
 export const FINANCIAL_ENTRY_STATUSES = ['pending', 'paid', 'partially_paid', 'cancelled'] as const
@@ -106,10 +107,12 @@ export interface FinancialEntry {
   notes: string | null
   clinicalAppointmentId: number | null
   billingBatchId: number | null
+  patientPackageId: number | null
   createdAt: string
   items: FinancialEntryItem[]
   clinicalAppointment?: FinancialEntryAppointmentRef | null
   billingBatch?: FinancialEntryBatchRef | null
+  patientPackage?: { id: number; patient?: FinanceiroRef; package?: FinanceiroRef } | null
 }
 
 export interface CreatePrivateFinancialEntryRequest {
@@ -318,6 +321,12 @@ export function mapMoney(value: string | number | null | undefined): number {
 export function origemEntrada(item: FinancialEntry): string {
   if (item.type === 'private_procedure') {
     return item.clinicalAppointment?.patient?.name ?? 'Particular'
+  }
+  if (item.type === 'procedure_package') {
+    const pacote = item.patientPackage?.package?.name
+    const paciente = item.patientPackage?.patient?.name
+    if (pacote && paciente) return `${paciente} · ${pacote}`
+    return paciente ?? pacote ?? 'Pacote'
   }
   return item.billingBatch?.healthPlan?.name ?? 'Plano de saúde'
 }

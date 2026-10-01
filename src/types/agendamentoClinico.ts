@@ -20,13 +20,14 @@ export const CLINICAL_APPOINTMENT_STATUS_LABELS: Record<ClinicalAppointmentStatu
   absent: 'Falta',
 }
 
-export const CLINICAL_APPOINTMENT_TYPES = ['private', 'health_plan'] as const
+export const CLINICAL_APPOINTMENT_TYPES = ['private', 'health_plan', 'mixed'] as const
 
 export type ClinicalAppointmentType = (typeof CLINICAL_APPOINTMENT_TYPES)[number]
 
 export const CLINICAL_APPOINTMENT_TYPE_LABELS: Record<ClinicalAppointmentType, string> = {
   private: 'Particular',
   health_plan: 'Plano de saúde',
+  mixed: 'Misto',
 }
 
 export const CLINICAL_APPOINTMENT_STATUS_CORES: Record<ClinicalAppointmentStatus, string> = {
@@ -41,12 +42,20 @@ export const CLINICAL_APPOINTMENT_STATUS_CORES: Record<ClinicalAppointmentStatus
 export const CLINICAL_APPOINTMENT_TYPE_CORES: Record<ClinicalAppointmentType, string> = {
   private: '#1f8f66',
   health_plan: '#1565c0',
+  mixed: '#6a1b9a',
 }
+
+export const CLINICAL_APPOINTMENT_PROCEDURE_ORIGINS = ['private', 'package', 'health_plan'] as const
+export type ClinicalAppointmentProcedureOrigin =
+  (typeof CLINICAL_APPOINTMENT_PROCEDURE_ORIGINS)[number]
 
 export interface ClinicalAppointmentProcedure {
   id: number
   clinicalAppointmentId: number
   procedureId: number
+  origin: ClinicalAppointmentProcedureOrigin
+  patientPackageItemId?: number | null
+  insuranceGuideId?: number | null
   procedure?: InsuranceGuideProcedureRef
 }
 
@@ -77,11 +86,12 @@ export interface CreateClinicalAppointmentRequest {
   healthProfessionalId: number
   scheduledAt: string
   endsAt: string
-  type: ClinicalAppointmentType
+  type?: ClinicalAppointmentType
   status?: ClinicalAppointmentStatus
   notes?: string
   insuranceGuideIds?: number[]
   procedureIds?: number[]
+  patientPackageItemIds?: number[]
 }
 
 export interface UpdateClinicalAppointmentRequest {
@@ -94,6 +104,7 @@ export interface UpdateClinicalAppointmentRequest {
   notes?: string | null
   insuranceGuideIds?: number[]
   procedureIds?: number[]
+  patientPackageItemIds?: number[]
 }
 
 export interface ListarAgendamentosClinicosParams {
@@ -114,4 +125,20 @@ export function guiasDoAgendamento(item: ClinicalAppointment): InsuranceGuide[] 
 
 export function idsGuiasDoAgendamento(item: ClinicalAppointment): number[] {
   return (item.insuranceGuides ?? []).map((link) => link.insuranceGuideId)
+}
+
+export function idsAvulsosDoAgendamento(item: ClinicalAppointment): number[] {
+  return (item.procedures ?? [])
+    .filter((linha) => (linha.origin ?? 'private') === 'private')
+    .map((linha) => linha.procedureId)
+}
+
+export function idsItensPacoteDoAgendamento(item: ClinicalAppointment): number[] {
+  return (item.procedures ?? [])
+    .filter((linha) => linha.origin === 'package' && linha.patientPackageItemId != null)
+    .map((linha) => linha.patientPackageItemId as number)
+}
+
+export function temAvulsoParaCobrar(item: ClinicalAppointment): boolean {
+  return (item.procedures ?? []).some((linha) => (linha.origin ?? 'private') === 'private')
 }

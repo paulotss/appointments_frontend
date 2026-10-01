@@ -56,10 +56,16 @@ interface BackendFinancialEntry {
   notes: string | null
   clinicalAppointmentId: number | null
   billingBatchId: number | null
+  patientPackageId: number | null
   createdAt: string
   items?: BackendEntryItem[]
   clinicalAppointment?: BackendAppointment | null
   billingBatch?: BackendBatch | null
+  patientPackage?: {
+    id: number
+    patient?: BackendRef
+    package?: BackendRef
+  } | null
 }
 
 function mapItem(item: BackendEntryItem): FinancialEntryItem {
@@ -89,10 +95,12 @@ export function mapBackendFinancialEntry(item: BackendFinancialEntry): Financial
     notes: item.notes ?? null,
     clinicalAppointmentId: item.clinicalAppointmentId ?? null,
     billingBatchId: item.billingBatchId ?? null,
+    patientPackageId: item.patientPackageId ?? null,
     createdAt: item.createdAt,
     items: (item.items ?? []).map(mapItem),
     clinicalAppointment: item.clinicalAppointment ?? null,
     billingBatch: item.billingBatch ?? null,
+    patientPackage: item.patientPackage ?? null,
   }
 }
 

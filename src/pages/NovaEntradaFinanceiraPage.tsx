@@ -27,7 +27,7 @@ import {
 } from '../schemas/financeiro.schema'
 import { buscarAgendamentoClinico } from '../services/clinical-appointments.service'
 import { criarEntradaParticular } from '../services/financial-entries.service'
-import type { ClinicalAppointment } from '../types/agendamentoClinico'
+import { temAvulsoParaCobrar, type ClinicalAppointment } from '../types/agendamentoClinico'
 import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from '../types/financeiro'
 import { valorParticular } from '../types/procedimento'
 import { mensagemErroApi } from '../utils/apiError'
@@ -99,11 +99,13 @@ export function NovaEntradaFinanceiraPage() {
 
   const linhas = useMemo(() => {
     if (!agendamento) return []
-    return agendamento.procedures.map((item) => ({
-      id: item.id,
-      nome: item.procedure?.name ?? `Procedimento #${item.procedureId}`,
-      unitValue: valorParticular(item.procedure) ?? 0,
-    }))
+    return agendamento.procedures
+      .filter((item) => (item.origin ?? 'private') === 'private')
+      .map((item) => ({
+        id: item.id,
+        nome: item.procedure?.name ?? `Procedimento #${item.procedureId}`,
+        unitValue: valorParticular(item.procedure) ?? 0,
+      }))
   }, [agendamento])
 
   const grossAmount = linhas.reduce((total, item) => total + item.unitValue, 0)
@@ -130,7 +132,10 @@ export function NovaEntradaFinanceiraPage() {
   }
 
   const podeRegistrar =
-    agendamento?.type === 'private' && agendamento.status === 'finished' && linhas.length > 0
+    agendamento != null &&
+    temAvulsoParaCobrar(agendamento) &&
+    agendamento.status === 'finished' &&
+    linhas.length > 0
 
   return (
     <Stack spacing={2}>
@@ -165,8 +170,11 @@ export function NovaEntradaFinanceiraPage() {
             <Typography>
               <strong>Profissional:</strong> {agendamento.healthProfessional?.name ?? '—'}
             </Typography>
-            {agendamento.type !== 'private' ? (
-              <Alert severity="warning">Somente agendamentos particulares geram esta entrada.</Alert>
+            {!temAvulsoParaCobrar(agendamento) ? (
+              <Alert severity="warning">
+                Somente procedimentos avulsos geram esta entrada. Pacote já foi pago na atribuição e
+                plano segue o faturamento TISS.
+              </Alert>
             ) : null}
             {agendamento.status !== 'finished' ? (
               <Alert severity="warning">O agendamento precisa estar finalizado.</Alert>

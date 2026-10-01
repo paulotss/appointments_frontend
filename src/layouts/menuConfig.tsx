@@ -121,6 +121,7 @@ const allMenuItems: MenuItem[] = [
       { kind: 'link', label: 'Profissionais', to: '/profissionais' },
       { kind: 'link', label: 'Especialidades', to: '/especialidades' },
       { kind: 'link', label: 'Pacientes', to: '/pacientes' },
+      { kind: 'link', label: 'Pacotes', to: '/pacotes' },
       { kind: 'divider', label: 'Estoque' },
       { kind: 'link', label: 'Categorias', to: '/configuracoes/estoque/categorias' },
       { kind: 'link', label: 'Produtos', to: '/configuracoes/estoque/produtos' },

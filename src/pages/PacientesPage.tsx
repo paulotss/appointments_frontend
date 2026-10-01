@@ -16,6 +16,7 @@ import {
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PacienteForm } from '../components/PacienteForm'
+import { PacientePacotesSecao } from '../components/PacientePacotesSecao'
 import { PacientesTable } from '../components/PacientesTable'
 import { listarPlanosSaude } from '../services/health-plans.service'
 import { sincronizarCarteirinhas } from '../services/insurance-cards.service'
@@ -204,6 +205,7 @@ export function PacientesPage() {
                 <Typography>Carregando paciente...</Typography>
               </Stack>
             ) : (
+              <>
               <PacienteForm
                 key={editando.id}
                 defaultValues={{
@@ -225,6 +227,8 @@ export function PacientesPage() {
                 onCancel={fecharEdicao}
                 onSubmit={(values) => void salvarEdicao(values)}
               />
+              <PacientePacotesSecao key={`pacotes-${editando.id}`} patientId={editando.id} />
+              </>
             )}
           </Stack>
         </DialogContent>

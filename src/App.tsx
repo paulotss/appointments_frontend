@@ -48,6 +48,8 @@ import { NovoPacientePage } from './pages/NovoPacientePage'
 import { NovoPlanoSaudePage } from './pages/NovoPlanoSaudePage'
 import { NovoProfissionalPage } from './pages/NovoProfissionalPage'
 import { PacientesPage } from './pages/PacientesPage'
+import { PacotesPage } from './pages/PacotesPage'
+import { NovoPacotePage } from './pages/NovoPacotePage'
 import { PlanosSaudePage } from './pages/PlanosSaudePage'
 import { ProdutosConfigPage } from './pages/ProdutosConfigPage'
 import { ProdutosEstoquePage } from './pages/ProdutosEstoquePage'
@@ -279,6 +281,22 @@ function App() {
           element={
             <AdminRoute>
               <NovoPacientePage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/pacotes"
+          element={
+            <AdminRoute>
+              <PacotesPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/pacotes/novo"
+          element={
+            <AdminRoute>
+              <NovoPacotePage />
             </AdminRoute>
           }
         />

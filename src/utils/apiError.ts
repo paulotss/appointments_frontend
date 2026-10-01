@@ -12,6 +12,18 @@ const MENSAGENS_EXATAS: Record<string, string> = {
     'A guia não pode ser removida porque está em uso.',
   'insuranceGuideIds is required when type is health_plan':
     'Selecione ao menos uma guia quando o agendamento for de plano de saúde.',
+  'At least one procedure from private, package or health plan is required':
+    'Selecione ao menos um procedimento avulso, de pacote ou uma guia.',
+  'The same procedure cannot be added from more than one origin in the same appointment':
+    'O mesmo procedimento não pode entrar por mais de uma origem no mesmo agendamento.',
+  'items cannot contain duplicate procedureId':
+    'Há procedimentos duplicados no pacote.',
+  'Procedure package cannot be removed because it is assigned to a patient':
+    'O pacote não pode ser removido porque já foi atribuído a um paciente.',
+  'Financial entry of private procedures requires a private or mixed clinical appointment':
+    'A entrada de procedimento particular exige um agendamento particular ou misto.',
+  'Clinical appointment has no private procedures to bill':
+    'O agendamento não possui procedimentos avulsos para faturar.',
   'insuranceGuideIds must be omitted when type is private':
     'Agendamento particular não deve ter guia associada.',
   'insuranceGuideId is required when type is health_plan':
@@ -135,7 +147,22 @@ const PADROES: Array<[RegExp, string]> = [
     /^Procedure \d+ has no remaining quantity on insurance guide \d+$/i,
     'Há procedimento sem quantidade disponível na guia.',
   ],
-  [/^Financial entry \d+ not found$/i, 'Entrada financeira não encontrada.'],
+  [/^Procedure package \d+ not found$/i, 'Pacote não encontrado.'],
+  [/^Procedure package \d+ is inactive$/i, 'Este pacote está inativo.'],
+  [/^Procedure package \d+ has no items$/i, 'Este pacote não possui procedimentos.'],
+  [/^Patient package \d+ not found$/i, 'Pacote do paciente não encontrado.'],
+  [/^Patient package \d+ is already cancelled$/i, 'Este pacote já está cancelado.'],
+  [
+    /^Patient package \d+ cannot be cancelled because it has used quantity$/i,
+    'Não é possível cancelar o pacote porque já há quantidade utilizada.',
+  ],
+  [/^Patient package item \d+ not found$/i, 'Item de pacote não encontrado.'],
+  [
+    /^Patient package item \d+ does not belong to patient \d+$/i,
+    'Este item de pacote não pertence ao paciente selecionado.',
+  ],
+  [/^Patient package \d+ is cancelled$/i, 'Este pacote do paciente está cancelado.'],
+  [/^Patient package item \d+ has no remaining quantity$/i, 'Não há saldo restante neste item do pacote.'],
   [/^Financial exit \d+ not found$/i, 'Saída financeira não encontrada.'],
   [/^Payable \d+ not found$/i, 'Pagamento não encontrado.'],
   [/^Supplier \d+ not found$/i, 'Fornecedor não encontrado.'],
