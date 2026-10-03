@@ -1,6 +1,7 @@
 import {
   Alert,
   Box,
+  Button,
   CircularProgress,
   Dialog,
   DialogContent,
@@ -11,6 +12,7 @@ import {
   Typography,
 } from '@mui/material'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { getLoggedUser, getUserRole } from '../services/authStorage'
 import {
   AgendaClinicaCabecalho,
   AgendaClinicaCalendario,
@@ -31,6 +33,7 @@ import {
 } from '../services/clinical-appointments.service'
 import {
   buscarAgendaProfissional,
+  buscarProfissional,
   substituirExcecoesAgenda,
 } from '../services/health-professionals.service'
 import {
@@ -156,6 +159,8 @@ function montarPayloadAtualizacao(
 }
 
 export function AgendaClinicaPage() {
+  const role = getUserRole()
+  const somenteLeitura = role === 'PATIENT'
   const [visao, setVisao] = useState<VisaoTela>('semana')
   const [dataRef, setDataRef] = useState(() => ymdEmSaoPaulo())
   const [agendamentos, setAgendamentos] = useState<ClinicalAppointment[]>([])
@@ -180,7 +185,24 @@ export function AgendaClinicaPage() {
   const { from, to } = useMemo(() => intervaloVisivel(visao, dataRef), [visao, dataRef])
   const filtroPacienteId = filtroPaciente?.id ?? ''
   const filtroProfissionalId = filtroProfissional?.id ?? ''
-  const filtroAgendaAtivo = filtroPacienteId !== '' || filtroProfissionalId !== ''
+  const filtroAgendaAtivo = somenteLeitura || filtroPacienteId !== '' || filtroProfissionalId !== ''
+
+  useEffect(() => {
+    if (role !== 'PROFESSIONAL') return
+    const professionalId = getLoggedUser()?.healthProfessionalId
+    if (professionalId == null) return
+    let ativo = true
+    void buscarProfissional(professionalId)
+      .then((profissional) => {
+        if (ativo) setFiltroProfissional(profissional)
+      })
+      .catch(() => {
+        if (ativo) setError('Não foi possível carregar o profissional vinculado.')
+      })
+    return () => {
+      ativo = false
+    }
+  }, [role])
 
   const carregarAgendamentos = useCallback(async () => {
     if (!filtroAgendaAtivo) {
@@ -237,6 +259,7 @@ export function AgendaClinicaPage() {
   }
 
   function abrirNovo(ymd?: string, hm?: string) {
+    if (somenteLeitura) return
     setEditando(null)
     setDataPreenchida(ymd ?? dataRef)
     setHoraPreenchida(hm ?? '08:00')
@@ -369,6 +392,8 @@ export function AgendaClinicaPage() {
           filtroStatus={filtroStatus}
           onFiltroStatusChange={setFiltroStatus}
           onNovoAgendamento={() => abrirNovo()}
+          permitirNovo={!somenteLeitura}
+          permitirBusca={!somenteLeitura}
         />
 
         {calendarioVisivel ? (
@@ -455,7 +480,9 @@ export function AgendaClinicaPage() {
             dataRef={dataRef}
             agendamentos={agendamentos}
             bloqueiosPorDia={bloqueiosPorDia}
-            onSlotClick={(ymd, hm) => abrirNovo(ymd, hm)}
+            onSlotClick={(ymd, hm) => {
+              if (!somenteLeitura) abrirNovo(ymd, hm)
+            }}
             onSlotBloqueado={() => {
               setSuccess(null)
               setError('Horário bloqueado.')
@@ -496,10 +523,24 @@ export function AgendaClinicaPage() {
         maxWidth="md"
         disableEnforceFocus
       >
-        <DialogTitle>{editando ? 'Editar agendamento' : 'Novo agendamento'}</DialogTitle>
+        <DialogTitle>
+          {somenteLeitura ? 'Agendamento' : editando ? 'Editar agendamento' : 'Novo agendamento'}
+        </DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 1 }}>
-            {dialogAberto ? (
+            {dialogAberto && somenteLeitura && editando ? (
+              <Stack spacing={1} sx={{ py: 1 }}>
+                <Typography>
+                  {editando.healthProfessional?.name ?? 'Profissional'} ·{' '}
+                  {isoParaYmdSaoPaulo(editando.scheduledAt)} {isoParaHmSaoPaulo(editando.scheduledAt)}
+                </Typography>
+                <Typography>{CLINICAL_APPOINTMENT_STATUS_LABELS[editando.status]}</Typography>
+                {editando.notes ? <Typography>{editando.notes}</Typography> : null}
+                <Button onClick={fecharDialog} sx={{ alignSelf: 'flex-start' }}>
+                  Fechar
+                </Button>
+              </Stack>
+            ) : dialogAberto ? (
               <AgendamentoClinicoForm
                 key={editando ? `edit-${editando.id}` : `novo-${dataPreenchida}-${horaPreenchida}`}
                 defaultValues={

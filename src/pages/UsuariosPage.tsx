@@ -8,17 +8,21 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  FormControlLabel,
+  MenuItem,
   Paper,
   Stack,
-  Switch,
   TextField,
   Typography,
 } from '@mui/material'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { PacienteBuscaAutocomplete } from '../components/PacienteBuscaAutocomplete'
+import { ProfissionalBuscaAutocomplete } from '../components/ProfissionalBuscaAutocomplete'
 import { UsuariosTable } from '../components/UsuariosTable'
+import { ROLE_LABELS, USER_ROLES, type UserRole } from '../routes/access'
 import { atualizarUsuario, excluirUsuario, listarUsuarios } from '../services/users.service'
+import type { Patient } from '../types/paciente'
+import type { HealthProfessional } from '../types/profissional'
 import type { SystemUser } from '../types/user'
 
 function parseRamalOpcional(raw: string): { ok: true; value: number | null } | { ok: false } {
@@ -57,7 +61,9 @@ export function UsuariosPage() {
   const [emailEdicao, setEmailEdicao] = useState('')
   const [ramalEdicao, setRamalEdicao] = useState('')
   const [senhaEdicao, setSenhaEdicao] = useState('')
-  const [isAdminEdicao, setIsAdminEdicao] = useState(false)
+  const [roleEdicao, setRoleEdicao] = useState<UserRole>('RECEPTIONIST')
+  const [pacienteEdicao, setPacienteEdicao] = useState<Patient | null>(null)
+  const [profissionalEdicao, setProfissionalEdicao] = useState<HealthProfessional | null>(null)
   const [savingEdit, setSavingEdit] = useState(false)
   function abrirEdicao(usuario: SystemUser) {
     setEditando(usuario)
@@ -66,7 +72,20 @@ export function UsuariosPage() {
     setEmailEdicao(usuario.email ?? '')
     setRamalEdicao(usuario.extension != null ? String(usuario.extension) : '')
     setSenhaEdicao('')
-    setIsAdminEdicao(usuario.isAdmin)
+    setRoleEdicao(usuario.role)
+    setPacienteEdicao(
+      usuario.patientId != null
+        ? ({ id: usuario.patientId, name: usuario.patientName ?? `Paciente ${usuario.patientId}` } as Patient)
+        : null,
+    )
+    setProfissionalEdicao(
+      usuario.healthProfessionalId != null
+        ? ({
+            id: usuario.healthProfessionalId,
+            name: usuario.healthProfessionalName ?? `Profissional ${usuario.healthProfessionalId}`,
+          } as HealthProfessional)
+        : null,
+    )
   }
 
   function fecharEdicao() {
@@ -76,7 +95,9 @@ export function UsuariosPage() {
     setEmailEdicao('')
     setRamalEdicao('')
     setSenhaEdicao('')
-    setIsAdminEdicao(false)
+    setRoleEdicao('RECEPTIONIST')
+    setPacienteEdicao(null)
+    setProfissionalEdicao(null)
   }
 
   async function salvarEdicao() {
@@ -99,7 +120,9 @@ export function UsuariosPage() {
         name: nomeEdicao.trim(),
         usernameLogin: loginEdicao.trim(),
         email: emailRes.value,
-        isAdmin: isAdminEdicao,
+        role: roleEdicao,
+        patientId: roleEdicao === 'PATIENT' ? (pacienteEdicao?.id ?? null) : null,
+        healthProfessionalId: roleEdicao === 'PROFESSIONAL' ? (profissionalEdicao?.id ?? null) : null,
         passwordHash: senhaEdicao.trim() || undefined,
         extension: ramalRes.value,
       })
@@ -228,12 +251,28 @@ export function UsuariosPage() {
               value={senhaEdicao}
               onChange={(event) => setSenhaEdicao(event.target.value)}
             />
-            <FormControlLabel
-              control={
-                <Switch checked={isAdminEdicao} onChange={(_, checked) => setIsAdminEdicao(checked)} />
-              }
-              label="Administrador"
-            />
+            <TextField
+              select
+              label="Papel"
+              value={roleEdicao}
+              onChange={(event) => setRoleEdicao(event.target.value as UserRole)}
+            >
+              {USER_ROLES.map((item) => (
+                <MenuItem key={item} value={item}>
+                  {ROLE_LABELS[item]}
+                </MenuItem>
+              ))}
+            </TextField>
+            {roleEdicao === 'PATIENT' ? (
+              <PacienteBuscaAutocomplete value={pacienteEdicao} onChange={setPacienteEdicao} disableListPortal />
+            ) : null}
+            {roleEdicao === 'PROFESSIONAL' ? (
+              <ProfissionalBuscaAutocomplete
+                value={profissionalEdicao}
+                onChange={setProfissionalEdicao}
+                disableListPortal
+              />
+            ) : null}
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -241,7 +280,15 @@ export function UsuariosPage() {
           <Button
             onClick={salvarEdicao}
             variant="contained"
-            disabled={savingEdit || nomeInvalido || loginInvalido || ramalInvalido || emailInvalido}
+            disabled={
+              savingEdit ||
+              nomeInvalido ||
+              loginInvalido ||
+              ramalInvalido ||
+              emailInvalido ||
+              (roleEdicao === 'PATIENT' && pacienteEdicao == null) ||
+              (roleEdicao === 'PROFESSIONAL' && profissionalEdicao == null)
+            }
           >
             Salvar
           </Button>

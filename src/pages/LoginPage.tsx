@@ -6,7 +6,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import logoSeraphisVerde from '../assets/logo-seraphis-verde.png'
 import { loginSchema, type LoginFormValues } from '../schemas/login.schema'
 import { login } from '../services/auth.service'
-import { isAuthenticated } from '../services/authStorage'
+import { getUserRole, homePathForRole, isAuthenticated } from '../services/authStorage'
 
 interface FromState {
   from?: {
@@ -19,7 +19,7 @@ export function LoginPage() {
   const location = useLocation()
   const [apiError, setApiError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const redirectTo = (location.state as FromState | null)?.from?.pathname ?? '/registros'
+  const destinoSalvo = (location.state as FromState | null)?.from?.pathname
 
   const {
     register,
@@ -34,7 +34,7 @@ export function LoginPage() {
   })
 
   if (isAuthenticated()) {
-    return <Navigate to="/registros" replace />
+    return <Navigate to={homePathForRole(getUserRole())} replace />
   }
 
   async function onSubmit(values: LoginFormValues) {
@@ -42,7 +42,7 @@ export function LoginPage() {
     setLoading(true)
     try {
       await login(values)
-      navigate(redirectTo, { replace: true })
+      navigate(destinoSalvo ?? homePathForRole(getUserRole()), { replace: true })
     } catch {
       setApiError('Falha no login. Verifique suas credenciais.')
     } finally {

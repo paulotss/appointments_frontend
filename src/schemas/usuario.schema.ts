@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { USER_ROLES } from '../routes/access'
 
 const optionalRamal = z
   .union([z.string(), z.undefined()])
@@ -30,14 +31,29 @@ const optionalEmail = z
     message: 'E-mail invalido',
   })
 
-export const usuarioSchema = z.object({
-  name: z.string().min(3, 'Informe o nome'),
-  usernameLogin: z.string().min(3, 'Informe o usuario de login'),
-  email: optionalEmail,
-  passwordHash: z.string().min(6, 'A senha deve ter no minimo 6 caracteres'),
-  isAdmin: z.boolean(),
-  extension: optionalRamal,
-})
+export const usuarioSchema = z
+  .object({
+    name: z.string().min(3, 'Informe o nome'),
+    usernameLogin: z.string().min(3, 'Informe o usuario de login'),
+    email: optionalEmail,
+    passwordHash: z.string().min(6, 'A senha deve ter no minimo 6 caracteres'),
+    role: z.enum(USER_ROLES),
+    patientId: z.number().int().positive().nullable(),
+    healthProfessionalId: z.number().int().positive().nullable(),
+    extension: optionalRamal,
+  })
+  .superRefine((value, ctx) => {
+    if (value.role === 'PATIENT' && value.patientId == null) {
+      ctx.addIssue({ code: 'custom', path: ['patientId'], message: 'Selecione o paciente' })
+    }
+    if (value.role === 'PROFESSIONAL' && value.healthProfessionalId == null) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['healthProfessionalId'],
+        message: 'Selecione o profissional',
+      })
+    }
+  })
 
 export type UsuarioFormInput = z.input<typeof usuarioSchema>
 export type UsuarioFormValues = z.infer<typeof usuarioSchema>

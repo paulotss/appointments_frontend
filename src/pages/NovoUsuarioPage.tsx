@@ -1,22 +1,30 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import { Alert, Button, FormControlLabel, Stack, Switch, TextField, Typography } from '@mui/material'
+import { Alert, Button, MenuItem, Stack, TextField, Typography } from '@mui/material'
 import { useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
+import { PacienteBuscaAutocomplete } from '../components/PacienteBuscaAutocomplete'
+import { ProfissionalBuscaAutocomplete } from '../components/ProfissionalBuscaAutocomplete'
+import { ROLE_LABELS, USER_ROLES } from '../routes/access'
 import { usuarioSchema, type UsuarioFormInput, type UsuarioFormValues } from '../schemas/usuario.schema'
 import { criarUsuario } from '../services/users.service'
+import type { Patient } from '../types/paciente'
+import type { HealthProfessional } from '../types/profissional'
 
 export function NovoUsuarioPage() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [paciente, setPaciente] = useState<Patient | null>(null)
+  const [profissional, setProfissional] = useState<HealthProfessional | null>(null)
 
   const {
     control,
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<UsuarioFormInput, unknown, UsuarioFormValues>({
     resolver: zodResolver(usuarioSchema),
@@ -25,10 +33,14 @@ export function NovoUsuarioPage() {
       usernameLogin: '',
       email: '',
       passwordHash: '',
-      isAdmin: false,
+      role: 'RECEPTIONIST',
+      patientId: null,
+      healthProfessionalId: null,
       extension: '',
     },
   })
+
+  const role = useWatch({ control, name: 'role' })
 
   async function onSubmit(values: UsuarioFormValues) {
     setLoading(true)
@@ -39,10 +51,14 @@ export function NovoUsuarioPage() {
         passwordHash: values.passwordHash,
         usernameLogin: values.usernameLogin,
         email: values.email,
-        isAdmin: values.isAdmin,
+        role: values.role,
+        patientId: values.role === 'PATIENT' ? values.patientId : null,
+        healthProfessionalId: values.role === 'PROFESSIONAL' ? values.healthProfessionalId : null,
         ...(values.extension != null ? { extension: values.extension } : {}),
       })
       reset()
+      setPaciente(null)
+      setProfissional(null)
       navigate('/usuarios', { replace: true })
     } catch {
       setError('Nao foi possivel cadastrar o usuario.')
@@ -93,18 +109,52 @@ export function NovoUsuarioPage() {
           helperText={errors.extension?.message ?? 'Numero inteiro unico por atendente; deixe em branco se nao usar.'}
           {...register('extension')}
         />
-        <FormControlLabel
-          control={
-            <Controller
-              name="isAdmin"
-              control={control}
-              render={({ field }) => (
-                <Switch checked={field.value} onChange={(_, checked) => field.onChange(checked)} />
-              )}
-            />
-          }
-          label="Administrador"
+        <Controller
+          name="role"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              select
+              label="Papel"
+              value={field.value}
+              onChange={(event) => {
+                field.onChange(event.target.value)
+                setValue('patientId', null)
+                setValue('healthProfessionalId', null)
+                setPaciente(null)
+                setProfissional(null)
+              }}
+            >
+              {USER_ROLES.map((item) => (
+                <MenuItem key={item} value={item}>
+                  {ROLE_LABELS[item]}
+                </MenuItem>
+              ))}
+            </TextField>
+          )}
         />
+        {role === 'PATIENT' ? (
+          <PacienteBuscaAutocomplete
+            value={paciente}
+            onChange={(item) => {
+              setPaciente(item)
+              setValue('patientId', item?.id ?? null, { shouldValidate: true })
+            }}
+            error={Boolean(errors.patientId)}
+            helperText={errors.patientId?.message}
+          />
+        ) : null}
+        {role === 'PROFESSIONAL' ? (
+          <ProfissionalBuscaAutocomplete
+            value={profissional}
+            onChange={(item) => {
+              setProfissional(item)
+              setValue('healthProfessionalId', item?.id ?? null, { shouldValidate: true })
+            }}
+            error={Boolean(errors.healthProfessionalId)}
+            helperText={errors.healthProfessionalId?.message}
+          />
+        ) : null}
         <Button type="submit" variant="contained" disabled={loading}>
           {loading ? 'Salvando...' : 'Cadastrar usuario'}
         </Button>

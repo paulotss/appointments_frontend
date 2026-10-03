@@ -1,8 +1,12 @@
+import type { UserRole } from '../routes/access'
+
 export interface LoggedUser {
   id: number
   usernameLogin: string
-  isAdmin: boolean
   name: string
+  role: UserRole
+  patientId?: number | null
+  healthProfessionalId?: number | null
   extension?: number | null
 }
 
