@@ -1,6 +1,10 @@
 import AddIcon from '@mui/icons-material/Add'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Button,
   Chip,
@@ -224,31 +228,49 @@ export function PacienteCartaoSecao({ patientId }: PacienteCartaoSecaoProps) {
       ) : null}
       {!loading && assinaturas.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
-          Este paciente não tem cartão de benefícios.
+          Nenhuma assinatura.
         </Typography>
       ) : null}
       {assinaturas.map((assinatura) => {
         const titular = assinatura.patientId === patientId
         return (
-          <Stack
+          <Accordion
             key={assinatura.id}
-            spacing={1}
-            sx={{ border: 1, borderColor: 'divider', p: 1.5, borderRadius: 1 }}
+            disableGutters
+            elevation={0}
+            sx={{
+              border: 1,
+              borderColor: 'divider',
+              borderRadius: 1,
+              overflow: 'hidden',
+              '&:before': { display: 'none' },
+              '&.Mui-expanded': { margin: 0 },
+            }}
           >
-            <Stack direction="row" alignItems="center" justifyContent="space-between" gap={1}>
-              <Typography variant="subtitle2">
-                {assinatura.plan?.name ?? `Plano #${assinatura.planId}`} · {assinatura.cardNumber}
-              </Typography>
-              <Chip
-                size="small"
-                label={
-                  assinatura.isCurrent
-                    ? 'Vigente'
-                    : BENEFIT_SUBSCRIPTION_STATUS_LABELS[assinatura.status]
-                }
-                color={assinatura.isCurrent ? 'success' : corStatus(assinatura.status)}
-              />
-            </Stack>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Stack
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+                gap={1}
+                sx={{ width: '100%', pr: 1 }}
+              >
+                <Typography variant="subtitle2">
+                  {assinatura.plan?.name ?? `Plano #${assinatura.planId}`} · {assinatura.cardNumber}
+                </Typography>
+                <Chip
+                  size="small"
+                  label={
+                    assinatura.isCurrent
+                      ? 'Vigente'
+                      : BENEFIT_SUBSCRIPTION_STATUS_LABELS[assinatura.status]
+                  }
+                  color={assinatura.isCurrent ? 'success' : corStatus(assinatura.status)}
+                />
+              </Stack>
+            </AccordionSummary>
+            <AccordionDetails>
+            <Stack spacing={1}>
             <Typography variant="body2" color="text.secondary">
               {titular ? 'Titular' : 'Dependente'} · {formatarDataISO(assinatura.startsAt)} a{' '}
               {formatarDataISO(assinatura.expiresAt)}
@@ -403,7 +425,9 @@ export function PacienteCartaoSecao({ patientId }: PacienteCartaoSecaoProps) {
                 Cancelar adesão
               </Button>
             ) : null}
-          </Stack>
+            </Stack>
+            </AccordionDetails>
+          </Accordion>
         )
       })}
 

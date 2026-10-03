@@ -44,6 +44,7 @@ import { NovoProcedimentoPage } from './pages/NovoProcedimentoPage'
 import { PagamentoDetalhePage } from './pages/PagamentoDetalhePage'
 import { ProcedimentosPage } from './pages/ProcedimentosPage'
 import { TissLotesPage } from './pages/TissLotesPage'
+import { EditarPacientePage } from './pages/EditarPacientePage'
 import { NovoPacientePage } from './pages/NovoPacientePage'
 import { NovoPlanoSaudePage } from './pages/NovoPlanoSaudePage'
 import { NovoProfissionalPage } from './pages/NovoProfissionalPage'
@@ -283,6 +284,14 @@ function App() {
           element={
             <AdminRoute>
               <NovoPacientePage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/pacientes/:id"
+          element={
+            <AdminRoute>
+              <EditarPacientePage />
             </AdminRoute>
           }
         />

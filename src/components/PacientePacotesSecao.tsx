@@ -1,5 +1,9 @@
 import AddIcon from '@mui/icons-material/Add'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Button,
   Chip,
@@ -97,53 +101,77 @@ export function PacientePacotesSecao({ patientId }: PacientePacotesSecaoProps) {
       ) : null}
       {!loading && pacotes.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
-          Nenhum pacote atribuído a este paciente.
+          Nenhum pacote.
         </Typography>
       ) : null}
       {!loading && pacotes.length > 0
         ? pacotes.map((pacote) => (
-            <Stack key={pacote.id} spacing={0.5} sx={{ border: 1, borderColor: 'divider', p: 1.5, borderRadius: 1 }}>
-              <Stack direction="row" alignItems="center" justifyContent="space-between" gap={1}>
-                <Typography variant="subtitle2">
-                  {pacote.package?.name ?? `Pacote #${pacote.packageId}`}
-                </Typography>
-                <Chip
-                  size="small"
-                  label={PATIENT_PACKAGE_STATUS_LABELS[pacote.status]}
-                  color={corStatus(pacote.status)}
-                />
-              </Stack>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Procedimento</TableCell>
-                    <TableCell align="right">Saldo</TableCell>
-                    <TableCell align="right">Valor</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {pacote.items.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>{item.procedure?.name ?? `#${item.procedureId}`}</TableCell>
-                      <TableCell align="right">
-                        {item.remainingQuantity} de {item.quantity}
-                      </TableCell>
-                      <TableCell align="right">{formatarMoedaBRL(item.unitValue)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {pacote.status === 'active' && pacote.items.every((item) => item.usedQuantity === 0) ? (
-                <Button
-                  size="small"
-                  color="error"
-                  onClick={() => void cancelar(pacote)}
-                  sx={{ alignSelf: 'flex-start' }}
+            <Accordion
+              key={pacote.id}
+              disableGutters
+              elevation={0}
+              sx={{
+                border: 1,
+                borderColor: 'divider',
+                borderRadius: 1,
+                overflow: 'hidden',
+                '&:before': { display: 'none' },
+                '&.Mui-expanded': { margin: 0 },
+              }}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="space-between"
+                  gap={1}
+                  sx={{ width: '100%', pr: 1 }}
                 >
-                  Cancelar atribuição
-                </Button>
-              ) : null}
-            </Stack>
+                  <Typography variant="subtitle2">
+                    {pacote.package?.name ?? `Pacote #${pacote.packageId}`}
+                  </Typography>
+                  <Chip
+                    size="small"
+                    label={PATIENT_PACKAGE_STATUS_LABELS[pacote.status]}
+                    color={corStatus(pacote.status)}
+                  />
+                </Stack>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Stack spacing={1}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Procedimento</TableCell>
+                        <TableCell align="right">Saldo</TableCell>
+                        <TableCell align="right">Valor</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {pacote.items.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>{item.procedure?.name ?? `#${item.procedureId}`}</TableCell>
+                          <TableCell align="right">
+                            {item.remainingQuantity} de {item.quantity}
+                          </TableCell>
+                          <TableCell align="right">{formatarMoedaBRL(item.unitValue)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {pacote.status === 'active' && pacote.items.every((item) => item.usedQuantity === 0) ? (
+                    <Button
+                      size="small"
+                      color="error"
+                      onClick={() => void cancelar(pacote)}
+                      sx={{ alignSelf: 'flex-start' }}
+                    >
+                      Cancelar atribuição
+                    </Button>
+                  ) : null}
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
           ))
         : null}
       <AtribuirPacoteDialog

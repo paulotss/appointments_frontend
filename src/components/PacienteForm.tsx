@@ -18,6 +18,8 @@ interface PacienteFormProps {
   submitLabel: string
   onSubmit: (values: PacienteFormValues) => void
   onCancel?: () => void
+  formId?: string
+  hideActions?: boolean
 }
 
 export function PacienteForm({
@@ -27,6 +29,8 @@ export function PacienteForm({
   submitLabel,
   onSubmit,
   onCancel,
+  formId,
+  hideActions = false,
 }: PacienteFormProps) {
   const {
     control,
@@ -46,7 +50,7 @@ export function PacienteForm({
   const cardsWatch = useWatch({ control, name: 'insuranceCards' })
 
   return (
-    <Stack component="form" spacing={2} onSubmit={handleSubmit(onSubmit)}>
+    <Stack component="form" id={formId} spacing={2} onSubmit={handleSubmit(onSubmit)}>
       <TextField
         label="Nome"
         error={Boolean(errors.name)}
@@ -200,16 +204,18 @@ export function PacienteForm({
         Adicionar cartão
       </Button>
 
-      <Stack direction="row" spacing={1.5}>
-        {onCancel ? (
-          <Button type="button" onClick={onCancel} disabled={loading}>
-            Cancelar
+      {hideActions ? null : (
+        <Stack direction="row" spacing={1.5}>
+          {onCancel ? (
+            <Button type="button" onClick={onCancel} disabled={loading}>
+              Cancelar
+            </Button>
+          ) : null}
+          <Button type="submit" variant="contained" disabled={loading}>
+            {loading ? 'Salvando...' : submitLabel}
           </Button>
-        ) : null}
-        <Button type="submit" variant="contained" disabled={loading}>
-          {loading ? 'Salvando...' : submitLabel}
-        </Button>
-      </Stack>
+        </Stack>
+      )}
     </Stack>
   )
 }
