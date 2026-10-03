@@ -96,6 +96,7 @@ export interface FinancialEntryAppointmentRef {
 export interface FinancialEntryBatchRef {
   id: number
   healthPlanId: number
+  batchNumber?: string
   healthPlan?: FinanceiroRef
 }
 
@@ -149,6 +150,8 @@ export interface ListarFinancialEntriesParams {
 }
 
 export type FiltroStatusEntrada = 'all' | Extract<FinancialEntryStatus, 'pending' | 'paid'>
+
+export type FiltroTipoEntrada = 'all' | FinancialEntryType
 
 export type FinancialEntryListCounts = {
   amount: number

@@ -40,6 +40,7 @@ interface BackendAppointment {
 interface BackendBatch {
   id: number
   healthPlanId: number
+  batchNumber?: string
   healthPlan?: BackendRef
 }
 

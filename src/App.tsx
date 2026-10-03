@@ -28,6 +28,7 @@ import { NovoRegistroPage } from './pages/NovoRegistroPage'
 import { RegistrosPage } from './pages/RegistrosPage'
 import { NovoUsuarioPage } from './pages/NovoUsuarioPage'
 import { AgendaClinicaPage } from './pages/AgendaClinicaPage'
+import { EntradaFinanceiraDetalhePage } from './pages/EntradaFinanceiraDetalhePage'
 import { FinanceiroEntradasPage } from './pages/FinanceiroEntradasPage'
 import { FinanceiroPagamentosPage } from './pages/FinanceiroPagamentosPage'
 import { FinanceiroSaidasPage } from './pages/FinanceiroSaidasPage'
@@ -412,6 +413,14 @@ function App() {
           element={
             <AdminRoute>
               <NovaEntradaFinanceiraPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/financeiro/entradas/:id"
+          element={
+            <AdminRoute>
+              <EntradaFinanceiraDetalhePage />
             </AdminRoute>
           }
         />

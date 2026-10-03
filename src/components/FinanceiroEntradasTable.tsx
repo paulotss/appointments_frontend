@@ -1,11 +1,14 @@
+import VisibilityIcon from '@mui/icons-material/Visibility'
 import {
   Alert,
+  Box,
   Button,
   Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
   Link,
   MenuItem,
   Table,
@@ -118,27 +121,37 @@ export function FinanceiroEntradasTable({ entradas, onChanged }: FinanceiroEntra
                   {item.paymentMethod ? PAYMENT_METHOD_LABELS[item.paymentMethod] : '—'}
                 </TableCell>
                 <TableCell align="right">
-                  {podeConcluir ? (
-                    <Button
+                  <Box sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                    <IconButton
                       component={RouterLink}
-                      to={`/tiss/lotes/${loteId}?receber=1`}
+                      to={`/financeiro/entradas/${item.id}`}
                       size="small"
+                      aria-label="Ver entrada"
                     >
-                      Concluir
-                    </Button>
-                  ) : null}
-                  {podeReceber ? (
-                    <Button
-                      size="small"
-                      onClick={() => {
-                        setErro(null)
-                        setPaymentMethod('pix')
-                        setRecebendo(item)
-                      }}
-                    >
-                      Receber
-                    </Button>
-                  ) : null}
+                      <VisibilityIcon fontSize="small" />
+                    </IconButton>
+                    {podeConcluir ? (
+                      <Button
+                        component={RouterLink}
+                        to={`/tiss/lotes/${loteId}?receber=1`}
+                        size="small"
+                      >
+                        Concluir
+                      </Button>
+                    ) : null}
+                    {podeReceber ? (
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          setErro(null)
+                          setPaymentMethod('pix')
+                          setRecebendo(item)
+                        }}
+                      >
+                        Receber
+                      </Button>
+                    ) : null}
+                  </Box>
                 </TableCell>
               </TableRow>
             )
