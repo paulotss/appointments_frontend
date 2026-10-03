@@ -120,6 +120,7 @@ const PADROES: Array<[RegExp, string]> = [
   [/^Insurance card \d+ not found$/i, 'Cartão não encontrado.'],
   [/^Patient \d+ not found$/i, 'Paciente não encontrado.'],
   [/^Clinical appointment \d+ not found$/i, 'Agendamento clínico não encontrado.'],
+  [/^Clinical evolution \d+ not found$/i, 'Evolução não encontrada.'],
   [
     /^Health professional \d+ does not have specialty \d+ required by procedure \d+$/i,
     'O profissional não atende a especialidade exigida pelo procedimento.',

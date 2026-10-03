@@ -40,7 +40,7 @@ export function PacientesTable({ pacientes, onEditar }: PacientesTableProps) {
               <TableCell align="right">
                 <IconButton
                   size="small"
-                  aria-label="Editar paciente"
+                  aria-label="Abrir paciente"
                   onClick={() => onEditar(paciente)}
                 >
                   <EditIcon fontSize="small" />

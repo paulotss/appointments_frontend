@@ -1,19 +1,24 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import { Alert, Button, CircularProgress, Stack, Typography } from '@mui/material'
+import { Alert, Box, Button, CircularProgress, Stack, Tab, Tabs, Typography } from '@mui/material'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { PacienteArquivosSecao } from '../components/PacienteArquivosSecao'
 import { PacienteCartaoSecao } from '../components/PacienteCartaoSecao'
 import { PacienteForm } from '../components/PacienteForm'
 import { PacientePacotesSecao } from '../components/PacientePacotesSecao'
+import { PacienteProntuarioSecao } from '../components/PacienteProntuarioSecao'
 import type { PacienteFormValues } from '../schemas/paciente.schema'
 import { listarPlanosSaude } from '../services/health-plans.service'
 import { sincronizarCarteirinhas } from '../services/insurance-cards.service'
+import { getUserRole } from '../services/authStorage'
 import { atualizarPaciente, buscarPaciente } from '../services/patients.service'
 import type { Patient } from '../types/paciente'
 import type { HealthPlan } from '../types/planoSaude'
 import { mensagemErroApi } from '../utils/apiError'
 
 const FORM_ID = 'editar-paciente'
+
+type AbaPaciente = 'dados' | 'arquivos' | 'prontuario'
 
 export function EditarPacientePage() {
   const navigate = useNavigate()
@@ -25,6 +30,8 @@ export function EditarPacientePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [aba, setAba] = useState<AbaPaciente>('dados')
+  const podeProntuario = getUserRole() === 'PROFESSIONAL'
 
   useEffect(() => {
     if (!Number.isFinite(pacienteId) || pacienteId <= 0) {
@@ -97,7 +104,7 @@ export function EditarPacientePage() {
       <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
         <Stack spacing={0.25}>
           <Typography variant="h5" fontWeight={700}>
-            Editar paciente
+            Paciente
           </Typography>
           {paciente ? (
             <Typography variant="body2" color="text.secondary">
@@ -106,9 +113,11 @@ export function EditarPacientePage() {
           ) : null}
         </Stack>
         <Stack direction="row" spacing={1}>
-          <Button variant="contained" type="submit" form={FORM_ID} disabled={saving || loading || !paciente}>
-            {saving ? 'Salvando...' : 'Salvar'}
-          </Button>
+          {aba === 'dados' ? (
+            <Button variant="contained" type="submit" form={FORM_ID} disabled={saving || loading || !paciente}>
+              {saving ? 'Salvando...' : 'Salvar'}
+            </Button>
+          ) : null}
           <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={voltar} disabled={saving}>
             Voltar
           </Button>
@@ -125,31 +134,51 @@ export function EditarPacientePage() {
       ) : null}
 
       {!loading && paciente ? (
-        <Stack spacing={3}>
-          <PacienteForm
-            key={paciente.id}
-            formId={FORM_ID}
-            hideActions
-            defaultValues={{
-              name: paciente.name,
-              phone: paciente.phone,
-              email: paciente.email ?? '',
-              birthDate: paciente.birthDate ?? '',
-              cpf: paciente.cpf ?? '',
-              insuranceCards: paciente.insuranceCards.map((item) => ({
-                cardId: item.id,
-                healthPlanId: item.healthPlanId,
-                cardNumber: item.cardNumber,
-                expirationDate: item.expirationDate,
-              })),
-            }}
-            planos={planos}
-            loading={saving}
-            submitLabel="Salvar"
-            onSubmit={(values) => void salvar(values)}
-          />
-          <PacientePacotesSecao key={`pacotes-${paciente.id}`} patientId={paciente.id} />
-          <PacienteCartaoSecao key={`cartao-${paciente.id}`} patientId={paciente.id} />
+        <Stack spacing={2}>
+          <Tabs
+            value={aba}
+            onChange={(_, value: AbaPaciente) => setAba(value)}
+            variant="scrollable"
+            scrollButtons="auto"
+          >
+            <Tab value="dados" label="Dados" />
+            <Tab value="arquivos" label="Arquivos" />
+            {podeProntuario ? <Tab value="prontuario" label="Prontuário" /> : null}
+          </Tabs>
+
+          <Box hidden={aba !== 'dados'}>
+            <Stack spacing={3}>
+              <PacienteForm
+                key={paciente.id}
+                formId={FORM_ID}
+                hideActions
+                defaultValues={{
+                  name: paciente.name,
+                  phone: paciente.phone,
+                  email: paciente.email ?? '',
+                  birthDate: paciente.birthDate ?? '',
+                  cpf: paciente.cpf ?? '',
+                  insuranceCards: paciente.insuranceCards.map((item) => ({
+                    cardId: item.id,
+                    healthPlanId: item.healthPlanId,
+                    cardNumber: item.cardNumber,
+                    expirationDate: item.expirationDate,
+                  })),
+                }}
+                planos={planos}
+                loading={saving}
+                submitLabel="Salvar"
+                onSubmit={(values) => void salvar(values)}
+              />
+              <PacientePacotesSecao key={`pacotes-${paciente.id}`} patientId={paciente.id} />
+              <PacienteCartaoSecao key={`cartao-${paciente.id}`} patientId={paciente.id} />
+            </Stack>
+          </Box>
+
+          {aba === 'arquivos' ? <PacienteArquivosSecao patient={paciente} /> : null}
+          {aba === 'prontuario' && podeProntuario ? (
+            <PacienteProntuarioSecao patientId={paciente.id} />
+          ) : null}
         </Stack>
       ) : null}
     </Stack>

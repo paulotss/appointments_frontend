@@ -12,6 +12,8 @@ export const CLINICAL_STAFF_ROLES: readonly UserRole[] = [
   'ADMIN',
 ]
 
+export const PROFESSIONAL_ROLES: readonly UserRole[] = ['PROFESSIONAL']
+
 export const ADMIN_ROLES: readonly UserRole[] = ['ADMIN']
 
 export const ROLE_LABELS: Record<UserRole, string> = {
