@@ -17,7 +17,7 @@ export const ADMIN_ROLES: readonly UserRole[] = ['ADMIN']
 export const ROLE_LABELS: Record<UserRole, string> = {
   PATIENT: 'Paciente',
   PROFESSIONAL: 'Profissional',
-  RECEPTIONIST: 'Recepcionista',
+  RECEPTIONIST: 'Colaborador',
   ADMIN: 'Administrador',
 }
 
