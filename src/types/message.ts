@@ -7,7 +7,7 @@ export interface MessageUser {
   id: number
   name: string
   usernameLogin: string
-  isAdmin: boolean
+  role: 'PATIENT' | 'PROFESSIONAL' | 'RECEPTIONIST' | 'ADMIN'
   extension: number | null
   email?: string | null
 }

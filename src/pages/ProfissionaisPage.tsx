@@ -22,13 +22,15 @@ import {
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ProfissionaisTable } from '../components/ProfissionaisTable'
+import { BloqueiosSemanaisEditor } from '../components/BloqueiosSemanaisEditor'
 import { listarEspecialidades } from '../services/especialidades.service'
 import { atualizarProfissional, listarProfissionais } from '../services/health-professionals.service'
 import type { ListMeta } from '../types/listEnvelope'
 import type { Especialidade } from '../types/registro'
-import { COUNCIL_TYPES, type CouncilType, type HealthProfessional } from '../types/profissional'
+import { COUNCIL_TYPES, type CouncilType, type HealthProfessional, type WeeklyBlockInput } from '../types/profissional'
 import { UFS_BRASIL, type UfBrasil } from '../utils/ufBrasil'
 import { mensagemErroApi } from '../utils/apiError'
+import { mensagemBloqueiosSemanais } from '../schemas/profissional.schema'
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100]
 const META_VAZIA: ListMeta = { page: 1, limit: 50, total: 0, totalPages: 1 }
@@ -55,6 +57,7 @@ export function ProfissionaisPage() {
   const [phoneEdicao, setPhoneEdicao] = useState('')
   const [emailEdicao, setEmailEdicao] = useState('')
   const [isActiveEdicao, setIsActiveEdicao] = useState(true)
+  const [weeklyBlocksEdicao, setWeeklyBlocksEdicao] = useState<WeeklyBlockInput[]>([])
   const [savingEdit, setSavingEdit] = useState(false)
   const [filtroNome, setFiltroNome] = useState('')
   const [filtroNomeDebounced, setFiltroNomeDebounced] = useState('')
@@ -89,6 +92,7 @@ export function ProfissionaisPage() {
     setPhoneEdicao(profissional.phone ?? '')
     setEmailEdicao(profissional.email ?? '')
     setIsActiveEdicao(profissional.isActive)
+    setWeeklyBlocksEdicao(profissional.weeklyBlocks.map((item) => ({ ...item })))
   }
 
   function fecharEdicao() {
@@ -103,6 +107,7 @@ export function ProfissionaisPage() {
     setPhoneEdicao('')
     setEmailEdicao('')
     setIsActiveEdicao(true)
+    setWeeklyBlocksEdicao([])
   }
 
   async function salvarEdicao() {
@@ -121,6 +126,11 @@ export function ProfissionaisPage() {
       setError('Informe ao menos uma especialidade.')
       return
     }
+    const bloqueiosInvalidos = mensagemBloqueiosSemanais(weeklyBlocksEdicao)
+    if (bloqueiosInvalidos) {
+      setError(bloqueiosInvalidos)
+      return
+    }
     setSavingEdit(true)
     setError(null)
     setSuccess(null)
@@ -136,6 +146,7 @@ export function ProfissionaisPage() {
         phone: phoneEdicao.trim() || null,
         email: emailEdicao.trim() || null,
         isActive: isActiveEdicao,
+        weeklyBlocks: weeklyBlocksEdicao,
       })
       setProfissionais((prev) => prev.map((item) => (item.id === atualizado.id ? atualizado : item)))
       fecharEdicao()
@@ -157,6 +168,7 @@ export function ProfissionaisPage() {
     specialtiesEdicao.length === 0 ||
     specialtiesEdicao.some((item) => item.specialtyId === '') ||
     new Set(specialtyIds).size !== specialtyIds.length
+  const bloqueiosInvalidos = mensagemBloqueiosSemanais(weeklyBlocksEdicao)
 
   const carregarDados = useCallback(async () => {
     setLoading(true)
@@ -388,6 +400,11 @@ export function ProfissionaisPage() {
               }
               label="Ativo"
             />
+            <BloqueiosSemanaisEditor
+              value={weeklyBlocksEdicao}
+              onChange={setWeeklyBlocksEdicao}
+              error={weeklyBlocksEdicao.length > 0 ? (bloqueiosInvalidos ?? undefined) : undefined}
+            />
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -400,7 +417,8 @@ export function ProfissionaisPage() {
               nomeInvalido ||
               councilNumberInvalido ||
               cpfInvalido ||
-              specialtiesInvalidas
+              specialtiesInvalidas ||
+              Boolean(bloqueiosInvalidos)
             }
           >
             Salvar

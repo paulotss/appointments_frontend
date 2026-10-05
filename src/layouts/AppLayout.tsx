@@ -24,7 +24,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import logoSeraphisBranca from '../assets/logo-seraphis-branca.png'
-import { clearToken, getIsAdmin, getLoggedUser } from '../services/authStorage'
+import { clearToken, getLoggedUser, getUserRole } from '../services/authStorage'
 import {
   getFirstSubmenuLink,
   getMenuItems,
@@ -86,12 +86,12 @@ export function AppLayout() {
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
   const location = useLocation()
   const navigate = useNavigate()
-  const isAdmin = getIsAdmin()
+  const role = getUserRole()
   const loggedUser = getLoggedUser()
   const displayName = loggedUser?.name?.trim() || loggedUser?.usernameLogin || 'Usuário'
   const userInitials = getUserInitials(displayName)
 
-  const menuItems = useMemo(() => getMenuItems(isAdmin), [isAdmin])
+  const menuItems = useMemo(() => getMenuItems(role), [role])
 
   const [drawerOpen, setDrawerOpen] = useState(() =>
     typeof window !== 'undefined' ? window.matchMedia('(min-width:900px)').matches : false,

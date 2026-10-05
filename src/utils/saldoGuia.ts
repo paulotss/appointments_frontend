@@ -96,9 +96,8 @@ export function mensagensSemSaldo(guias: InsuranceGuide[]): string[] {
 }
 
 export function podeFinalizarPlano(agendamento: ClinicalAppointment): boolean {
-  if (agendamento.type !== 'health_plan') return true
   const guias = guiasDoAgendamento(agendamento)
-  if (guias.length === 0) return false
+  if (guias.length === 0) return true
   if (agendamento.status === 'finished') return true
   return linhasProcedimentosDasGuias(guias).every((item) => saldoGuiaProcedimento(item) > 0)
 }

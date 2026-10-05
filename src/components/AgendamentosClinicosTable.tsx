@@ -44,12 +44,14 @@ export function AgendamentosClinicosTable({ agendamentos, onAbrir }: Agendamento
                 <Chip
                   size="small"
                   label={CLINICAL_APPOINTMENT_TYPE_LABELS[item.type]}
-                  color={item.type === 'private' ? 'primary' : 'info'}
+                  color={
+                    item.type === 'private' ? 'primary' : item.type === 'mixed' ? 'secondary' : 'info'
+                  }
                 />
               </TableCell>
               <TableCell>{CLINICAL_APPOINTMENT_STATUS_LABELS[item.status]}</TableCell>
               <TableCell>
-                {item.type === 'health_plan'
+                {item.type === 'health_plan' || item.type === 'mixed'
                   ? item.insuranceGuides.length > 0
                     ? item.insuranceGuides
                         .map((link) =>

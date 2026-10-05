@@ -1,7 +1,14 @@
 import { apiClient } from './apiClient'
 import type { ListMeta, PagedList } from '../types/listEnvelope'
-import type { CouncilType, CreateHealthProfessionalRequest, HealthProfessional, HealthProfessionalSpecialtyLink, UpdateHealthProfessionalRequest } from '../types/profissional'
+import type { CouncilType, CreateHealthProfessionalRequest, HealthProfessional, HealthProfessionalSpecialtyLink, UpdateHealthProfessionalRequest, WeeklyBlockInput } from '../types/profissional'
 import type { UfBrasil } from '../utils/ufBrasil'
+import type {
+  ProfessionalSchedule,
+  ScheduleException,
+  ScheduleExceptionInput,
+  ScheduleExceptionKind,
+  ScheduleInterval,
+} from '../types/bloqueioHorario'
 
 const META_VAZIA: ListMeta = { page: 1, limit: 50, total: 0, totalPages: 1 }
 
@@ -21,6 +28,12 @@ interface BackendHealthProfessionalSpecialty {
   specialty?: BackendSpecialtyRef
 }
 
+interface BackendWeeklyBlock {
+  weekday: number
+  startTime: string
+  endTime: string
+}
+
 interface BackendHealthProfessional {
   id: number
   name: string
@@ -33,12 +46,21 @@ interface BackendHealthProfessional {
   email?: string | null
   isActive: boolean
   specialties?: BackendHealthProfessionalSpecialty[]
+  weeklyBlocks?: BackendWeeklyBlock[]
 }
 
 function mapSpecialtyLink(item: BackendHealthProfessionalSpecialty): HealthProfessionalSpecialtyLink {
   return {
     specialtyId: item.specialtyId,
     specialty: item.specialty,
+  }
+}
+
+function mapWeeklyBlock(item: BackendWeeklyBlock): WeeklyBlockInput {
+  return {
+    weekday: item.weekday,
+    startTime: item.startTime,
+    endTime: item.endTime,
   }
 }
 
@@ -55,6 +77,7 @@ function mapBackendHealthProfessional(item: BackendHealthProfessional): HealthPr
     email: item.email ?? null,
     isActive: item.isActive,
     specialties: (item.specialties ?? []).map(mapSpecialtyLink),
+    weeklyBlocks: (item.weeklyBlocks ?? []).map(mapWeeklyBlock),
   }
 }
 
@@ -96,4 +119,57 @@ export async function atualizarProfissional(
     payload,
   )
   return mapBackendHealthProfessional(response.data)
+}
+
+interface BackendScheduleDay {
+  date: string
+  weekday: number
+  weeklyBlocks?: ScheduleInterval[]
+  exceptions?: {
+    kind: ScheduleExceptionKind
+    startTime: string
+    endTime: string
+    note?: string | null
+  }[]
+  effectiveBlocks?: ScheduleInterval[]
+}
+
+function mapScheduleDay(day: BackendScheduleDay): ProfessionalSchedule['days'][number] {
+  return {
+    date: day.date,
+    weekday: day.weekday,
+    weeklyBlocks: day.weeklyBlocks ?? [],
+    exceptions: (day.exceptions ?? []).map(
+      (item): ScheduleException => ({
+        kind: item.kind,
+        startTime: item.startTime,
+        endTime: item.endTime,
+        note: item.note ?? null,
+      }),
+    ),
+    effectiveBlocks: day.effectiveBlocks ?? [],
+  }
+}
+
+export async function buscarAgendaProfissional(
+  id: number,
+  from: string,
+  to: string,
+): Promise<ProfessionalSchedule> {
+  const response = await apiClient.get<{ days: BackendScheduleDay[] }>(
+    `/health-professionals/${id}/schedule`,
+    { params: { from, to } },
+  )
+  return { days: (response.data.days ?? []).map(mapScheduleDay) }
+}
+
+export async function substituirExcecoesAgenda(
+  id: number,
+  payload: { date: string; exceptions: ScheduleExceptionInput[] },
+): Promise<ProfessionalSchedule> {
+  const response = await apiClient.put<{ days: BackendScheduleDay[] }>(
+    `/health-professionals/${id}/schedule-exceptions`,
+    payload,
+  )
+  return { days: (response.data.days ?? []).map(mapScheduleDay) }
 }

@@ -71,6 +71,8 @@ interface AgendaClinicaToolbarProps {
   filtroStatus: ClinicalAppointmentStatus | ''
   onFiltroStatusChange: (status: ClinicalAppointmentStatus | '') => void
   onNovoAgendamento: () => void
+  permitirNovo?: boolean
+  permitirBusca?: boolean
 }
 
 export function AgendaClinicaToolbar({
@@ -90,6 +92,8 @@ export function AgendaClinicaToolbar({
   filtroStatus,
   onFiltroStatusChange,
   onNovoAgendamento,
+  permitirNovo = true,
+  permitirBusca = true,
 }: AgendaClinicaToolbarProps) {
   const [dataAnchor, setDataAnchor] = useState<HTMLElement | null>(null)
   const [buscaAnchor, setBuscaAnchor] = useState<HTMLElement | null>(null)
@@ -111,20 +115,22 @@ export function AgendaClinicaToolbar({
           flexWrap: 'nowrap',
         }}
       >
-        <IconButton
-          aria-label="Novo agendamento"
-          onClick={onNovoAgendamento}
-          size="small"
-          sx={{
-            border: '1px solid',
-            borderColor: 'divider',
-            width: 36,
-            height: 36,
-            flexShrink: 0,
-          }}
-        >
-          <AddIcon />
-        </IconButton>
+        {permitirNovo ? (
+          <IconButton
+            aria-label="Novo agendamento"
+            onClick={onNovoAgendamento}
+            size="small"
+            sx={{
+              border: '1px solid',
+              borderColor: 'divider',
+              width: 36,
+              height: 36,
+              flexShrink: 0,
+            }}
+          >
+            <AddIcon />
+          </IconButton>
+        ) : null}
 
         <Button size="small" variant="outlined" onClick={onHoje} sx={{ flexShrink: 0, borderRadius: 5, px: 1.5 }}>
           Hoje
@@ -185,13 +191,15 @@ export function AgendaClinicaToolbar({
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, ml: 'auto', flexShrink: 0 }}>
-          <IconButton
-            aria-label="Pesquisar profissional ou paciente"
-            onClick={(event) => setBuscaAnchor(event.currentTarget)}
-            size="small"
-          >
-            <SearchIcon />
-          </IconButton>
+          {permitirBusca ? (
+            <IconButton
+              aria-label="Pesquisar profissional ou paciente"
+              onClick={(event) => setBuscaAnchor(event.currentTarget)}
+              size="small"
+            >
+              <SearchIcon />
+            </IconButton>
+          ) : null}
 
           <IconButton
             aria-label="Mais filtros"

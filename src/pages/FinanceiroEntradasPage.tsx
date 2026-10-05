@@ -18,10 +18,15 @@ import { CampoData } from '../components/CampoData'
 import { listarEntradasFinanceiras } from '../services/financial-entries.service'
 import type {
   FiltroStatusEntrada,
+  FiltroTipoEntrada,
   FinancialEntry,
   FinancialEntryListCounts,
 } from '../types/financeiro'
-import { FINANCIAL_ENTRY_STATUS_LABELS } from '../types/financeiro'
+import {
+  FINANCIAL_ENTRY_STATUS_LABELS,
+  FINANCIAL_ENTRY_TYPE_LABELS,
+  FINANCIAL_ENTRY_TYPES,
+} from '../types/financeiro'
 import type { ListMeta } from '../types/listEnvelope'
 import { mensagemErroApi } from '../utils/apiError'
 import { hojeLocalISO, primeiroDiaDoMesLocalISO } from '../utils/dataISO'
@@ -47,6 +52,7 @@ export function FinanceiroEntradasPage() {
   const [dataInicio, setDataInicio] = useState(primeiroDiaDoMesLocalISO())
   const [dataFim, setDataFim] = useState(hojeLocalISO())
   const [filtroStatus, setFiltroStatus] = useState<FiltroStatusEntrada>('all')
+  const [filtroTipo, setFiltroTipo] = useState<FiltroTipoEntrada>('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -58,6 +64,7 @@ export function FinanceiroEntradasPage() {
       const resultado = await listarEntradasFinanceiras({
         from,
         to,
+        ...(filtroTipo !== 'all' ? { type: filtroTipo } : {}),
         ...(filtroStatus !== 'all' ? { status: filtroStatus } : {}),
         page: page + 1,
         limit: rowsPerPage,
@@ -73,7 +80,7 @@ export function FinanceiroEntradasPage() {
     } finally {
       setLoading(false)
     }
-  }, [dataInicio, dataFim, filtroStatus, page, rowsPerPage])
+  }, [dataInicio, dataFim, filtroStatus, filtroTipo, page, rowsPerPage])
 
   useEffect(() => {
     void carregar()
@@ -110,6 +117,25 @@ export function FinanceiroEntradasPage() {
           }}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 } }}
         />
+        <FormControl size="small" sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 200 } }}>
+          <InputLabel id="filtro-tipo-entrada-label">Tipo</InputLabel>
+          <Select
+            labelId="filtro-tipo-entrada-label"
+            label="Tipo"
+            value={filtroTipo}
+            onChange={(event) => {
+              setFiltroTipo(event.target.value as FiltroTipoEntrada)
+              setPage(0)
+            }}
+          >
+            <MenuItem value="all">Todos</MenuItem>
+            {FINANCIAL_ENTRY_TYPES.map((tipo) => (
+              <MenuItem key={tipo} value={tipo}>
+                {FINANCIAL_ENTRY_TYPE_LABELS[tipo]}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
         <FormControl size="small" sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 200 } }}>
           <InputLabel id="filtro-status-entrada-label">Status</InputLabel>
           <Select
@@ -156,7 +182,7 @@ export function FinanceiroEntradasPage() {
             </Paper>
           ) : (
             <Paper sx={{ p: 0 }}>
-              <FinanceiroEntradasTable entradas={entradas} />
+              <FinanceiroEntradasTable entradas={entradas} onChanged={() => void carregar()} />
               <TablePagination
                 component="div"
                 count={meta.total}

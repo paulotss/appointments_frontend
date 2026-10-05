@@ -65,7 +65,7 @@ export interface BackendAppointment {
     id: number
     name: string
     usernameLogin: string
-    isAdmin: boolean
+    role: 'PATIENT' | 'PROFESSIONAL' | 'RECEPTIONIST' | 'ADMIN'
     extension?: number | null
     extensions?: number | null
   }

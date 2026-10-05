@@ -9,8 +9,7 @@ import {
   MenuItem,
   Stack,
   TextField,
-  ToggleButton,
-  ToggleButtonGroup,
+  Typography,
 } from '@mui/material'
 import { useEffect, useMemo, useState } from 'react'
 import { Controller, useForm, useWatch, type DefaultValues } from 'react-hook-form'
@@ -28,17 +27,22 @@ import {
 import { listarAgendamentosClinicos } from '../services/clinical-appointments.service'
 import { buscarGuia, listarGuias } from '../services/insurance-guides.service'
 import { listarProcedimentosPorEspecialidades } from '../services/procedures.service'
+import { listarPacotesDoPaciente } from '../services/patient-packages.service'
+import { listarAssinaturasDoPaciente } from '../services/benefit-subscriptions.service'
 import { buscarPaciente } from '../services/patients.service'
 import { buscarProfissional } from '../services/health-professionals.service'
 import {
   CLINICAL_APPOINTMENT_STATUSES,
   CLINICAL_APPOINTMENT_STATUS_LABELS,
   guiasDoAgendamento,
+  temAvulsoParaCobrar,
   type ClinicalAppointment,
 } from '../types/agendamentoClinico'
 import type { InsuranceGuide } from '../types/guia'
 import { rotuloGuia, saldoGuiaProcedimento } from '../types/guia'
 import type { Patient } from '../types/paciente'
+import type { PatientPackage, PatientPackageItem } from '../types/pacote'
+import type { BenefitSubscription } from '../types/cartao'
 import type { Procedure } from '../types/procedimento'
 import type { HealthProfessional } from '../types/profissional'
 import { formatarMoedaBRL } from '../utils/moedaBRL'
@@ -85,14 +89,17 @@ export function AgendamentoClinicoForm({
     defaultValues,
   })
 
-  const type = useWatch({ control, name: 'type' })
   const patientId = useWatch({ control, name: 'patientId' })
   const healthProfessionalId = useWatch({ control, name: 'healthProfessionalId' })
   const insuranceGuideIds = useWatch({ control, name: 'insuranceGuideIds' }) ?? []
+  const patientPackageItemIds = useWatch({ control, name: 'patientPackageItemIds' }) ?? []
+  const benefitUses = useWatch({ control, name: 'benefitUses' }) ?? []
   const status = useWatch({ control, name: 'status' })
 
   const [procedimentos, setProcedimentos] = useState<Procedure[]>([])
   const [guias, setGuias] = useState<InsuranceGuide[]>([])
+  const [pacotesPaciente, setPacotesPaciente] = useState<PatientPackage[]>([])
+  const [assinaturas, setAssinaturas] = useState<BenefitSubscription[]>([])
   const [idsReservasPorGuia, setIdsReservasPorGuia] = useState<Record<number, number[]>>({})
   const [loadingListas, setLoadingListas] = useState(false)
   const [dialogNovaGuiaAberto, setDialogNovaGuiaAberto] = useState(false)
@@ -153,14 +160,14 @@ export function AgendamentoClinicoForm({
   )
 
   const procedimentosSemSaldo = useMemo(() => {
-    if (type !== 'health_plan' || guiasSelecionadas.length === 0) return []
+    if (guiasSelecionadas.length === 0) return []
     return linhasProcedimentosDasGuias(guiasSelecionadas).filter(
       (item) => saldoGuiaProcedimento(item) <= 0,
     )
-  }, [type, guiasSelecionadas])
+  }, [guiasSelecionadas])
 
   const finishedDesabilitado =
-    type === 'health_plan' &&
+    insuranceGuideIds.length > 0 &&
     !(agendamentoAtual?.status === 'finished' && status === 'finished') &&
     procedimentosSemSaldo.length > 0
 
@@ -185,9 +192,66 @@ export function AgendamentoClinicoForm({
     )
   }, [guias, guiasSelecionadas, insuranceGuideIds, reservasPorGuia])
 
+  const itensPacote = useMemo(() => {
+    const linhas: Array<PatientPackageItem & { pacoteNome: string; ativo: boolean }> = []
+    for (const pacote of pacotesPaciente) {
+      for (const item of pacote.items) {
+        linhas.push({
+          ...item,
+          pacoteNome: pacote.package?.name ?? `Pacote #${pacote.packageId}`,
+          ativo: pacote.status === 'active',
+        })
+      }
+    }
+    return linhas
+  }, [pacotesPaciente])
+
+  const opcoesPacote = useMemo(() => {
+    return itensPacote.filter(
+      (item) =>
+        patientPackageItemIds.includes(item.id) ||
+        (item.ativo && item.remainingQuantity > 0),
+    )
+  }, [itensPacote, patientPackageItemIds])
+
+  const assinaturaVigente = useMemo(
+    () => assinaturas.find((item) => item.isCurrent) ?? null,
+    [assinaturas],
+  )
+
+  const opcoesCota = useMemo(() => {
+    if (!assinaturaVigente) return []
+    const selecionados = new Set(
+      benefitUses.map((item) => `${item.entitlementId}:${item.procedureId}`),
+    )
+    const linhas: Array<{
+      entitlementId: number
+      procedureId: number
+      titulo: string
+      procedimento: string
+      remaining: number
+    }> = []
+    for (const entitlement of assinaturaVigente.entitlements) {
+      if (entitlement.kind !== 'quota') continue
+      for (const proc of entitlement.procedures) {
+        const chave = `${entitlement.id}:${proc.procedureId}`
+        const remaining = entitlement.remainingQuantity ?? 0
+        if (remaining <= 0 && !selecionados.has(chave)) continue
+        linhas.push({
+          entitlementId: entitlement.id,
+          procedureId: proc.procedureId,
+          titulo: entitlement.title,
+          procedimento: proc.procedure?.name ?? `Procedimento #${proc.procedureId}`,
+          remaining,
+        })
+      }
+    }
+    return linhas
+  }, [assinaturaVigente, benefitUses])
+
   useEffect(() => {
     async function carregarProcedimentos() {
-      if (type !== 'private' || specialtyIds.length === 0) {
+      if (specialtyIds.length === 0) {
         setProcedimentos([])
         return
       }
@@ -204,11 +268,11 @@ export function AgendamentoClinicoForm({
     void carregarProcedimentos()
     // specialtyIds is derived from healthProfessionalId
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type, healthProfessionalId])
+  }, [healthProfessionalId])
 
   useEffect(() => {
     async function carregarGuias() {
-      if (type !== 'health_plan' || patientId == null || healthProfessionalId == null) {
+      if (patientId == null || healthProfessionalId == null) {
         setGuias([])
         setIdsReservasPorGuia({})
         return
@@ -225,9 +289,7 @@ export function AgendamentoClinicoForm({
         const faltando = insuranceGuideIds.filter((id) => !elegiveis.some((item) => item.id === id))
         let guiasCarregadas = elegiveis
         if (faltando.length > 0) {
-          const extras = await Promise.all(
-            faltando.map((id) => buscarGuia(id).catch(() => null)),
-          )
+          const extras = await Promise.all(faltando.map((id) => buscarGuia(id).catch(() => null)))
           const encontrados = extras.filter((item): item is InsuranceGuide => item != null)
           const porId = new Map<number, InsuranceGuide>()
           for (const item of [...encontrados, ...elegiveis]) {
@@ -260,13 +322,43 @@ export function AgendamentoClinicoForm({
       }
     }
     void carregarGuias()
-    // Recarrega ao mudar paciente/profissional/tipo; ids já selecionados entram via fallback.
+    // Recarrega ao mudar paciente/profissional; ids já selecionados entram via fallback.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type, patientId, healthProfessionalId])
+  }, [patientId, healthProfessionalId])
+
+  useEffect(() => {
+    async function carregarPacotes() {
+      if (patientId == null) {
+        setPacotesPaciente([])
+        return
+      }
+      try {
+        setPacotesPaciente(await listarPacotesDoPaciente(patientId, agendamentoAtual?.id))
+      } catch {
+        setPacotesPaciente([])
+      }
+    }
+    void carregarPacotes()
+  }, [patientId, agendamentoAtual?.id])
+
+  useEffect(() => {
+    async function carregarCartao() {
+      if (patientId == null) {
+        setAssinaturas([])
+        return
+      }
+      try {
+        setAssinaturas(await listarAssinaturasDoPaciente(patientId, agendamentoAtual?.id))
+      } catch {
+        setAssinaturas([])
+      }
+    }
+    void carregarCartao()
+  }, [patientId, agendamentoAtual?.id])
 
   useEffect(() => {
     setDialogNovaGuiaAberto(false)
-  }, [type, patientId, healthProfessionalId])
+  }, [patientId, healthProfessionalId])
 
   useEffect(() => {
     const patientIdInicial = defaultValues.patientId
@@ -279,7 +371,10 @@ export function AgendamentoClinicoForm({
 
   useEffect(() => {
     const professionalIdInicial = defaultValues.healthProfessionalId
-    if (typeof professionalIdInicial !== 'number' || profissionalSelecionado?.id === professionalIdInicial)
+    if (
+      typeof professionalIdInicial !== 'number' ||
+      profissionalSelecionado?.id === professionalIdInicial
+    )
       return
     void buscarProfissional(professionalIdInicial)
       .then((profissional) => setProfissionalSelecionado(profissional))
@@ -289,30 +384,6 @@ export function AgendamentoClinicoForm({
 
   return (
     <Stack component="form" spacing={2} onSubmit={handleSubmit(onSubmit)}>
-      <Controller
-        name="type"
-        control={control}
-        render={({ field }) => (
-          <ToggleButtonGroup
-            exclusive
-            fullWidth
-            value={field.value}
-            onChange={(_, value) => {
-              if (!value) return
-              field.onChange(value)
-              if (value === 'private') {
-                setValue('insuranceGuideIds', [])
-              } else {
-                setValue('procedureIds', [])
-              }
-            }}
-          >
-            <ToggleButton value="private">Particular</ToggleButton>
-            <ToggleButton value="health_plan">Plano de saúde</ToggleButton>
-          </ToggleButtonGroup>
-        )}
-      />
-
       <Controller
         name="patientId"
         control={control}
@@ -327,6 +398,8 @@ export function AgendamentoClinicoForm({
               setPacienteSelecionado(paciente)
               onChange(paciente?.id)
               setValue('insuranceGuideIds', [])
+              setValue('patientPackageItemIds', [])
+              setValue('benefitUses', [])
             }}
             onBlur={onBlur}
             inputRef={ref}
@@ -441,128 +514,219 @@ export function AgendamentoClinicoForm({
       />
       {mensagemFinished ? <Alert severity="warning">{mensagemFinished}</Alert> : null}
 
-      {type === 'private' ? (
+      <Typography variant="subtitle2">Procedimentos avulsos</Typography>
+      <Controller
+        name="procedureIds"
+        control={control}
+        render={({ field: { onChange, value, ref, onBlur } }) => (
+          <Autocomplete
+            multiple
+            options={procedimentos}
+            getOptionLabel={(item) => `${item.name} — ${formatarMoedaBRL(item.value) || 's/ valor'}`}
+            isOptionEqualToValue={(option, selected) => option.id === selected.id}
+            value={procedimentos.filter((item) => (value ?? []).includes(item.id))}
+            onChange={(_, selected) => onChange(selected.map((item) => item.id))}
+            onBlur={onBlur}
+            loading={loadingListas}
+            disabled={specialtyIds.length === 0}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                inputRef={ref}
+                label="Avulsos (preço cheio)"
+                error={Boolean(errors.procedureIds)}
+                helperText={
+                  errors.procedureIds?.message ??
+                  (healthProfessionalId == null
+                    ? 'Selecione o profissional para listar os procedimentos.'
+                    : 'Opcional. Será cobrado na entrada financeira do agendamento.')
+                }
+              />
+            )}
+          />
+        )}
+      />
+
+      <Typography variant="subtitle2">Pacote do paciente</Typography>
+      <Controller
+        name="patientPackageItemIds"
+        control={control}
+        render={({ field: { onChange, value, ref, onBlur } }) => (
+          <Autocomplete
+            multiple
+            options={opcoesPacote}
+            getOptionLabel={(item) =>
+              `${item.procedure?.name ?? `Procedimento #${item.procedureId}`} · ${item.pacoteNome} · restante ${item.remainingQuantity} de ${item.quantity}`
+            }
+            isOptionEqualToValue={(option, selected) => option.id === selected.id}
+            value={opcoesPacote.filter((item) => (value ?? []).includes(item.id))}
+            onChange={(_, selected) => onChange(selected.map((item) => item.id))}
+            onBlur={onBlur}
+            disabled={patientId == null}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                inputRef={ref}
+                label="Procedimentos do pacote"
+                error={Boolean(errors.patientPackageItemIds)}
+                helperText={
+                  errors.patientPackageItemIds?.message ??
+                  (patientId == null
+                    ? 'Selecione o paciente para listar os pacotes.'
+                    : opcoesPacote.length === 0
+                      ? 'Este paciente não tem saldo de pacote disponível.'
+                      : 'Já pagos na atribuição. Consomem 1 sessão ao finalizar.')
+                }
+              />
+            )}
+          />
+        )}
+      />
+
+      <Typography variant="subtitle2">Cartão de benefícios</Typography>
+      {assinaturaVigente?.discountPercent != null ? (
+        <Alert severity="info">
+          Cartão {assinaturaVigente.cardNumber} vigente: {assinaturaVigente.discountPercent}% de
+          desconto nos procedimentos particulares.
+        </Alert>
+      ) : null}
+      <Controller
+        name="benefitUses"
+        control={control}
+        render={({ field: { onChange, value, ref, onBlur } }) => (
+          <Autocomplete
+            multiple
+            options={opcoesCota}
+            getOptionLabel={(item) =>
+              `${item.procedimento} · ${item.titulo} · restante ${item.remaining}`
+            }
+            isOptionEqualToValue={(option, selected) =>
+              option.entitlementId === selected.entitlementId &&
+              option.procedureId === selected.procedureId
+            }
+            value={opcoesCota.filter((item) =>
+              (value ?? []).some(
+                (uso) =>
+                  uso.entitlementId === item.entitlementId && uso.procedureId === item.procedureId,
+              ),
+            )}
+            onChange={(_, selected) =>
+              onChange(
+                selected.map((item) => ({
+                  entitlementId: item.entitlementId,
+                  procedureId: item.procedureId,
+                })),
+              )
+            }
+            onBlur={onBlur}
+            disabled={patientId == null}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                inputRef={ref}
+                label="Cotas do cartão"
+                error={Boolean(errors.benefitUses)}
+                helperText={
+                  errors.benefitUses?.message ??
+                  (patientId == null
+                    ? 'Selecione o paciente para listar as cotas.'
+                    : !assinaturaVigente
+                      ? 'Este paciente não tem cartão vigente.'
+                      : opcoesCota.length === 0
+                        ? 'Não há cota disponível.'
+                        : 'Incluído no cartão. Consome 1 saldo ao finalizar e não entra na cobrança particular.')
+                }
+              />
+            )}
+          />
+        )}
+      />
+
+      <Typography variant="subtitle2">Plano de saúde</Typography>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'flex-start' }}>
         <Controller
-          name="procedureIds"
+          name="insuranceGuideIds"
           control={control}
           render={({ field: { onChange, value, ref, onBlur } }) => (
             <Autocomplete
               multiple
-              options={procedimentos}
-              getOptionLabel={(item) =>
-                `${item.name} — ${formatarMoedaBRL(item.value) || 's/ valor'}`
-              }
+              options={opcoesGuias}
+              getOptionLabel={(guia) => rotuloGuia(guia)}
               isOptionEqualToValue={(option, selected) => option.id === selected.id}
-              value={procedimentos.filter((item) => (value ?? []).includes(item.id))}
-              onChange={(_, selected) => onChange(selected.map((item) => item.id))}
+              value={opcoesGuias.filter((guia) => (value ?? []).includes(guia.id))}
+              onChange={(_, selected) => onChange(selected.map((guia) => guia.id))}
               onBlur={onBlur}
               loading={loadingListas}
-              disabled={specialtyIds.length === 0}
+              disabled={guiaSomenteLeitura || patientId == null || healthProfessionalId == null}
+              sx={{ flex: 1 }}
               renderInput={(params) => (
                 <TextField
                   {...params}
                   inputRef={ref}
-                  label="Procedimentos"
-                  error={Boolean(errors.procedureIds)}
+                  label="Guias"
+                  error={Boolean(errors.insuranceGuideIds)}
                   helperText={
-                    errors.procedureIds?.message ??
-                    (healthProfessionalId == null
-                      ? 'Selecione o profissional para listar os procedimentos.'
-                      : ' ')
+                    errors.insuranceGuideIds?.message ??
+                    (guiaSomenteLeitura
+                      ? 'As guias não podem ser alteradas enquanto o status for Finalizado.'
+                      : patientId == null || healthProfessionalId == null
+                        ? 'Selecione paciente e profissional para listar as guias.'
+                        : opcoesGuias.length === 0
+                          ? 'Nenhuma guia com quantidade disponível. Use Nova guia para cadastrar.'
+                          : 'Opcional. Somente guias não faturadas com saldo livre.')
                   }
                 />
               )}
             />
           )}
         />
-      ) : (
-        <>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'flex-start' }}>
-            <Controller
-              name="insuranceGuideIds"
-              control={control}
-              render={({ field: { onChange, value, ref, onBlur } }) => (
-                <Autocomplete
-                  multiple
-                  options={opcoesGuias}
-                  getOptionLabel={(guia) => rotuloGuia(guia)}
-                  isOptionEqualToValue={(option, selected) => option.id === selected.id}
-                  value={opcoesGuias.filter((guia) => (value ?? []).includes(guia.id))}
-                  onChange={(_, selected) => onChange(selected.map((guia) => guia.id))}
-                  onBlur={onBlur}
-                  loading={loadingListas}
-                  disabled={guiaSomenteLeitura || patientId == null || healthProfessionalId == null}
-                  sx={{ flex: 1 }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      inputRef={ref}
-                      label="Guias"
-                      error={Boolean(errors.insuranceGuideIds)}
-                      helperText={
-                        errors.insuranceGuideIds?.message ??
-                        (guiaSomenteLeitura
-                          ? 'As guias não podem ser alteradas enquanto o status for Finalizado.'
-                          : patientId == null || healthProfessionalId == null
-                            ? 'Selecione paciente e profissional para listar as guias.'
-                            : opcoesGuias.length === 0
-                              ? 'Nenhuma guia com quantidade disponível para este paciente e profissional. Use Nova guia para cadastrar.'
-                              : 'Somente guias não faturadas com quantidade ainda não reservada em outros agendamentos.')
-                      }
-                    />
-                  )}
-                />
-              )}
-            />
-            <Button
-              type="button"
-              variant="outlined"
-              startIcon={<AddIcon />}
-              disabled={guiaSomenteLeitura || patientId == null || healthProfessionalId == null}
-              onClick={() => setDialogNovaGuiaAberto(true)}
-              sx={{ mt: { sm: 0.5 }, whiteSpace: 'nowrap', flexShrink: 0 }}
-            >
-              Nova guia
-            </Button>
-          </Stack>
-          {avisoSaldoReservado ? <Alert severity="warning">{avisoSaldoReservado}</Alert> : null}
-          {patientId != null && healthProfessionalId != null ? (
-            <NovaGuiaDialog
-              open={dialogNovaGuiaAberto}
-              patientId={patientId}
-              healthProfessionalId={healthProfessionalId}
-              pacientes={pacienteSelecionado ? [pacienteSelecionado] : pacientes}
-              profissionais={profissional ? [profissional] : profissionais}
-              onClose={() => setDialogNovaGuiaAberto(false)}
-              onCreated={(guia) => {
-                setGuias((prev) => {
-                  if (prev.some((item) => item.id === guia.id)) return prev
-                  return [guia, ...prev]
-                })
-                if (!insuranceGuideIds.includes(guia.id)) {
-                  setValue('insuranceGuideIds', [...insuranceGuideIds, guia.id], {
-                    shouldValidate: true,
-                    shouldDirty: true,
-                  })
-                }
-              }}
-            />
-          ) : null}
-          {loadingListas ? (
-            <Stack direction="row" alignItems="center" gap={1}>
-              <CircularProgress size={16} />
-            </Stack>
-          ) : null}
-          <GuiaProcedimentosTabela
-            procedimentos={linhasProcedimentosDasGuias(guiasSelecionadas).map((item) => ({
-              ...item,
-              guiaLabel: rotuloGuia(item.guia),
-              healthPlanId: item.guia.healthPlanId,
-            }))}
-            emptyText="Selecione as guias para ver os procedimentos (somente leitura)."
-          />
-        </>
-      )}
+        <Button
+          type="button"
+          variant="outlined"
+          startIcon={<AddIcon />}
+          disabled={guiaSomenteLeitura || patientId == null || healthProfessionalId == null}
+          onClick={() => setDialogNovaGuiaAberto(true)}
+          sx={{ mt: { sm: 0.5 }, whiteSpace: 'nowrap', flexShrink: 0 }}
+        >
+          Nova guia
+        </Button>
+      </Stack>
+      {avisoSaldoReservado ? <Alert severity="warning">{avisoSaldoReservado}</Alert> : null}
+      {patientId != null && healthProfessionalId != null ? (
+        <NovaGuiaDialog
+          open={dialogNovaGuiaAberto}
+          patientId={patientId}
+          healthProfessionalId={healthProfessionalId}
+          pacientes={pacienteSelecionado ? [pacienteSelecionado] : pacientes}
+          profissionais={profissional ? [profissional] : profissionais}
+          onClose={() => setDialogNovaGuiaAberto(false)}
+          onCreated={(guia) => {
+            setGuias((prev) => {
+              if (prev.some((item) => item.id === guia.id)) return prev
+              return [guia, ...prev]
+            })
+            if (!insuranceGuideIds.includes(guia.id)) {
+              setValue('insuranceGuideIds', [...insuranceGuideIds, guia.id], {
+                shouldValidate: true,
+                shouldDirty: true,
+              })
+            }
+          }}
+        />
+      ) : null}
+      {loadingListas ? (
+        <Stack direction="row" alignItems="center" gap={1}>
+          <CircularProgress size={16} />
+        </Stack>
+      ) : null}
+      <GuiaProcedimentosTabela
+        procedimentos={linhasProcedimentosDasGuias(guiasSelecionadas).map((item) => ({
+          ...item,
+          guiaLabel: rotuloGuia(item.guia),
+          healthPlanId: item.guia.healthPlanId,
+        }))}
+        emptyText="Selecione as guias para ver os procedimentos (somente leitura)."
+      />
 
       <Controller
         name="notes"
@@ -588,7 +752,9 @@ export function AgendamentoClinicoForm({
             Excluir
           </Button>
         ) : null}
-        {agendamentoAtual?.type === 'private' && agendamentoAtual.status === 'finished' ? (
+        {agendamentoAtual &&
+        temAvulsoParaCobrar(agendamentoAtual) &&
+        agendamentoAtual.status === 'finished' ? (
           <Button
             startIcon={<ReceiptLongIcon />}
             onClick={() =>

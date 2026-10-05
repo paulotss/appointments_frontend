@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { intervalosSobrepostos, paraIntervalo } from '../utils/bloqueioHorario'
 import { UFS_BRASIL } from '../utils/ufBrasil'
 
 const optionalText = z
@@ -12,6 +13,47 @@ const optionalText = z
 const specialtyItemSchema = z.object({
   specialtyId: z.number({ error: 'Selecione uma especialidade' }).int().positive('Selecione uma especialidade'),
 })
+
+const bloqueioSemanalItemSchema = z
+  .object({
+    weekday: z.number().int().min(0).max(6),
+    startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Informe um horário válido'),
+    endTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$|^24:00$/, 'Informe um horário válido'),
+  })
+  .superRefine((item, ctx) => {
+    if (!paraIntervalo(item)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'O horário final deve ser depois do início',
+        path: ['endTime'],
+      })
+    }
+  })
+
+export const bloqueiosSemanaisSchema = z.array(bloqueioSemanalItemSchema).superRefine((items, ctx) => {
+  for (let weekday = 0; weekday <= 6; weekday += 1) {
+    const doDia = items
+      .filter((item) => item.weekday === weekday)
+      .map((item) => paraIntervalo(item))
+      .filter((item): item is NonNullable<typeof item> => item != null)
+    if (intervalosSobrepostos(doDia)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Há períodos bloqueados sobrepostos no mesmo dia da semana',
+        path: [],
+      })
+      return
+    }
+  }
+})
+
+export function mensagemBloqueiosSemanais(
+  blocks: z.input<typeof bloqueiosSemanaisSchema>,
+): string | null {
+  const parsed = bloqueiosSemanaisSchema.safeParse(blocks)
+  if (parsed.success) return null
+  return parsed.error.issues[0]?.message ?? 'Horários bloqueados inválidos'
+}
 
 export const profissionalSchema = z.object({
   name: z.string().min(3, 'Informe o nome'),
@@ -47,6 +89,7 @@ export const profissionalSchema = z.object({
     { message: 'E-mail invalido' },
   ),
   isActive: z.boolean(),
+  weeklyBlocks: bloqueiosSemanaisSchema,
 })
 
 export type ProfissionalFormInput = z.input<typeof profissionalSchema>

@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient'
+import { isUserRole } from '../routes/access'
 import { readNumericUserIdFromToken, saveLoggedUser, saveToken, type StoredUser } from './authStorage'
 import type { LoginRequest, LoginResponse, LoggedUser } from '../types/auth'
 import type { LoginFormValues } from '../schemas/login.schema'
@@ -12,7 +13,12 @@ function toLoginRequest(values: LoginFormValues): LoginRequest {
 
 /** Monta usuario persistido: id pode vir no corpo (varias chaves) ou apenas no JWT. */
 function sessionUserFromLogin(user: LoggedUser, token: string): StoredUser {
-  const raw = user as LoggedUser & { userId?: number; user_id?: number; extensions?: number | null }
+  const raw = user as LoggedUser & {
+    userId?: number
+    user_id?: number
+    extensions?: number | null
+    isAdmin?: boolean
+  }
   const fromBody =
     typeof raw.id === 'number' && Number.isFinite(raw.id)
       ? Math.trunc(raw.id)
@@ -29,11 +35,20 @@ function sessionUserFromLogin(user: LoggedUser, token: string): StoredUser {
   const ext = raw.extension ?? raw.extensions
   const extension =
     ext != null && typeof ext === 'number' && Number.isFinite(ext) ? Math.trunc(ext) : null
+  const role = isUserRole(raw.role) ? raw.role : raw.isAdmin ? 'ADMIN' : 'RECEPTIONIST'
+  const patientId =
+    typeof raw.patientId === 'number' && Number.isFinite(raw.patientId) ? Math.trunc(raw.patientId) : null
+  const healthProfessionalId =
+    typeof raw.healthProfessionalId === 'number' && Number.isFinite(raw.healthProfessionalId)
+      ? Math.trunc(raw.healthProfessionalId)
+      : null
   return {
     id,
     name: raw.name,
     usernameLogin: raw.usernameLogin,
-    isAdmin: raw.isAdmin,
+    role,
+    patientId,
+    healthProfessionalId,
     extension,
   }
 }

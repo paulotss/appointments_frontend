@@ -28,6 +28,7 @@ import { NovoRegistroPage } from './pages/NovoRegistroPage'
 import { RegistrosPage } from './pages/RegistrosPage'
 import { NovoUsuarioPage } from './pages/NovoUsuarioPage'
 import { AgendaClinicaPage } from './pages/AgendaClinicaPage'
+import { EntradaFinanceiraDetalhePage } from './pages/EntradaFinanceiraDetalhePage'
 import { FinanceiroEntradasPage } from './pages/FinanceiroEntradasPage'
 import { FinanceiroPagamentosPage } from './pages/FinanceiroPagamentosPage'
 import { FinanceiroSaidasPage } from './pages/FinanceiroSaidasPage'
@@ -44,19 +45,34 @@ import { NovoProcedimentoPage } from './pages/NovoProcedimentoPage'
 import { PagamentoDetalhePage } from './pages/PagamentoDetalhePage'
 import { ProcedimentosPage } from './pages/ProcedimentosPage'
 import { TissLotesPage } from './pages/TissLotesPage'
+import { EditarPacientePage } from './pages/EditarPacientePage'
 import { NovoPacientePage } from './pages/NovoPacientePage'
 import { NovoPlanoSaudePage } from './pages/NovoPlanoSaudePage'
 import { NovoProfissionalPage } from './pages/NovoProfissionalPage'
 import { PacientesPage } from './pages/PacientesPage'
+import { PacotesPage } from './pages/PacotesPage'
+import { NovoPacotePage } from './pages/NovoPacotePage'
+import { NovoPlanoCartaoPage } from './pages/NovoPlanoCartaoPage'
+import { PlanosCartaoPage } from './pages/PlanosCartaoPage'
 import { PlanosSaudePage } from './pages/PlanosSaudePage'
 import { ProdutosConfigPage } from './pages/ProdutosConfigPage'
 import { ProdutosEstoquePage } from './pages/ProdutosEstoquePage'
 import { ProfissionaisPage } from './pages/ProfissionaisPage'
 import { SaidasPage } from './pages/SaidasPage'
 import { SetoresPage } from './pages/SetoresPage'
+import { TokensServicoPage } from './pages/TokensServicoPage'
 import { UsuariosPage } from './pages/UsuariosPage'
-import { AdminRoute } from './routes/AdminRoute'
+import { ADMIN_ROLES, CLINICAL_STAFF_ROLES, STAFF_ROLES } from './routes/access'
 import { ProtectedRoute } from './routes/ProtectedRoute'
+import { RoleRoute } from './routes/RoleRoute'
+import { getUserRole, homePathForRole, isAuthenticated } from './services/authStorage'
+
+function HomeRedirect() {
+  if (!isAuthenticated()) {
+    return <Navigate to="/login" replace />
+  }
+  return <Navigate to={homePathForRole(getUserRole())} replace />
+}
 
 function App() {
   return (
@@ -69,357 +85,413 @@ function App() {
           </ProtectedRoute>
         }
       >
-        <Route path="/" element={<Navigate to="/registros" replace />} />
-        <Route path="/registros" element={<RegistrosPage />} />
-        <Route path="/registros/novo" element={<NovoRegistroPage />} />
+        <Route path="/" element={<HomeRedirect />} />
+        <Route path="/registros" element={<RoleRoute roles={STAFF_ROLES}><RegistrosPage /></RoleRoute>} />
+        <Route path="/registros/novo" element={<RoleRoute roles={STAFF_ROLES}><NovoRegistroPage /></RoleRoute>} />
         <Route path="/clinical-appointments" element={<AgendaClinicaPage />} />
-        <Route path="/chamadas" element={<ChamadasPage />} />
-        <Route path="/chamadas/:callId" element={<ChamadaDetalhePage />} />
-        <Route path="/mensagens" element={<MensagensPage />} />
-        <Route path="/mensagens/:messageId" element={<MensagemDetalhePage />} />
-        <Route path="/higia" element={<HigiaPage />} />
-        <Route path="/relatorios/horarios" element={<HorariosPage />} />
-        <Route path="/relatorios/atendimentos" element={<AtendimentosPage />} />
-        <Route path="/relatorios/taxa-conversao" element={<TaxaConversaoPage />} />
-        <Route path="/relatorios/especialidades-atendidas" element={<EspecialidadesAtendidasPage />} />
+        <Route path="/chamadas" element={<RoleRoute roles={STAFF_ROLES}><ChamadasPage /></RoleRoute>} />
+        <Route path="/chamadas/:callId" element={<RoleRoute roles={STAFF_ROLES}><ChamadaDetalhePage /></RoleRoute>} />
+        <Route path="/mensagens" element={<RoleRoute roles={STAFF_ROLES}><MensagensPage /></RoleRoute>} />
+        <Route path="/mensagens/:messageId" element={<RoleRoute roles={STAFF_ROLES}><MensagemDetalhePage /></RoleRoute>} />
+        <Route path="/higia" element={<RoleRoute roles={STAFF_ROLES}><HigiaPage /></RoleRoute>} />
+        <Route path="/relatorios/horarios" element={<RoleRoute roles={STAFF_ROLES}><HorariosPage /></RoleRoute>} />
+        <Route path="/relatorios/atendimentos" element={<RoleRoute roles={STAFF_ROLES}><AtendimentosPage /></RoleRoute>} />
+        <Route path="/relatorios/taxa-conversao" element={<RoleRoute roles={STAFF_ROLES}><TaxaConversaoPage /></RoleRoute>} />
+        <Route path="/relatorios/especialidades-atendidas" element={<RoleRoute roles={STAFF_ROLES}><EspecialidadesAtendidasPage /></RoleRoute>} />
         <Route
           path="/estoque/produtos"
           element={
-            <AdminRoute>
+            <RoleRoute roles={CLINICAL_STAFF_ROLES}>
               <ProdutosEstoquePage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/estoque/lotes"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <LotesPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/estoque/lotes/novo"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <NovoLotePage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/estoque/lotes/:id/editar"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <EditarLotePage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/estoque/saidas"
           element={
-            <AdminRoute>
+            <RoleRoute roles={CLINICAL_STAFF_ROLES}>
               <SaidasPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/estoque/saidas/nova"
           element={
-            <AdminRoute>
+            <RoleRoute roles={CLINICAL_STAFF_ROLES}>
               <NovaSaidaPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/configuracoes/estoque/categorias"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <CategoriasPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/configuracoes/estoque/categorias/nova"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <NovaCategoriaPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/configuracoes/estoque/produtos"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <ProdutosConfigPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/configuracoes/estoque/produtos/novo"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <NovoProdutoConfigPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/configuracoes/estoque/setores"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <SetoresPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/configuracoes/estoque/setores/novo"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <NovoSetorPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/configuracoes/estoque/locais"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <LocaisPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/configuracoes/estoque/locais/novo"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <NovoLocalPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/configuracoes/estoque/fornecedores"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <FornecedoresPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/configuracoes/estoque/fornecedores/novo"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <NovoFornecedorPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/especialidades"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <EspecialidadesPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/especialidades/nova"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <NovaEspecialidadePage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/configuracoes/clinica"
           element={
-            <AdminRoute>
+            <RoleRoute roles={ADMIN_ROLES}>
               <ClinicaPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/usuarios"
           element={
-            <AdminRoute>
+            <RoleRoute roles={ADMIN_ROLES}>
               <UsuariosPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/usuarios/novo"
           element={
-            <AdminRoute>
+            <RoleRoute roles={ADMIN_ROLES}>
               <NovoUsuarioPage />
-            </AdminRoute>
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/configuracoes/tokens"
+          element={
+            <RoleRoute roles={ADMIN_ROLES}>
+              <TokensServicoPage />
+            </RoleRoute>
           }
         />
         <Route
           path="/profissionais"
           element={
-            <AdminRoute>
+            <RoleRoute roles={CLINICAL_STAFF_ROLES}>
               <ProfissionaisPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/profissionais/novo"
           element={
-            <AdminRoute>
+            <RoleRoute roles={CLINICAL_STAFF_ROLES}>
               <NovoProfissionalPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/pacientes"
           element={
-            <AdminRoute>
+            <RoleRoute roles={CLINICAL_STAFF_ROLES}>
               <PacientesPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/pacientes/novo"
           element={
-            <AdminRoute>
+            <RoleRoute roles={CLINICAL_STAFF_ROLES}>
               <NovoPacientePage />
-            </AdminRoute>
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/pacientes/:id"
+          element={
+            <RoleRoute roles={CLINICAL_STAFF_ROLES}>
+              <EditarPacientePage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/cartao/planos"
+          element={
+            <RoleRoute roles={STAFF_ROLES}>
+              <PlanosCartaoPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/cartao/planos/novo"
+          element={
+            <RoleRoute roles={STAFF_ROLES}>
+              <NovoPlanoCartaoPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/pacotes"
+          element={
+            <RoleRoute roles={STAFF_ROLES}>
+              <PacotesPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/pacotes/novo"
+          element={
+            <RoleRoute roles={STAFF_ROLES}>
+              <NovoPacotePage />
+            </RoleRoute>
           }
         />
         <Route
           path="/planos-saude"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <PlanosSaudePage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/planos-saude/novo"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <NovoPlanoSaudePage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/guias"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <GuiasPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/guias/novo"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <NovaGuiaPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/guias/importar"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <ImportarGuiaPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/guias/:id"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <GuiaDetalhePage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/tiss/lotes"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <TissLotesPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/tiss/lotes/novo"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <NovoLoteTissPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/tiss/lotes/:id"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <LoteTissDetalhePage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/financeiro/entradas"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <FinanceiroEntradasPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/financeiro/entradas/nova"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <NovaEntradaFinanceiraPage />
-            </AdminRoute>
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/financeiro/entradas/:id"
+          element={
+            <RoleRoute roles={STAFF_ROLES}>
+              <EntradaFinanceiraDetalhePage />
+            </RoleRoute>
           }
         />
         <Route
           path="/financeiro/saidas"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <FinanceiroSaidasPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/financeiro/pagamentos"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <FinanceiroPagamentosPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/financeiro/pagamentos/novo"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <NovoPagamentoPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/financeiro/pagamentos/:id"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <PagamentoDetalhePage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/procedimentos"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <ProcedimentosPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
         <Route
           path="/procedimentos/novo"
           element={
-            <AdminRoute>
+            <RoleRoute roles={STAFF_ROLES}>
               <NovoProcedimentoPage />
-            </AdminRoute>
+            </RoleRoute>
           }
         />
       </Route>
-      <Route path="*" element={<Navigate to="/registros" replace />} />
+      <Route path="*" element={<HomeRedirect />} />
     </Routes>
   )
 }

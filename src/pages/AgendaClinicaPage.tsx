@@ -1,6 +1,7 @@
 import {
   Alert,
   Box,
+  Button,
   CircularProgress,
   Dialog,
   DialogContent,
@@ -11,6 +12,7 @@ import {
   Typography,
 } from '@mui/material'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { getLoggedUser, getUserRole } from '../services/authStorage'
 import {
   AgendaClinicaCabecalho,
   AgendaClinicaCalendario,
@@ -19,6 +21,7 @@ import {
 import { AgendaClinicaToolbar, type VisaoTela } from '../components/AgendaClinicaToolbar'
 import { AgendamentoClinicoForm } from '../components/AgendamentoClinicoForm'
 import { AgendamentosClinicosTable } from '../components/AgendamentosClinicosTable'
+import { AjusteBloqueioDiaDialog } from '../components/AjusteBloqueioDiaDialog'
 import { TOP_BAR_HEIGHT } from '../layouts/AppLayout'
 import type { AgendamentoClinicoFormValues } from '../schemas/agendamentoClinico.schema'
 import {
@@ -29,13 +32,21 @@ import {
   listarAgendamentosClinicos,
 } from '../services/clinical-appointments.service'
 import {
+  buscarAgendaProfissional,
+  buscarProfissional,
+  substituirExcecoesAgenda,
+} from '../services/health-professionals.service'
+import {
   CLINICAL_APPOINTMENT_STATUSES,
   CLINICAL_APPOINTMENT_STATUS_CORES,
   CLINICAL_APPOINTMENT_STATUS_LABELS,
   CLINICAL_APPOINTMENT_TYPES,
   CLINICAL_APPOINTMENT_TYPE_CORES,
   CLINICAL_APPOINTMENT_TYPE_LABELS,
+  idsAvulsosDoAgendamento,
   idsGuiasDoAgendamento,
+  idsItensPacoteDoAgendamento,
+  usosCartaoDoAgendamento,
   type ClinicalAppointment,
   type ClinicalAppointmentStatus,
   type ClinicalAppointmentType,
@@ -44,6 +55,7 @@ import {
 } from '../types/agendamentoClinico'
 import type { Patient } from '../types/paciente'
 import type { HealthProfessional } from '../types/profissional'
+import type { ProfessionalScheduleDay, ScheduleExceptionInput } from '../types/bloqueioHorario'
 import { mensagemErroApi } from '../utils/apiError'
 import {
   adicionarDiasYmd,
@@ -84,26 +96,18 @@ function notesDoFormulario(values: AgendamentoClinicoFormValues): string | null 
 function montarPayloadCriacao(values: AgendamentoClinicoFormValues): CreateClinicalAppointmentRequest {
   const { scheduledAt, endsAt } = montarIntervalo(values)
   const notes = notesDoFormulario(values)
-  if (values.type === 'private') {
-    return {
-      patientId: values.patientId,
-      healthProfessionalId: values.healthProfessionalId,
-      scheduledAt,
-      endsAt,
-      type: 'private',
-      status: values.status,
-      procedureIds: values.procedureIds,
-      ...(notes ? { notes } : {}),
-    }
-  }
   return {
     patientId: values.patientId,
     healthProfessionalId: values.healthProfessionalId,
     scheduledAt,
     endsAt,
-    type: 'health_plan',
     status: values.status,
-    insuranceGuideIds: values.insuranceGuideIds,
+    ...(values.procedureIds.length > 0 ? { procedureIds: values.procedureIds } : {}),
+    ...(values.patientPackageItemIds.length > 0
+      ? { patientPackageItemIds: values.patientPackageItemIds }
+      : {}),
+    ...(values.benefitUses.length > 0 ? { benefitUses: values.benefitUses } : {}),
+    ...(values.insuranceGuideIds.length > 0 ? { insuranceGuideIds: values.insuranceGuideIds } : {}),
     ...(notes ? { notes } : {}),
   }
 }
@@ -120,7 +124,6 @@ function montarPayloadAtualizacao(
   atual: ClinicalAppointment,
 ): UpdateClinicalAppointmentRequest {
   const { scheduledAt, endsAt } = montarIntervalo(values)
-  const tipoMudou = values.type !== atual.type
   const payload: UpdateClinicalAppointmentRequest = {
     patientId: values.patientId,
     healthProfessionalId: values.healthProfessionalId,
@@ -130,29 +133,40 @@ function montarPayloadAtualizacao(
     notes: notesDoFormulario(values),
   }
 
-  if (tipoMudou) {
-    payload.type = values.type
+  if (!idsIguais(values.procedureIds, idsAvulsosDoAgendamento(atual))) {
+    payload.procedureIds = values.procedureIds
   }
-
-  if (values.type === 'private') {
-    const atuais = atual.procedures.map((item) => item.procedureId)
-    if (tipoMudou || !idsIguais(values.procedureIds, atuais)) {
-      payload.procedureIds = values.procedureIds
-    }
-  } else {
-    const atuais = idsGuiasDoAgendamento(atual)
-    if (tipoMudou || !idsIguais(values.insuranceGuideIds, atuais)) {
-      payload.insuranceGuideIds = values.insuranceGuideIds
-    }
+  if (!idsIguais(values.patientPackageItemIds, idsItensPacoteDoAgendamento(atual))) {
+    payload.patientPackageItemIds = values.patientPackageItemIds
+  }
+  const usosAtuais = usosCartaoDoAgendamento(atual)
+  const usosIguais =
+    values.benefitUses.length === usosAtuais.length &&
+    values.benefitUses.every((uso) =>
+      usosAtuais.some(
+        (atualUso) =>
+          atualUso.entitlementId === uso.entitlementId && atualUso.procedureId === uso.procedureId,
+      ),
+    )
+  if (!usosIguais) {
+    payload.benefitUses = values.benefitUses
+  }
+  if (!idsIguais(values.insuranceGuideIds, idsGuiasDoAgendamento(atual))) {
+    payload.insuranceGuideIds = values.insuranceGuideIds
   }
 
   return payload
 }
 
 export function AgendaClinicaPage() {
+  const role = getUserRole()
+  const somenteLeitura = role === 'PATIENT'
   const [visao, setVisao] = useState<VisaoTela>('semana')
   const [dataRef, setDataRef] = useState(() => ymdEmSaoPaulo())
   const [agendamentos, setAgendamentos] = useState<ClinicalAppointment[]>([])
+  const [diasAgenda, setDiasAgenda] = useState<ProfessionalScheduleDay[]>([])
+  const [ajusteDia, setAjusteDia] = useState<string | null>(null)
+  const [salvandoBloqueio, setSalvandoBloqueio] = useState(false)
   const [filtroPaciente, setFiltroPaciente] = useState<Patient | null>(null)
   const [filtroProfissional, setFiltroProfissional] = useState<HealthProfessional | null>(null)
   const [loading, setLoading] = useState(false)
@@ -171,26 +185,52 @@ export function AgendaClinicaPage() {
   const { from, to } = useMemo(() => intervaloVisivel(visao, dataRef), [visao, dataRef])
   const filtroPacienteId = filtroPaciente?.id ?? ''
   const filtroProfissionalId = filtroProfissional?.id ?? ''
-  const filtroAgendaAtivo = filtroPacienteId !== '' || filtroProfissionalId !== ''
+  const filtroAgendaAtivo = somenteLeitura || filtroPacienteId !== '' || filtroProfissionalId !== ''
+
+  useEffect(() => {
+    if (role !== 'PROFESSIONAL') return
+    const professionalId = getLoggedUser()?.healthProfessionalId
+    if (professionalId == null) return
+    let ativo = true
+    void buscarProfissional(professionalId)
+      .then((profissional) => {
+        if (ativo) setFiltroProfissional(profissional)
+      })
+      .catch(() => {
+        if (ativo) setError('Não foi possível carregar o profissional vinculado.')
+      })
+    return () => {
+      ativo = false
+    }
+  }, [role])
 
   const carregarAgendamentos = useCallback(async () => {
     if (!filtroAgendaAtivo) {
       setAgendamentos([])
+      setDiasAgenda([])
       setLoading(false)
       return
     }
     setLoading(true)
     setError(null)
     try {
-      const data = await listarAgendamentosClinicos({
-        from,
-        to,
-        ...(filtroPacienteId === '' ? {} : { patientId: filtroPacienteId }),
-        ...(filtroProfissionalId === '' ? {} : { healthProfessionalId: filtroProfissionalId }),
-        ...(filtroTipo === '' ? {} : { type: filtroTipo }),
-        ...(filtroStatus === '' ? {} : { status: filtroStatus }),
-      })
+      const agendaPromise =
+        filtroProfissionalId === ''
+          ? Promise.resolve(null)
+          : buscarAgendaProfissional(filtroProfissionalId, from, to)
+      const [data, agenda] = await Promise.all([
+        listarAgendamentosClinicos({
+          from,
+          to,
+          ...(filtroPacienteId === '' ? {} : { patientId: filtroPacienteId }),
+          ...(filtroProfissionalId === '' ? {} : { healthProfessionalId: filtroProfissionalId }),
+          ...(filtroTipo === '' ? {} : { type: filtroTipo }),
+          ...(filtroStatus === '' ? {} : { status: filtroStatus }),
+        }),
+        agendaPromise,
+      ])
       setAgendamentos(data)
+      setDiasAgenda(agenda?.days ?? [])
     } catch (err) {
       setError(mensagemErroApi(err, 'Não foi possível carregar a agenda clínica.'))
     } finally {
@@ -219,6 +259,7 @@ export function AgendaClinicaPage() {
   }
 
   function abrirNovo(ymd?: string, hm?: string) {
+    if (somenteLeitura) return
     setEditando(null)
     setDataPreenchida(ymd ?? dataRef)
     setHoraPreenchida(hm ?? '08:00')
@@ -298,6 +339,31 @@ export function AgendaClinicaPage() {
 
   const visaoCalendario: VisaoAgenda = visao === 'lista' ? 'semana' : visao
   const calendarioVisivel = filtroAgendaAtivo && !loading && visao !== 'lista'
+  const bloqueiosPorDia = useMemo(() => {
+    const mapa: Record<string, ProfessionalScheduleDay['effectiveBlocks']> = {}
+    if (!filtroProfissional) return mapa
+    for (const dia of diasAgenda) mapa[dia.date] = dia.effectiveBlocks
+    return mapa
+  }, [diasAgenda, filtroProfissional])
+  const diaEmAjuste = diasAgenda.find((dia) => dia.date === ajusteDia) ?? null
+  const podeAjustarBloqueio = Boolean(filtroProfissional) && (visao === 'dia' || visao === 'semana')
+
+  async function salvarExcecoes(exceptions: ScheduleExceptionInput[]) {
+    if (!filtroProfissional || !ajusteDia) return
+    setSalvandoBloqueio(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      await substituirExcecoesAgenda(filtroProfissional.id, { date: ajusteDia, exceptions })
+      setAjusteDia(null)
+      setSuccess('Bloqueio do dia atualizado.')
+      await carregarAgendamentos()
+    } catch (err) {
+      setError(mensagemErroApi(err, 'Não foi possível atualizar o bloqueio do dia.'))
+    } finally {
+      setSalvandoBloqueio(false)
+    }
+  }
 
   return (
     <Box>
@@ -326,6 +392,8 @@ export function AgendaClinicaPage() {
           filtroStatus={filtroStatus}
           onFiltroStatusChange={setFiltroStatus}
           onNovoAgendamento={() => abrirNovo()}
+          permitirNovo={!somenteLeitura}
+          permitirBusca={!somenteLeitura}
         />
 
         {calendarioVisivel ? (
@@ -374,7 +442,11 @@ export function AgendaClinicaPage() {
                 </Typography>
               ))}
             </Stack>
-            <AgendaClinicaCabecalho visao={visaoCalendario} dataRef={dataRef} />
+            <AgendaClinicaCabecalho
+              visao={visaoCalendario}
+              dataRef={dataRef}
+              onAjustarBloqueio={podeAjustarBloqueio ? setAjusteDia : undefined}
+            />
           </Paper>
         ) : null}
       </Box>
@@ -407,7 +479,14 @@ export function AgendaClinicaPage() {
             visao={visaoCalendario}
             dataRef={dataRef}
             agendamentos={agendamentos}
-            onSlotClick={(ymd, hm) => abrirNovo(ymd, hm)}
+            bloqueiosPorDia={bloqueiosPorDia}
+            onSlotClick={(ymd, hm) => {
+              if (!somenteLeitura) abrirNovo(ymd, hm)
+            }}
+            onSlotBloqueado={() => {
+              setSuccess(null)
+              setError('Horário bloqueado.')
+            }}
             onEventoClick={abrirEvento}
             onDiaClick={(ymd) => {
               setDataRef(ymd)
@@ -444,10 +523,24 @@ export function AgendaClinicaPage() {
         maxWidth="md"
         disableEnforceFocus
       >
-        <DialogTitle>{editando ? 'Editar agendamento' : 'Novo agendamento'}</DialogTitle>
+        <DialogTitle>
+          {somenteLeitura ? 'Agendamento' : editando ? 'Editar agendamento' : 'Novo agendamento'}
+        </DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 1 }}>
-            {dialogAberto ? (
+            {dialogAberto && somenteLeitura && editando ? (
+              <Stack spacing={1} sx={{ py: 1 }}>
+                <Typography>
+                  {editando.healthProfessional?.name ?? 'Profissional'} ·{' '}
+                  {isoParaYmdSaoPaulo(editando.scheduledAt)} {isoParaHmSaoPaulo(editando.scheduledAt)}
+                </Typography>
+                <Typography>{CLINICAL_APPOINTMENT_STATUS_LABELS[editando.status]}</Typography>
+                {editando.notes ? <Typography>{editando.notes}</Typography> : null}
+                <Button onClick={fecharDialog} sx={{ alignSelf: 'flex-start' }}>
+                  Fechar
+                </Button>
+              </Stack>
+            ) : dialogAberto ? (
               <AgendamentoClinicoForm
                 key={editando ? `edit-${editando.id}` : `novo-${dataPreenchida}-${horaPreenchida}`}
                 defaultValues={
@@ -459,8 +552,9 @@ export function AgendaClinicaPage() {
                         scheduledTime: isoParaHmSaoPaulo(editando.scheduledAt),
                         durationMinutes: duracaoMinutosEntre(editando.scheduledAt, editando.endsAt),
                         status: editando.status,
-                        type: editando.type,
-                        procedureIds: editando.procedures.map((item) => item.procedureId),
+                        procedureIds: idsAvulsosDoAgendamento(editando),
+                        patientPackageItemIds: idsItensPacoteDoAgendamento(editando),
+                        benefitUses: usosCartaoDoAgendamento(editando),
                         insuranceGuideIds: idsGuiasDoAgendamento(editando),
                         notes: editando.notes ?? '',
                       }
@@ -471,8 +565,9 @@ export function AgendaClinicaPage() {
                         scheduledTime: horaPreenchida,
                         durationMinutes: 30,
                         status: 'marked',
-                        type: 'private',
                         procedureIds: [],
+                        patientPackageItemIds: [],
+                        benefitUses: [],
                         insuranceGuideIds: [],
                         notes: '',
                       }
@@ -490,6 +585,18 @@ export function AgendaClinicaPage() {
           </Box>
         </DialogContent>
       </Dialog>
+
+      <AjusteBloqueioDiaDialog
+        open={Boolean(ajusteDia) && Boolean(filtroProfissional)}
+        profissionalNome={filtroProfissional?.name ?? ''}
+        dia={diaEmAjuste}
+        saving={salvandoBloqueio}
+        onClose={() => {
+          if (salvandoBloqueio) return
+          setAjusteDia(null)
+        }}
+        onSave={(exceptions) => void salvarExcecoes(exceptions)}
+      />
     </Box>
   )
 }

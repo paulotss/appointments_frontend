@@ -12,12 +12,19 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   transfer: 'Transferência',
 }
 
-export const FINANCIAL_ENTRY_TYPES = ['private_procedure', 'health_plan'] as const
+export const FINANCIAL_ENTRY_TYPES = [
+  'private_procedure',
+  'health_plan',
+  'procedure_package',
+  'benefit_subscription',
+] as const
 export type FinancialEntryType = (typeof FINANCIAL_ENTRY_TYPES)[number]
 
 export const FINANCIAL_ENTRY_TYPE_LABELS: Record<FinancialEntryType, string> = {
   private_procedure: 'Particular',
   health_plan: 'Plano de saúde',
+  procedure_package: 'Pacote',
+  benefit_subscription: 'Cartão',
 }
 
 export const FINANCIAL_ENTRY_STATUSES = ['pending', 'paid', 'partially_paid', 'cancelled'] as const
@@ -89,6 +96,7 @@ export interface FinancialEntryAppointmentRef {
 export interface FinancialEntryBatchRef {
   id: number
   healthPlanId: number
+  batchNumber?: string
   healthPlan?: FinanceiroRef
 }
 
@@ -106,10 +114,21 @@ export interface FinancialEntry {
   notes: string | null
   clinicalAppointmentId: number | null
   billingBatchId: number | null
+  patientPackageId: number | null
+  benefitSubscriptionId: number | null
+  dueDate: string | null
+  installmentNumber: number | null
   createdAt: string
   items: FinancialEntryItem[]
   clinicalAppointment?: FinancialEntryAppointmentRef | null
   billingBatch?: FinancialEntryBatchRef | null
+  patientPackage?: { id: number; patient?: FinanceiroRef; package?: FinanceiroRef } | null
+  benefitSubscription?: {
+    id: number
+    cardNumber: string
+    patient?: FinanceiroRef
+    plan?: FinanceiroRef
+  } | null
 }
 
 export interface CreatePrivateFinancialEntryRequest {
@@ -131,6 +150,8 @@ export interface ListarFinancialEntriesParams {
 }
 
 export type FiltroStatusEntrada = 'all' | Extract<FinancialEntryStatus, 'pending' | 'paid'>
+
+export type FiltroTipoEntrada = 'all' | FinancialEntryType
 
 export type FinancialEntryListCounts = {
   amount: number
@@ -318,6 +339,19 @@ export function mapMoney(value: string | number | null | undefined): number {
 export function origemEntrada(item: FinancialEntry): string {
   if (item.type === 'private_procedure') {
     return item.clinicalAppointment?.patient?.name ?? 'Particular'
+  }
+  if (item.type === 'procedure_package') {
+    const pacote = item.patientPackage?.package?.name
+    const paciente = item.patientPackage?.patient?.name
+    if (pacote && paciente) return `${paciente} · ${pacote}`
+    return paciente ?? pacote ?? 'Pacote'
+  }
+  if (item.type === 'benefit_subscription') {
+    const paciente = item.benefitSubscription?.patient?.name
+    const plano = item.benefitSubscription?.plan?.name
+    const cartao = item.benefitSubscription?.cardNumber
+    if (paciente && plano) return `${paciente} · ${plano}`
+    return paciente ?? cartao ?? 'Cartão'
   }
   return item.billingBatch?.healthPlan?.name ?? 'Plano de saúde'
 }

@@ -1,5 +1,10 @@
+import { homePathForRole, isUserRole, type UserRole } from '../routes/access'
+
 const TOKEN_KEY = 'appointments_auth_token'
 const USER_KEY = 'appointments_auth_user'
+
+export { homePathForRole }
+export type { UserRole }
 
 export function saveToken(token: string): void {
   localStorage.setItem(TOKEN_KEY, token)
@@ -43,8 +48,10 @@ export function isAuthenticated(): boolean {
 export interface StoredUser {
   id: number
   usernameLogin: string
-  isAdmin: boolean
   name: string
+  role: UserRole
+  patientId?: number | null
+  healthProfessionalId?: number | null
   extension?: number | null
 }
 
@@ -118,28 +125,43 @@ export function getLoggedUserId(): number | null {
   return readNumericUserIdFromToken(getToken())
 }
 
-export function getIsAdmin(): boolean {
+export function getUserRole(): UserRole | null {
   const user = getLoggedUser()
-  if (typeof user?.isAdmin === 'boolean') {
-    return user.isAdmin
+  if (user && isUserRole(user.role)) {
+    return user.role
+  }
+
+  const legacy = user as { isAdmin?: boolean } | null
+  if (legacy?.isAdmin === true) {
+    return 'ADMIN'
+  }
+  if (legacy?.isAdmin === false) {
+    return 'RECEPTIONIST'
   }
 
   const token = getToken()
   if (!token) {
-    return false
+    return null
   }
 
   const payload = decodeJwtPayload(token)
   if (!payload) {
-    return false
+    return null
   }
 
-  if (typeof payload.isAdmin === 'boolean') {
-    return payload.isAdmin
+  if (isUserRole(payload.role)) {
+    return payload.role
   }
-  if (typeof payload.is_admin === 'boolean') {
-    return payload.is_admin
+  if (payload.isAdmin === true || payload.is_admin === true) {
+    return 'ADMIN'
+  }
+  if (payload.isAdmin === false || payload.is_admin === false) {
+    return 'RECEPTIONIST'
   }
 
-  return false
+  return null
+}
+
+export function getIsAdmin(): boolean {
+  return getUserRole() === 'ADMIN'
 }

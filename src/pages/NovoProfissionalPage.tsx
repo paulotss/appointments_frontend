@@ -17,6 +17,7 @@ import {
 import { useEffect, useState } from 'react'
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
+import { BloqueiosSemanaisEditor } from '../components/BloqueiosSemanaisEditor'
 import {
   profissionalSchema,
   type ProfissionalFormInput,
@@ -28,6 +29,27 @@ import { COUNCIL_TYPES } from '../types/profissional'
 import { mensagemErroApi } from '../utils/apiError'
 import { UFS_BRASIL } from '../utils/ufBrasil'
 import type { Especialidade } from '../types/registro'
+
+function mensagemErroBloqueios(erro: unknown): string | undefined {
+  if (!erro || typeof erro !== 'object') return undefined
+  const registro = erro as {
+    message?: unknown
+    root?: { message?: unknown }
+  }
+  if (typeof registro.message === 'string') return registro.message
+  if (typeof registro.root?.message === 'string') return registro.root.message
+  for (const valor of Object.values(erro)) {
+    if (!valor || typeof valor !== 'object') continue
+    const item = valor as {
+      message?: unknown
+      endTime?: { message?: unknown }
+      startTime?: { message?: unknown }
+    }
+    if (typeof item.endTime?.message === 'string') return item.endTime.message
+    if (typeof item.startTime?.message === 'string') return item.startTime.message
+  }
+  return undefined
+}
 
 export function NovoProfissionalPage() {
   const navigate = useNavigate()
@@ -55,6 +77,7 @@ export function NovoProfissionalPage() {
       phone: '',
       email: '',
       isActive: true,
+      weeklyBlocks: [],
     },
   })
 
@@ -97,6 +120,7 @@ export function NovoProfissionalPage() {
         isActive: values.isActive,
         ...(values.phone != null ? { phone: values.phone } : {}),
         ...(values.email != null ? { email: values.email } : {}),
+        weeklyBlocks: values.weeklyBlocks,
       })
       reset()
       navigate('/profissionais', { replace: true })
@@ -280,6 +304,17 @@ export function NovoProfissionalPage() {
             error={Boolean(errors.email)}
             helperText={errors.email?.message}
             {...register('email')}
+          />
+          <Controller
+            name="weeklyBlocks"
+            control={control}
+            render={({ field }) => (
+              <BloqueiosSemanaisEditor
+                value={field.value ?? []}
+                onChange={field.onChange}
+                error={mensagemErroBloqueios(errors.weeklyBlocks)}
+              />
+            )}
           />
           <FormControlLabel
             control={

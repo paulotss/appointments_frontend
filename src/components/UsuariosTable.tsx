@@ -1,6 +1,7 @@
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import { Chip, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material'
+import { ROLE_LABELS } from '../routes/access'
 import type { SystemUser } from '../types/user'
 
 interface UsuariosTableProps {
@@ -33,8 +34,8 @@ export function UsuariosTable({ usuarios, onEditar, onExcluir }: UsuariosTablePr
               <TableCell>
                 <Chip
                   size="small"
-                  label={usuario.isAdmin ? 'Administrador' : 'Usuario'}
-                  color={usuario.isAdmin ? 'primary' : 'default'}
+                  label={ROLE_LABELS[usuario.role]}
+                  color={usuario.role === 'ADMIN' ? 'primary' : 'default'}
                 />
               </TableCell>
               <TableCell align="right">
