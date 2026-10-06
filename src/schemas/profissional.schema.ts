@@ -55,6 +55,86 @@ export function mensagemBloqueiosSemanais(
   return parsed.error.issues[0]?.message ?? 'Horários bloqueados inválidos'
 }
 
+const janelaAtendimentoSchema = bloqueioSemanalItemSchema
+
+export const regrasAtendimentoSchema = z
+  .array(
+    z
+      .object({
+        procedureId: z
+          .number({ error: 'Selecione o procedimento' })
+          .int()
+          .positive('Selecione o procedimento'),
+        maxConcurrentAppointments: z
+          .number({ error: 'Informe as vagas' })
+          .int()
+          .min(1, 'Informe ao menos uma vaga'),
+        durationMinutes: z
+          .number({ error: 'Informe a duração' })
+          .int()
+          .min(1, 'A duração deve ser de ao menos 1 minuto'),
+        slotIntervalMinutes: z
+          .number({ error: 'Informe o intervalo' })
+          .int()
+          .min(1, 'O intervalo deve ser de ao menos 1 minuto'),
+        allowOverbooking: z.boolean(),
+        notes: z
+          .string()
+          .max(500, 'Observações devem ter no máximo 500 caracteres')
+          .optional()
+          .nullable(),
+        windows: z
+          .array(janelaAtendimentoSchema)
+          .min(1, 'Informe ao menos um horário de atendimento'),
+      })
+      .superRefine((rule, ctx) => {
+        for (let weekday = 0; weekday <= 6; weekday += 1) {
+          const doDia = rule.windows
+            .filter((item) => item.weekday === weekday)
+            .map((item) => paraIntervalo(item))
+            .filter((item): item is NonNullable<typeof item> => item != null)
+          if (intervalosSobrepostos(doDia)) {
+            ctx.addIssue({
+              code: 'custom',
+              message: 'Há horários sobrepostos para o mesmo procedimento',
+              path: ['windows'],
+            })
+            return
+          }
+        }
+        const cabe = rule.windows.some((item) => {
+          const intervalo = paraIntervalo(item)
+          return (
+            intervalo != null &&
+            intervalo.endMinute - intervalo.startMinute >= rule.durationMinutes
+          )
+        })
+        if (!cabe) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'A duração não cabe em nenhum horário de atendimento',
+            path: ['durationMinutes'],
+          })
+        }
+      }),
+  )
+  .superRefine((rules, ctx) => {
+    const ids = rules.map((item) => item.procedureId).filter((id) => id > 0)
+    if (new Set(ids).size !== ids.length) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'O mesmo procedimento não pode ter duas regras',
+        path: [],
+      })
+    }
+  })
+
+export function mensagemRegrasAtendimento(rules: unknown): string | null {
+  const parsed = regrasAtendimentoSchema.safeParse(rules)
+  if (parsed.success) return null
+  return parsed.error.issues[0]?.message ?? 'Regras de atendimento inválidas'
+}
+
 export const profissionalSchema = z.object({
   name: z.string().min(3, 'Informe o nome'),
   specialties: z
@@ -90,6 +170,7 @@ export const profissionalSchema = z.object({
   ),
   isActive: z.boolean(),
   weeklyBlocks: bloqueiosSemanaisSchema,
+  scheduleRules: regrasAtendimentoSchema,
 })
 
 export type ProfissionalFormInput = z.input<typeof profissionalSchema>

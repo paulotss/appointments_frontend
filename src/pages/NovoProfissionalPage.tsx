@@ -18,7 +18,9 @@ import { useEffect, useState } from 'react'
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { BloqueiosSemanaisEditor } from '../components/BloqueiosSemanaisEditor'
+import { RegrasAtendimentoEditor, regrasParaApi } from '../components/RegrasAtendimentoEditor'
 import {
+  mensagemRegrasAtendimento,
   profissionalSchema,
   type ProfissionalFormInput,
   type ProfissionalFormValues,
@@ -78,6 +80,7 @@ export function NovoProfissionalPage() {
       email: '',
       isActive: true,
       weeklyBlocks: [],
+      scheduleRules: [],
     },
   })
 
@@ -121,6 +124,7 @@ export function NovoProfissionalPage() {
         ...(values.phone != null ? { phone: values.phone } : {}),
         ...(values.email != null ? { email: values.email } : {}),
         weeklyBlocks: values.weeklyBlocks,
+        scheduleRules: regrasParaApi(values.scheduleRules),
       })
       reset()
       navigate('/profissionais', { replace: true })
@@ -313,6 +317,24 @@ export function NovoProfissionalPage() {
                 value={field.value ?? []}
                 onChange={field.onChange}
                 error={mensagemErroBloqueios(errors.weeklyBlocks)}
+              />
+            )}
+          />
+          <Controller
+            name="scheduleRules"
+            control={control}
+            render={({ field }) => (
+              <RegrasAtendimentoEditor
+                value={field.value ?? []}
+                onChange={field.onChange}
+                specialtyIds={(specialtiesWatch ?? [])
+                  .map((item) => item?.specialtyId)
+                  .filter((id): id is number => typeof id === 'number' && id > 0)}
+                error={
+                  errors.scheduleRules
+                    ? (mensagemRegrasAtendimento(field.value) ?? undefined)
+                    : undefined
+                }
               />
             )}
           />

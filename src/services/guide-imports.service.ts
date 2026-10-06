@@ -131,6 +131,7 @@ function mapProfessional(item: BackendProfessional): HealthProfessional {
     isActive: item.isActive,
     specialties: (item.specialties ?? []).map(mapSpecialtyLink),
     weeklyBlocks: [],
+    scheduleRules: [],
   }
 }
 

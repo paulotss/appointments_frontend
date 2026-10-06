@@ -1,6 +1,6 @@
 import { apiClient } from './apiClient'
 import type { ListMeta, PagedList } from '../types/listEnvelope'
-import type { CouncilType, CreateHealthProfessionalRequest, HealthProfessional, HealthProfessionalSpecialtyLink, UpdateHealthProfessionalRequest, WeeklyBlockInput } from '../types/profissional'
+import type { CouncilType, CreateHealthProfessionalRequest, HealthProfessional, HealthProfessionalSpecialtyLink, ScheduleRuleInput, UpdateHealthProfessionalRequest, WeeklyBlockInput } from '../types/profissional'
 import type { UfBrasil } from '../utils/ufBrasil'
 import type {
   ProfessionalSchedule,
@@ -34,6 +34,17 @@ interface BackendWeeklyBlock {
   endTime: string
 }
 
+interface BackendScheduleRule {
+  procedureId: number
+  maxConcurrentAppointments: number
+  durationMinutes: number
+  slotIntervalMinutes: number
+  allowOverbooking: boolean
+  notes?: string | null
+  procedure?: { id: number; name: string }
+  windows?: BackendWeeklyBlock[]
+}
+
 interface BackendHealthProfessional {
   id: number
   name: string
@@ -47,6 +58,7 @@ interface BackendHealthProfessional {
   isActive: boolean
   specialties?: BackendHealthProfessionalSpecialty[]
   weeklyBlocks?: BackendWeeklyBlock[]
+  scheduleRules?: BackendScheduleRule[]
 }
 
 function mapSpecialtyLink(item: BackendHealthProfessionalSpecialty): HealthProfessionalSpecialtyLink {
@@ -64,6 +76,19 @@ function mapWeeklyBlock(item: BackendWeeklyBlock): WeeklyBlockInput {
   }
 }
 
+function mapScheduleRule(item: BackendScheduleRule): ScheduleRuleInput {
+  return {
+    procedureId: item.procedureId,
+    maxConcurrentAppointments: item.maxConcurrentAppointments,
+    durationMinutes: item.durationMinutes,
+    slotIntervalMinutes: item.slotIntervalMinutes,
+    allowOverbooking: item.allowOverbooking,
+    notes: item.notes ?? null,
+    procedure: item.procedure,
+    windows: (item.windows ?? []).map(mapWeeklyBlock),
+  }
+}
+
 function mapBackendHealthProfessional(item: BackendHealthProfessional): HealthProfessional {
   return {
     id: item.id,
@@ -78,6 +103,7 @@ function mapBackendHealthProfessional(item: BackendHealthProfessional): HealthPr
     isActive: item.isActive,
     specialties: (item.specialties ?? []).map(mapSpecialtyLink),
     weeklyBlocks: (item.weeklyBlocks ?? []).map(mapWeeklyBlock),
+    scheduleRules: (item.scheduleRules ?? []).map(mapScheduleRule),
   }
 }
 

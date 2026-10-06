@@ -23,6 +23,21 @@ export interface WeeklyBlockInput extends ScheduleInterval {
   weekday: number
 }
 
+export interface ScheduleRuleWindowInput extends ScheduleInterval {
+  weekday: number
+}
+
+export interface ScheduleRuleInput {
+  procedureId: number
+  maxConcurrentAppointments: number
+  durationMinutes: number
+  slotIntervalMinutes: number
+  allowOverbooking: boolean
+  notes?: string | null
+  windows: ScheduleRuleWindowInput[]
+  procedure?: { id: number; name: string }
+}
+
 export interface HealthProfessional {
   id: number
   name: string
@@ -36,6 +51,7 @@ export interface HealthProfessional {
   isActive: boolean
   specialties: HealthProfessionalSpecialtyLink[]
   weeklyBlocks: WeeklyBlockInput[]
+  scheduleRules: ScheduleRuleInput[]
 }
 
 export interface CreateHealthProfessionalRequest {
@@ -50,6 +66,7 @@ export interface CreateHealthProfessionalRequest {
   email?: string
   isActive?: boolean
   weeklyBlocks?: WeeklyBlockInput[]
+  scheduleRules?: ScheduleRuleInput[]
 }
 
 export interface UpdateHealthProfessionalRequest {
@@ -64,4 +81,5 @@ export interface UpdateHealthProfessionalRequest {
   email?: string | null
   isActive?: boolean
   weeklyBlocks?: WeeklyBlockInput[]
+  scheduleRules?: ScheduleRuleInput[]
 }

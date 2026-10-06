@@ -53,7 +53,7 @@ export function ProfissionaisTable({ profissionais, onEditar }: ProfissionaisTab
               <TableCell align="right">
                 <IconButton
                   size="small"
-                  aria-label="Editar profissional"
+                  aria-label="Abrir profissional"
                   onClick={() => onEditar(profissional)}
                 >
                   <EditIcon fontSize="small" />

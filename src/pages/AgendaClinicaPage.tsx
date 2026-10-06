@@ -22,6 +22,7 @@ import { AgendaClinicaToolbar, type VisaoTela } from '../components/AgendaClinic
 import { AgendamentoClinicoForm } from '../components/AgendamentoClinicoForm'
 import { AgendamentosClinicosTable } from '../components/AgendamentosClinicosTable'
 import { AjusteBloqueioDiaDialog } from '../components/AjusteBloqueioDiaDialog'
+import { ConfirmacaoForaDasRegrasDialog } from '../components/ConfirmacaoForaDasRegrasDialog'
 import { TOP_BAR_HEIGHT } from '../layouts/AppLayout'
 import type { AgendamentoClinicoFormValues } from '../schemas/agendamentoClinico.schema'
 import {
@@ -30,6 +31,8 @@ import {
   criarAgendamentoClinico,
   excluirAgendamentoClinico,
   listarAgendamentosClinicos,
+  verificarRegrasAgendamento,
+  type ScheduleRuleWarning,
 } from '../services/clinical-appointments.service'
 import {
   buscarAgendaProfissional,
@@ -181,6 +184,8 @@ export function AgendaClinicaPage() {
   const [editando, setEditando] = useState<ClinicalAppointment | null>(null)
   const [dataPreenchida, setDataPreenchida] = useState(ymdEmSaoPaulo())
   const [horaPreenchida, setHoraPreenchida] = useState('08:00')
+  const [avisosRegras, setAvisosRegras] = useState<ScheduleRuleWarning[]>([])
+  const [pendente, setPendente] = useState<AgendamentoClinicoFormValues | null>(null)
 
   const { from, to } = useMemo(() => intervaloVisivel(visao, dataRef), [visao, dataRef])
   const filtroPacienteId = filtroPaciente?.id ?? ''
@@ -288,6 +293,8 @@ export function AgendaClinicaPage() {
     if (saving) return
     setDialogAberto(false)
     setEditando(null)
+    setAvisosRegras([])
+    setPendente(null)
   }
 
   function fecharAlerta() {
@@ -295,23 +302,53 @@ export function AgendaClinicaPage() {
     setSuccess(null)
   }
 
+  async function gravar(values: AgendamentoClinicoFormValues) {
+    if (editando) {
+      await atualizarAgendamentoClinico(editando.id, montarPayloadAtualizacao(values, editando))
+      setSuccess('Agendamento atualizado com sucesso.')
+    } else {
+      await criarAgendamentoClinico(montarPayloadCriacao(values))
+      setSuccess('Agendamento criado com sucesso.')
+    }
+    setDialogAberto(false)
+    setEditando(null)
+    setAvisosRegras([])
+    setPendente(null)
+    await carregarAgendamentos()
+  }
+
   async function salvar(values: AgendamentoClinicoFormValues) {
     setSaving(true)
     setError(null)
     setSuccess(null)
     try {
-      if (editando) {
-        await atualizarAgendamentoClinico(editando.id, montarPayloadAtualizacao(values, editando))
-        setSuccess('Agendamento atualizado com sucesso.')
-      } else {
-        await criarAgendamentoClinico(montarPayloadCriacao(values))
-        setSuccess('Agendamento criado com sucesso.')
+      const avisos = await verificarRegrasAgendamento({
+        ...montarPayloadCriacao(values),
+        ...(editando ? { excludeAppointmentId: editando.id } : {}),
+      })
+      if (avisos.length > 0) {
+        setAvisosRegras(avisos)
+        setPendente(values)
+        return
       }
-      setDialogAberto(false)
-      setEditando(null)
-      await carregarAgendamentos()
+      await gravar(values)
     } catch (err) {
       setError(mensagemErroApi(err, 'Não foi possível salvar o agendamento.'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function confirmarForaDasRegras() {
+    if (!pendente) return
+    setSaving(true)
+    setError(null)
+    try {
+      await gravar(pendente)
+    } catch (err) {
+      setError(mensagemErroApi(err, 'Não foi possível salvar o agendamento.'))
+      setAvisosRegras([])
+      setPendente(null)
     } finally {
       setSaving(false)
     }
@@ -585,6 +622,18 @@ export function AgendaClinicaPage() {
           </Box>
         </DialogContent>
       </Dialog>
+
+      <ConfirmacaoForaDasRegrasDialog
+        open={avisosRegras.length > 0}
+        warnings={avisosRegras}
+        confirming={saving}
+        onCancel={() => {
+          if (saving) return
+          setAvisosRegras([])
+          setPendente(null)
+        }}
+        onConfirm={() => void confirmarForaDasRegras()}
+      />
 
       <AjusteBloqueioDiaDialog
         open={Boolean(ajusteDia) && Boolean(filtroProfissional)}

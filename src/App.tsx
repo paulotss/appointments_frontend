@@ -48,6 +48,7 @@ import { TissLotesPage } from './pages/TissLotesPage'
 import { EditarPacientePage } from './pages/EditarPacientePage'
 import { NovoPacientePage } from './pages/NovoPacientePage'
 import { NovoPlanoSaudePage } from './pages/NovoPlanoSaudePage'
+import { EditarProfissionalPage } from './pages/EditarProfissionalPage'
 import { NovoProfissionalPage } from './pages/NovoProfissionalPage'
 import { PacientesPage } from './pages/PacientesPage'
 import { PacotesPage } from './pages/PacotesPage'
@@ -287,6 +288,14 @@ function App() {
           element={
             <RoleRoute roles={CLINICAL_STAFF_ROLES}>
               <NovoProfissionalPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/profissionais/:id"
+          element={
+            <RoleRoute roles={CLINICAL_STAFF_ROLES}>
+              <EditarProfissionalPage />
             </RoleRoute>
           }
         />

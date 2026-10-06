@@ -127,6 +127,22 @@ export async function criarAgendamentoClinico(
   return mapBackendAppointment(response.data)
 }
 
+export interface ScheduleRuleWarning {
+  code: string
+  procedureId: number
+  message: string
+}
+
+export async function verificarRegrasAgendamento(
+  payload: CreateClinicalAppointmentRequest & { excludeAppointmentId?: number },
+): Promise<ScheduleRuleWarning[]> {
+  const response = await apiClient.post<{ warnings: ScheduleRuleWarning[] }>(
+    '/clinical-appointments/rule-check',
+    payload,
+  )
+  return response.data.warnings ?? []
+}
+
 export async function atualizarAgendamentoClinico(
   id: number,
   payload: UpdateClinicalAppointmentRequest,

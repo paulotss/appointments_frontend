@@ -36,6 +36,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { CampoData } from '../components/CampoData'
 import { CampoValorMoeda } from '../components/CampoValorMoeda'
+import { ConfirmacaoForaDasRegrasDialog } from '../components/ConfirmacaoForaDasRegrasDialog'
 import { GuiaProcedimentosTabela } from '../components/GuiaProcedimentosTabela'
 import { PacienteBuscaAutocomplete } from '../components/PacienteBuscaAutocomplete'
 import { ProfissionalBuscaAutocomplete } from '../components/ProfissionalBuscaAutocomplete'
@@ -44,6 +45,8 @@ import {
   criarAgendamentoClinico,
   excluirAgendamentoClinico,
   listarAgendamentosClinicos,
+  verificarRegrasAgendamento,
+  type ScheduleRuleWarning,
 } from '../services/clinical-appointments.service'
 import { buscarProfissional } from '../services/health-professionals.service'
 import {
@@ -203,6 +206,8 @@ export function GuiaDetalhePage() {
   const [editNotes, setEditNotes] = useState('')
   const [editError, setEditError] = useState<string | null>(null)
   const [savingEdit, setSavingEdit] = useState(false)
+  const [avisosRegras, setAvisosRegras] = useState<ScheduleRuleWarning[]>([])
+  const [pendenteRegras, setPendenteRegras] = useState<'criar' | 'editar' | null>(null)
 
   const carregar = useCallback(async () => {
     if (!Number.isFinite(id)) {
@@ -608,6 +613,24 @@ export function GuiaDetalhePage() {
     [agendamentos],
   )
 
+  async function criarNaGuia(scheduledAt: string) {
+    if (!guia) return
+    await criarAgendamentoClinico({
+      patientId: guia.patientId,
+      healthProfessionalId: guia.healthProfessionalId,
+      scheduledAt,
+      endsAt: adicionarMinutosIso(scheduledAt, duracaoNumero),
+      type: 'health_plan',
+      insuranceGuideIds: [guia.id],
+    })
+    await recarregarGuiaEAgendamentos(guia.id)
+    setSuccess('Agendamento criado com sucesso.')
+    setScheduledTime('')
+    setDurationMinutes('30')
+    setAvisosRegras([])
+    setPendenteRegras(null)
+  }
+
   async function agendar() {
     if (!guia || formInvalido || !podeAgendar) return
     const scheduledAt = dataHoraSaoPauloParaIso(scheduledDate, scheduledTime)
@@ -619,23 +642,42 @@ export function GuiaDetalhePage() {
     setError(null)
     setSuccess(null)
     try {
-      await criarAgendamentoClinico({
+      const avisos = await verificarRegrasAgendamento({
         patientId: guia.patientId,
         healthProfessionalId: guia.healthProfessionalId,
         scheduledAt,
         endsAt: adicionarMinutosIso(scheduledAt, duracaoNumero),
-        type: 'health_plan',
         insuranceGuideIds: [guia.id],
       })
-      await recarregarGuiaEAgendamentos(guia.id)
-      setSuccess('Agendamento criado com sucesso.')
-      setScheduledTime('')
-      setDurationMinutes('30')
+      if (avisos.length > 0) {
+        setAvisosRegras(avisos)
+        setPendenteRegras('criar')
+        return
+      }
+      await criarNaGuia(scheduledAt)
     } catch (err) {
       setError(mensagemErroApi(err, 'Não foi possível criar o agendamento.'))
     } finally {
       setSaving(false)
     }
+  }
+
+  async function aplicarEdicao() {
+    if (!editando || !guia) return
+    const scheduledAt = dataHoraSaoPauloParaIso(editDate, editTime)
+    if (!scheduledAt) return
+    const notes = editNotes.trim()
+    await atualizarAgendamentoClinico(editando.id, {
+      scheduledAt,
+      endsAt: adicionarMinutosIso(scheduledAt, editDuracaoNumero),
+      status: editStatus,
+      notes: notes ? notes : null,
+    })
+    await recarregarGuiaEAgendamentos(guia.id)
+    setEditando(null)
+    setSuccess('Agendamento atualizado com sucesso.')
+    setAvisosRegras([])
+    setPendenteRegras(null)
   }
 
   async function salvarEdicao() {
@@ -651,20 +693,71 @@ export function GuiaDetalhePage() {
     setError(null)
     setSuccess(null)
     try {
-      const notes = editNotes.trim()
-      await atualizarAgendamentoClinico(editando.id, {
+      const endsAt = adicionarMinutosIso(scheduledAt, editDuracaoNumero)
+      const procedureIds = editando.procedures
+        .filter((item) => item.origin === 'private')
+        .map((item) => item.procedureId)
+      const patientPackageItemIds = editando.procedures
+        .filter((item) => item.origin === 'package' && item.patientPackageItemId != null)
+        .map((item) => item.patientPackageItemId as number)
+      const benefitUses = editando.procedures
+        .filter((item) => item.origin === 'benefit' && item.benefitEntitlementId != null)
+        .map((item) => ({
+          entitlementId: item.benefitEntitlementId as number,
+          procedureId: item.procedureId,
+        }))
+      const insuranceGuideIds = editando.insuranceGuides.map((item) => item.insuranceGuideId)
+      const avisos = await verificarRegrasAgendamento({
+        patientId: editando.patientId,
+        healthProfessionalId: editando.healthProfessionalId,
         scheduledAt,
-        endsAt: adicionarMinutosIso(scheduledAt, editDuracaoNumero),
-        status: editStatus,
-        notes: notes ? notes : null,
+        endsAt,
+        excludeAppointmentId: editando.id,
+        ...(procedureIds.length > 0 ? { procedureIds } : {}),
+        ...(patientPackageItemIds.length > 0 ? { patientPackageItemIds } : {}),
+        ...(benefitUses.length > 0 ? { benefitUses } : {}),
+        ...(insuranceGuideIds.length > 0 ? { insuranceGuideIds } : { insuranceGuideIds: [guia.id] }),
       })
-      await recarregarGuiaEAgendamentos(guia.id)
-      setEditando(null)
-      setSuccess('Agendamento atualizado com sucesso.')
+      if (avisos.length > 0) {
+        setAvisosRegras(avisos)
+        setPendenteRegras('editar')
+        return
+      }
+      await aplicarEdicao()
     } catch (err) {
       setEditError(mensagemErroApi(err, 'Não foi possível atualizar o agendamento.'))
     } finally {
       setSavingEdit(false)
+    }
+  }
+
+  async function confirmarForaDasRegras() {
+    if (!pendenteRegras || !guia) return
+    const criando = pendenteRegras === 'criar'
+    if (criando) setSaving(true)
+    else setSavingEdit(true)
+    setError(null)
+    setEditError(null)
+    try {
+      if (criando) {
+        const scheduledAt = dataHoraSaoPauloParaIso(scheduledDate, scheduledTime)
+        if (!scheduledAt) return
+        await criarNaGuia(scheduledAt)
+      } else {
+        await aplicarEdicao()
+      }
+    } catch (err) {
+      const mensagem = mensagemErroApi(
+        err,
+        criando ? 'Não foi possível criar o agendamento.' : 'Não foi possível atualizar o agendamento.',
+      )
+      if (criando) setError(mensagem)
+      else setEditError(mensagem)
+      setAvisosRegras([])
+      setPendenteRegras(null)
+    } finally {
+      if (criando) setSaving(false)
+      else setSavingEdit(false)
     }
   }
 
@@ -1030,6 +1123,18 @@ export function GuiaDetalhePage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmacaoForaDasRegrasDialog
+        open={avisosRegras.length > 0}
+        warnings={avisosRegras}
+        confirming={saving || savingEdit}
+        onCancel={() => {
+          if (saving || savingEdit) return
+          setAvisosRegras([])
+          setPendenteRegras(null)
+        }}
+        onConfirm={() => void confirmarForaDasRegras()}
+      />
 
       {/* ── Dialog editar guia ─────────────────────────────────────── */}
       <Dialog open={Boolean(editandoGuia)} onClose={fecharEditarGuia} fullWidth maxWidth="md">
