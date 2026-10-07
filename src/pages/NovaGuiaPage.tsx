@@ -50,12 +50,15 @@ export function NovaGuiaPage() {
         expirationDate: values.expirationDate,
         status: values.status,
         guideNumber: values.guideNumber,
+        ...(values.authorizationPassword?.trim()
+          ? { authorizationPassword: values.authorizationPassword.trim() }
+          : {}),
         procedures: values.procedures.map((item) => ({
           procedureId: item.procedureId,
           authorizedQuantity: item.authorizedQuantity,
           value: item.value,
-          ...(values.usarQuantidade && item.usedQuantity != null
-            ? { usedQuantity: item.usedQuantity }
+          ...(values.registrarSessoes && item.sessionDates?.length
+            ? { sessionDates: item.sessionDates }
             : {}),
         })),
       })
@@ -117,10 +120,11 @@ export function NovaGuiaPage() {
               healthProfessionalId: undefined,
               status: 'pending',
               guideNumber: '',
-                authorizationDate: hojeLocalISO(),
-                expirationDate: '',
-                usarQuantidade: false,
-                procedures: [{ procedureId: undefined, authorizedQuantity: 1, value: undefined }],
+              authorizationPassword: '',
+              authorizationDate: hojeLocalISO(),
+              expirationDate: '',
+              registrarSessoes: false,
+              procedures: [{ procedureId: undefined, authorizedQuantity: 1, value: undefined }],
             }}
             pacientes={[]}
             profissionais={[]}

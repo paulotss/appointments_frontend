@@ -38,6 +38,7 @@ export interface ExtractedGuideMeta {
   operatorGuideNumber: string | null
   providerGuideNumber: string | null
   authorizationDate: string | null
+  authorizationPassword: string | null
   passwordExpirationDate: string | null
   attendanceDate: string | null
 }
@@ -82,7 +83,11 @@ export interface GuideImportAnalysis {
 export interface CommitGuideImportRequest {
   healthPlanId: number
   healthProfessionalId: number
-  procedures: Array<{ procedureId: number; authorizedQuantity: number; usedQuantity?: number }>
+  procedures: Array<{
+    procedureId: number
+    authorizedQuantity: number
+    sessionDates?: string[]
+  }>
   patient:
     | {
         mode: 'existing'
@@ -101,6 +106,7 @@ export interface CommitGuideImportRequest {
         cardExpirationDate?: string
       }
   guideNumber?: string
+  authorizationPassword?: string | null
   authorizationDate?: string
   expirationDate?: string
   status?: InsuranceGuideStatus

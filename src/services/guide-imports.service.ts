@@ -192,6 +192,7 @@ function mapExtracted(item: ExtractedGuide): ExtractedGuide {
       operatorGuideNumber: item.guide?.operatorGuideNumber ?? null,
       providerGuideNumber: item.guide?.providerGuideNumber ?? null,
       authorizationDate: isoDatePrefix(item.guide?.authorizationDate) || null,
+      authorizationPassword: item.guide?.authorizationPassword?.trim() || null,
       passwordExpirationDate: isoDatePrefix(item.guide?.passwordExpirationDate) || null,
       attendanceDate: isoDatePrefix(item.guide?.attendanceDate) || null,
     },

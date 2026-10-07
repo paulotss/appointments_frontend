@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { hojeLocalISO } from '../utils/dataISO'
 
 const procedimentoImportadoSchema = z.object({
   procedureId: z.number({ error: 'Selecione o procedimento' }).int().positive('Selecione o procedimento'),
@@ -6,7 +7,7 @@ const procedimentoImportadoSchema = z.object({
     .number({ error: 'Informe a quantidade autorizada' })
     .int('Informe um número inteiro')
     .min(1, 'Quantidade autorizada deve ser no mínimo 1'),
-  usedQuantity: z.number().int().optional(),
+  sessionDates: z.array(z.string()).optional(),
 })
 
 export const importarGuiaSchema = z
@@ -27,9 +28,10 @@ export const importarGuiaSchema = z
     cardNumber: z.string(),
     cardExpirationDate: z.string(),
     guideNumber: z.string().trim().min(1, 'Informe o número da guia'),
+    authorizationPassword: z.string().trim().max(20, 'A senha deve ter no máximo 20 caracteres').optional(),
     authorizationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe a data de autorização'),
     expirationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe a data de validade'),
-    usarQuantidade: z.boolean().optional(),
+    registrarSessoes: z.boolean().optional(),
   })
   .superRefine((values, ctx) => {
     if (values.patientMode === 'existing' && (values.patientId == null || values.patientId < 1)) {
@@ -70,22 +72,34 @@ export const importarGuiaSchema = z
         path: ['cardExpirationDate'],
       })
     }
-    if (values.usarQuantidade) {
+    if (values.registrarSessoes) {
+      const hoje = hojeLocalISO()
       values.procedures.forEach((item, index) => {
-        const used = item.usedQuantity
-        if (used == null || !Number.isInteger(used) || used < 1) {
+        const dates = item.sessionDates ?? []
+        if (dates.length < 1) {
           ctx.addIssue({
             code: 'custom',
-            message: 'Informe a quantidade utilizada',
-            path: ['procedures', index, 'usedQuantity'],
+            message: 'Informe ao menos uma sessão',
+            path: ['procedures', index, 'sessionDates'],
           })
           return
         }
-        if (used > item.authorizedQuantity) {
+        if (dates.length > item.authorizedQuantity) {
           ctx.addIssue({
             code: 'custom',
-            message: 'A quantidade utilizada não pode passar da autorizada',
-            path: ['procedures', index, 'usedQuantity'],
+            message: 'A quantidade de sessões não pode passar da autorizada',
+            path: ['procedures', index, 'sessionDates'],
+          })
+        }
+        if (
+          dates.some(
+            (date) => !/^\d{4}-\d{2}-\d{2}$/.test(date) || date < values.authorizationDate || date > hoje,
+          )
+        ) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Cada sessão deve estar entre a autorização e hoje',
+            path: ['procedures', index, 'sessionDates'],
           })
         }
       })

@@ -45,7 +45,7 @@ function aplicarAnalise(analise: GuideImportAnalysis): DefaultValues<ImportarGui
             authorizedQuantity: item.extracted.authorizedQuantity ?? item.extracted.requestedQuantity ?? 1,
           }))
         : [{ procedureId: undefined, authorizedQuantity: 1 }],
-    usarQuantidade: false,
+    registrarSessoes: false,
     patientMode: analise.patient ? 'existing' : 'create',
     patientId: analise.patient?.id ?? null,
     patientName: analise.extracted.patient.name ?? analise.patient?.name ?? '',
@@ -57,6 +57,7 @@ function aplicarAnalise(analise: GuideImportAnalysis): DefaultValues<ImportarGui
     cardExpirationDate: existingCard?.expirationDate ?? cardExpiration,
     guideNumber:
       analise.extracted.guide.providerGuideNumber ?? analise.extracted.guide.operatorGuideNumber ?? '',
+    authorizationPassword: analise.extracted.guide.authorizationPassword ?? '',
     authorizationDate: autorizacao,
     expirationDate: validade,
   }
@@ -101,8 +102,9 @@ export function ImportarGuiaPage() {
       cardExpirationDate: '',
       guideNumber: '',
       authorizationDate: hojeLocalISO(),
+      authorizationPassword: '',
       expirationDate: '',
-      usarQuantidade: false,
+      registrarSessoes: false,
     },
   })
 
@@ -203,12 +205,15 @@ export function ImportarGuiaPage() {
         procedures: values.procedures.map((item) => ({
           procedureId: item.procedureId,
           authorizedQuantity: item.authorizedQuantity,
-          ...(values.usarQuantidade && item.usedQuantity != null
-            ? { usedQuantity: item.usedQuantity }
+          ...(values.registrarSessoes && item.sessionDates?.length
+            ? { sessionDates: item.sessionDates }
             : {}),
         })),
         patient: paciente,
         guideNumber: values.guideNumber,
+        ...(values.authorizationPassword?.trim()
+          ? { authorizationPassword: values.authorizationPassword.trim() }
+          : {}),
         authorizationDate: values.authorizationDate,
         expirationDate: values.expirationDate,
       })

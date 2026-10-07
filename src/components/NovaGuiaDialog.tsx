@@ -67,12 +67,15 @@ export function NovaGuiaDialog({
         expirationDate: values.expirationDate,
         status: values.status,
         guideNumber: values.guideNumber,
+        ...(values.authorizationPassword?.trim()
+          ? { authorizationPassword: values.authorizationPassword.trim() }
+          : {}),
         procedures: values.procedures.map((item) => ({
           procedureId: item.procedureId,
           authorizedQuantity: item.authorizedQuantity,
           value: item.value,
-          ...(values.usarQuantidade && item.usedQuantity != null
-            ? { usedQuantity: item.usedQuantity }
+          ...(values.registrarSessoes && item.sessionDates?.length
+            ? { sessionDates: item.sessionDates }
             : {}),
         })),
       })
@@ -121,9 +124,10 @@ export function NovaGuiaDialog({
                 healthProfessionalId,
                 status: 'pending',
                 guideNumber: '',
+                authorizationPassword: '',
                 authorizationDate: hojeLocalISO(),
                 expirationDate: '',
-                usarQuantidade: false,
+                registrarSessoes: false,
                 procedures: [{ procedureId: undefined, authorizedQuantity: 1, value: undefined }],
               }}
               pacientes={pacientes}

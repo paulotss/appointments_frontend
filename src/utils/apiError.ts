@@ -105,6 +105,8 @@ const MENSAGENS_EXATAS: Record<string, string> = {
     'Não misture procedimentos de consulta e SP/SADT na mesma guia.',
   'Only admins can set used quantity without an appointment':
     'Somente administradores podem usar quantidade sem agendamento.',
+  'Only admins and receptionists can register realized sessions':
+    'Somente administradores e colaboradores podem registrar sessões realizadas.',
   'consulta guides must contain exactly one procedure':
     'A guia de consulta deve ter exatamente um procedimento.',
   'Cancelled billing batches cannot export TISS XML':
@@ -140,6 +142,18 @@ const PADROES: Array<[RegExp, string]> = [
   [
     /^usedQuantity for procedure \d+ cannot exceed authorizedQuantity \d+$/i,
     'A quantidade utilizada não pode ser maior que a autorizada.',
+  ],
+  [
+    /^Session date \d{4}-\d{2}-\d{2} for procedure \d+ must be between the authorization date and today$/i,
+    'Cada sessão deve estar entre a data de autorização e hoje.',
+  ],
+  [
+    /^sessionDates for procedure \d+ cannot exceed authorizedQuantity \d+$/i,
+    'A quantidade de sessões não pode passar da autorizada.',
+  ],
+  [
+    /^No free time on \d{4}-\d{2}-\d{2} to register the guide session$/i,
+    'Não há horário livre nesse dia para registrar a sessão. Ajuste a data.',
   ],
   [/^Insurance guide \d+ not found$/i, 'Guia não encontrada.'],
   [
