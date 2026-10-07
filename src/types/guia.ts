@@ -46,7 +46,7 @@ export interface InsuranceGuideProcedure {
 export interface InsuranceGuideProcedureInput {
   procedureId: number
   authorizedQuantity: number
-  usedQuantity?: number
+  sessionDates?: string[]
   value?: number
 }
 
@@ -65,6 +65,7 @@ export interface InsuranceGuide {
   patientId: number
   healthProfessionalId: number
   guideNumber: string | null
+  authorizationPassword: string | null
   authorizationDate: string
   expirationDate: string
   isBilled: boolean
@@ -83,6 +84,7 @@ export interface CreateInsuranceGuideRequest {
   patientId: number
   healthProfessionalId: number
   guideNumber?: string
+  authorizationPassword?: string | null
   authorizationDate?: string
   expirationDate?: string
   isBilled?: boolean
@@ -95,6 +97,7 @@ export interface UpdateInsuranceGuideRequest {
   patientId?: number
   healthProfessionalId?: number
   guideNumber?: string | null
+  authorizationPassword?: string | null
   authorizationDate?: string
   expirationDate?: string
   isBilled?: boolean

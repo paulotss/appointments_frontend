@@ -175,6 +175,7 @@ export function GuiaDetalhePage() {
   const [healthPlanIdEdicao, setHealthPlanIdEdicao] = useState<number | ''>('')
   const [statusEdicaoGuia, setStatusEdicaoGuia] = useState<InsuranceGuideStatus>('pending')
   const [guideNumberEdicao, setGuideNumberEdicao] = useState('')
+  const [senhaEdicao, setSenhaEdicao] = useState('')
   const [guideNumberEdicaoError, setGuideNumberEdicaoError] = useState<string | null>(null)
   const [authorizationDateEdicao, setAuthorizationDateEdicao] = useState('')
   const [expirationDateEdicao, setExpirationDateEdicao] = useState('')
@@ -372,6 +373,7 @@ export function GuiaDetalhePage() {
     setHealthPlanIdEdicao(g.healthPlanId)
     setStatusEdicaoGuia(g.status)
     setGuideNumberEdicao(g.guideNumber ?? '')
+    setSenhaEdicao(g.authorizationPassword ?? '')
     setGuideNumberEdicaoError(null)
     setExpirationDateEdicao(g.expirationDate)
     setAuthorizationDateEdicao(
@@ -461,6 +463,7 @@ export function GuiaDetalhePage() {
         healthProfessionalId: healthProfessionalIdEdicao as number,
         status: statusEdicaoGuia,
         guideNumber: guideNumberEdicao.trim() ? guideNumberEdicao.trim() : null,
+        authorizationPassword: senhaEdicao.trim() ? senhaEdicao.trim() : null,
         authorizationDate: authorizationDateEdicao,
         expirationDate: expirationDateEdicao,
         procedures,
@@ -869,6 +872,9 @@ export function GuiaDetalhePage() {
                 <strong>Autorização:</strong> {formatarDataISO(guia.authorizationDate)}
               </Typography>
               <Typography>
+                <strong>Senha:</strong> {guia.authorizationPassword || '—'}
+              </Typography>
+              <Typography>
                 <strong>Validade:</strong> {formatarDataISO(guia.expirationDate)}
               </Typography>
               <Typography>
@@ -1195,6 +1201,13 @@ export function GuiaDetalhePage() {
               }}
               error={Boolean(guideNumberEdicaoError)}
               helperText={guideNumberEdicaoError ?? 'Obrigatório no XML TISS'}
+            />
+            <TextField
+              label="Senha"
+              value={senhaEdicao}
+              onChange={(event) => setSenhaEdicao(event.target.value)}
+              inputProps={{ maxLength: 20 }}
+              helperText="Opcional. Algumas operadoras exigem esta senha no XML de SP/SADT."
             />
             <CampoData
               label="Data de autorização"

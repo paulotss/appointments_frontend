@@ -30,7 +30,7 @@ import {
 } from 'react-hook-form'
 import { Link as RouterLink } from 'react-router-dom'
 import type { ImportarGuiaFormInput } from '../schemas/importarGuia.schema'
-import { getIsAdmin } from '../services/authStorage'
+import { getUserRole } from '../services/authStorage'
 import { buscarPaciente } from '../services/patients.service'
 import { listarProcedimentos } from '../services/procedures.service'
 import type { GuideImportAnalysis } from '../types/guideImport'
@@ -40,8 +40,10 @@ import { tissCodeDoPlano, type Procedure } from '../types/procedimento'
 import type { HealthProfessional } from '../types/profissional'
 import { TISS_GUIDE_TYPE_LABELS } from '../types/tiss'
 import { mensagemErroApi } from '../utils/apiError'
-import { formatarDataISO } from '../utils/dataISO'
+import { formatarDataISO, hojeLocalISO } from '../utils/dataISO'
+import { proporDatasSessoes } from '../utils/proporDatasSessoes'
 import { CampoData } from './CampoData'
+import { DatasSessoesProcedimento } from './DatasSessoesProcedimento'
 import { PacienteBuscaAutocomplete } from './PacienteBuscaAutocomplete'
 import { ProfissionalBuscaAutocomplete } from './ProfissionalBuscaAutocomplete'
 
@@ -130,22 +132,40 @@ export function ImportarGuiaForm({
   const [profissionalSelecionado, setProfissionalSelecionado] = useState<HealthProfessional | null>(
     analise?.healthProfessional ?? null,
   )
-  const [usedTouched, setUsedTouched] = useState<Set<number>>(new Set())
-  const isAdmin = getIsAdmin()
+  const [sessoesTouched, setSessoesTouched] = useState<Set<number>>(new Set())
+  const role = getUserRole()
+  const podeRegistrarSessoes = role === 'ADMIN' || role === 'RECEPTIONIST'
 
   if (analise !== analiseAtual) {
     setAnaliseAtual(analise)
     setPacienteDetalhe(analise?.patient ?? null)
     setProfissionalSelecionado(analise?.healthProfessional ?? null)
-    setUsedTouched(new Set())
+    setSessoesTouched(new Set())
   }
 
   const healthPlanId = watch('healthPlanId')
   const procedures = watch('procedures')
-  const usarQuantidade = watch('usarQuantidade')
+  const registrarSessoes = watch('registrarSessoes')
+  const authorizationDate = watch('authorizationDate')
   const patientMode = watch('patientMode')
   const patientId = watch('patientId')
   const patientName = watch('patientName')
+
+  const quantidadesAutorizadas = (procedures ?? []).map((item) => item?.authorizedQuantity ?? '').join(',')
+
+  useEffect(() => {
+    if (!registrarSessoes || !authorizationDate) return
+    const atuais = getValues('procedures') ?? []
+    atuais.forEach((item, index) => {
+      if (sessoesTouched.has(index)) return
+      const quantidade = item?.authorizedQuantity
+      if (typeof quantidade !== 'number' || !Number.isInteger(quantidade) || quantidade < 1) return
+      setValue(
+        `procedures.${index}.sessionDates`,
+        proporDatasSessoes(authorizationDate, hojeLocalISO(), quantidade),
+      )
+    })
+  }, [registrarSessoes, authorizationDate, quantidadesAutorizadas, sessoesTouched, getValues, setValue])
 
   const planoSelecionado = useMemo(
     () => planos.find((plano) => plano.id === healthPlanId) ?? analise?.healthPlan ?? null,
@@ -592,6 +612,19 @@ export function ImportarGuiaForm({
               InputLabelProps={{ shrink: true }}
               {...register('guideNumber')}
             />
+            <TextField
+              label="Senha"
+              inputProps={{ maxLength: 20 }}
+              error={Boolean(errors.authorizationPassword)}
+              helperText={
+                errors.authorizationPassword?.message ??
+                (analise?.extracted.guide.authorizationPassword
+                  ? `Lido na guia: ${analise.extracted.guide.authorizationPassword}`
+                  : 'Opcional. Algumas operadoras exigem esta senha no XML de SP/SADT.')
+              }
+              InputLabelProps={{ shrink: true }}
+              {...register('authorizationPassword')}
+            />
             <Controller
               name="authorizationDate"
               control={control}
@@ -637,9 +670,9 @@ export function ImportarGuiaForm({
               )}
             />
 
-            {isAdmin ? (
+            {podeRegistrarSessoes ? (
               <Controller
-                name="usarQuantidade"
+                name="registrarSessoes"
                 control={control}
                 render={({ field }) => (
                   <FormControlLabel
@@ -648,60 +681,66 @@ export function ImportarGuiaForm({
                         checked={Boolean(field.value)}
                         onChange={(_, checked) => {
                           field.onChange(checked)
-                          setUsedTouched(new Set())
+                          setSessoesTouched(new Set())
                           const atuais = getValues('procedures') ?? []
+                          const autorizacao = getValues('authorizationDate')
                           atuais.forEach((item, index) => {
+                            const quantidade =
+                              typeof item.authorizedQuantity === 'number' && item.authorizedQuantity >= 1
+                                ? item.authorizedQuantity
+                                : 1
                             setValue(
-                              `procedures.${index}.usedQuantity`,
-                              checked ? item.authorizedQuantity : undefined,
+                              `procedures.${index}.sessionDates`,
+                              checked && autorizacao
+                                ? proporDatasSessoes(autorizacao, hojeLocalISO(), quantidade)
+                                : undefined,
                             )
                           })
                         }}
                       />
                     }
-                    label="Usar quantidade sem agendamento"
+                    label="Registrar sessões realizadas"
                   />
                 )}
               />
             ) : null}
 
-            {(analise?.procedures ?? []).map((item, index) => (
+            {(analise?.procedures ?? []).map((item, index) => {
+              const sessaoErro = errors.procedures?.[index]?.sessionDates
+              const mensagemSessao =
+                sessaoErro && 'message' in sessaoErro && typeof sessaoErro.message === 'string'
+                  ? sessaoErro.message
+                  : undefined
+              return (
               <Stack key={`qtd-${index}`} spacing={1.5}>
                 <TextField
                   label={`Quantidade autorizada — ${item.extracted.description ?? item.extracted.tissCode ?? `procedimento ${index + 1}`}`}
                   type="number"
                   error={Boolean(errors.procedures?.[index]?.authorizedQuantity)}
                   helperText={errors.procedures?.[index]?.authorizedQuantity?.message}
-                  {...register(`procedures.${index}.authorizedQuantity`, {
-                    valueAsNumber: true,
-                    onChange: (event) => {
-                      if (!getValues('usarQuantidade') || usedTouched.has(index)) return
-                      const next = Number(event.target.value)
-                      if (!Number.isFinite(next)) return
-                      setValue(`procedures.${index}.usedQuantity`, next)
-                    },
-                  })}
+                  {...register(`procedures.${index}.authorizedQuantity`, { valueAsNumber: true })}
                 />
-                {usarQuantidade ? (
-                  <TextField
-                    label="Qtd. utilizada"
-                    type="number"
-                    inputProps={{ min: 1, step: 1 }}
-                    error={Boolean(errors.procedures?.[index]?.usedQuantity)}
-                    helperText={errors.procedures?.[index]?.usedQuantity?.message}
-                    {...register(`procedures.${index}.usedQuantity`, {
-                      setValueAs: (value) =>
-                        value === '' || value == null || Number.isNaN(Number(value))
-                          ? undefined
-                          : Number(value),
-                      onChange: () => {
-                        setUsedTouched((atual) => new Set(atual).add(index))
-                      },
-                    })}
+                {registrarSessoes ? (
+                  <Controller
+                    name={`procedures.${index}.sessionDates`}
+                    control={control}
+                    render={({ field }) => (
+                      <DatasSessoesProcedimento
+                        dates={field.value ?? []}
+                        min={authorizationDate}
+                        max={hojeLocalISO()}
+                        error={mensagemSessao}
+                        onChange={(dates) => {
+                          field.onChange(dates)
+                          setSessoesTouched((atual) => new Set(atual).add(index))
+                        }}
+                      />
+                    )}
                   />
                 ) : null}
               </Stack>
-            ))}
+              )
+            })}
 
             <Typography variant="body2" color="text.secondary">
               Plano: {planoSelecionado?.name ?? '—'} · Profissional: {profissionalSelecionado?.name ?? '—'} · Paciente:{' '}

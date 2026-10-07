@@ -122,6 +122,7 @@ export function GuiasPage() {
   const [healthPlanIdEdicao, setHealthPlanIdEdicao] = useState<number | ''>('')
   const [statusEdicao, setStatusEdicao] = useState<InsuranceGuideStatus>('pending')
   const [guideNumberEdicao, setGuideNumberEdicao] = useState('')
+  const [senhaEdicao, setSenhaEdicao] = useState('')
   const [guideNumberEdicaoError, setGuideNumberEdicaoError] = useState<string | null>(null)
   const [authorizationDateEdicao, setAuthorizationDateEdicao] = useState('')
   const [expirationDateEdicao, setExpirationDateEdicao] = useState('')
@@ -193,6 +194,7 @@ export function GuiasPage() {
     setHealthPlanIdEdicao(guia.healthPlanId)
     setStatusEdicao(guia.status)
     setGuideNumberEdicao(guia.guideNumber ?? '')
+    setSenhaEdicao(guia.authorizationPassword ?? '')
     setGuideNumberEdicaoError(null)
     setExpirationDateEdicao(guia.expirationDate)
     setAuthorizationDateEdicao(
@@ -224,6 +226,7 @@ export function GuiasPage() {
     setHealthPlanIdEdicao('')
     setStatusEdicao('pending')
     setGuideNumberEdicao('')
+    setSenhaEdicao('')
     setGuideNumberEdicaoError(null)
     setAuthorizationDateEdicao('')
     setExpirationDateEdicao('')
@@ -287,6 +290,7 @@ export function GuiasPage() {
         healthProfessionalId: healthProfessionalIdEdicao,
         status: statusEdicao,
         guideNumber: guideNumberEdicao.trim() ? guideNumberEdicao.trim() : null,
+        authorizationPassword: senhaEdicao.trim() ? senhaEdicao.trim() : null,
         authorizationDate: authorizationDateEdicao,
         expirationDate: expirationDateEdicao,
         procedures: procedures.map((item) => ({
@@ -797,6 +801,13 @@ export function GuiasPage() {
               }}
               error={Boolean(guideNumberEdicaoError)}
               helperText={guideNumberEdicaoError ?? 'Obrigatório no XML TISS'}
+            />
+            <TextField
+              label="Senha"
+              value={senhaEdicao}
+              onChange={(event) => setSenhaEdicao(event.target.value)}
+              inputProps={{ maxLength: 20 }}
+              helperText="Opcional. Algumas operadoras exigem esta senha no XML de SP/SADT."
             />
             <CampoData
               label="Data de autorização"

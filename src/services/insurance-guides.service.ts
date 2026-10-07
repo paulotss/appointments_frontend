@@ -67,6 +67,7 @@ interface BackendInsuranceGuide {
   healthProfessionalId: number
   guideNumber?: string | null
   authorizationDate?: string
+  authorizationPassword?: string | null
   expirationDate: string
   isBilled: boolean
   status: InsuranceGuideStatus
@@ -109,6 +110,7 @@ export function mapBackendGuide(item: BackendInsuranceGuide): InsuranceGuide {
     patientId: item.patientId,
     healthProfessionalId: item.healthProfessionalId,
     guideNumber: item.guideNumber ?? null,
+    authorizationPassword: item.authorizationPassword ?? null,
     authorizationDate: isoDatePrefix(item.authorizationDate),
     expirationDate: isoDatePrefix(item.expirationDate),
     isBilled: Boolean(item.isBilled),

@@ -19,9 +19,10 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Controller, useFieldArray, useForm, useWatch, type DefaultValues } from 'react-hook-form'
 import { guiaSchema, type GuiaFormInput, type GuiaFormValues } from '../schemas/guia.schema'
-import { getIsAdmin } from '../services/authStorage'
+import { getUserRole } from '../services/authStorage'
 import { listarProcedimentos } from '../services/procedures.service'
 import { CampoData } from './CampoData'
+import { DatasSessoesProcedimento } from './DatasSessoesProcedimento'
 import {
   GUIDE_DOCUMENT_MAX_FILES,
   INSURANCE_GUIDE_STATUSES,
@@ -34,7 +35,8 @@ import { tissCodeDoPlano, valorDoPlano } from '../types/procedimento'
 import type { HealthProfessional } from '../types/profissional'
 import { TISS_GUIDE_TYPE_LABELS } from '../types/tiss'
 import { mensagemErroApi } from '../utils/apiError'
-import { adicionarDiasISO } from '../utils/dataISO'
+import { adicionarDiasISO, hojeLocalISO } from '../utils/dataISO'
+import { proporDatasSessoes } from '../utils/proporDatasSessoes'
 import { ACCEPT_ARQUIVOS_GUIA, validarArquivosGuia } from '../utils/guiaArquivos'
 import { formatarTamanhoArquivo } from '../utils/pagamentoArquivos'
 import { CampoValorMoeda } from './CampoValorMoeda'
@@ -86,9 +88,10 @@ export function GuiaForm({
   const authorizationDate = useWatch({ control, name: 'authorizationDate' })
   const healthProfessionalId = useWatch({ control, name: 'healthProfessionalId' })
   const proceduresWatch = useWatch({ control, name: 'procedures' })
-  const usarQuantidade = useWatch({ control, name: 'usarQuantidade' })
-  const isAdmin = getIsAdmin()
-  const [usedTouched, setUsedTouched] = useState<Set<number>>(new Set())
+  const registrarSessoes = useWatch({ control, name: 'registrarSessoes' })
+  const role = getUserRole()
+  const podeRegistrarSessoes = role === 'ADMIN' || role === 'RECEPTIONIST'
+  const [sessoesTouched, setSessoesTouched] = useState<Set<number>>(new Set())
 
   const [procedimentosPlano, setProcedimentosPlano] = useState<Procedure[]>([])
   const [loadingProcedimentos, setLoadingProcedimentos] = useState(false)
@@ -141,6 +144,24 @@ export function GuiaForm({
     if (!authorizationDate || prazoPlano == null) return
     setValue('expirationDate', adicionarDiasISO(authorizationDate, prazoPlano))
   }, [authorizationDate, prazoPlano, setValue])
+
+  const quantidadesAutorizadas = (proceduresWatch ?? [])
+    .map((item) => item?.authorizedQuantity ?? '')
+    .join(',')
+
+  useEffect(() => {
+    if (!registrarSessoes || !authorizationDate) return
+    const atuais = getValues('procedures') ?? []
+    atuais.forEach((item, index) => {
+      if (sessoesTouched.has(index)) return
+      const quantidade = item?.authorizedQuantity
+      if (typeof quantidade !== 'number' || !Number.isInteger(quantidade) || quantidade < 1) return
+      setValue(
+        `procedures.${index}.sessionDates`,
+        proporDatasSessoes(authorizationDate, hojeLocalISO(), quantidade),
+      )
+    })
+  }, [registrarSessoes, authorizationDate, quantidadesAutorizadas, sessoesTouched, getValues, setValue])
 
   useEffect(() => {
     const atuais = getValues('procedures') ?? []
@@ -287,6 +308,25 @@ export function GuiaForm({
         )}
       />
       <Controller
+        name="authorizationPassword"
+        control={control}
+        render={({ field }) => (
+          <TextField
+            label="Senha"
+            value={field.value ?? ''}
+            onChange={field.onChange}
+            onBlur={field.onBlur}
+            inputRef={field.ref}
+            inputProps={{ maxLength: 20 }}
+            error={Boolean(errors.authorizationPassword)}
+            helperText={
+              errors.authorizationPassword?.message ??
+              'Opcional. Algumas operadoras exigem esta senha no XML de SP/SADT.'
+            }
+          />
+        )}
+      />
+      <Controller
         name="authorizationDate"
         control={control}
         render={({ field }) => (
@@ -339,9 +379,9 @@ export function GuiaForm({
           Selecione o profissional para filtrar procedimentos das especialidades atendidas.
         </Alert>
       ) : null}
-      {isAdmin ? (
+      {podeRegistrarSessoes ? (
         <Controller
-          name="usarQuantidade"
+          name="registrarSessoes"
           control={control}
           render={({ field }) => (
             <FormControlLabel
@@ -350,20 +390,23 @@ export function GuiaForm({
                   checked={Boolean(field.value)}
                   onChange={(_, checked) => {
                     field.onChange(checked)
-                    setUsedTouched(new Set())
+                    setSessoesTouched(new Set())
                     const atuais = getValues('procedures') ?? []
+                    const autorizacao = getValues('authorizationDate')
                     atuais.forEach((item, index) => {
                       const autorizada = item?.authorizedQuantity
-                      const quantidade = typeof autorizada === 'number' ? autorizada : 1
+                      const quantidade = typeof autorizada === 'number' && autorizada >= 1 ? autorizada : 1
                       setValue(
-                        `procedures.${index}.usedQuantity`,
-                        checked ? quantidade : undefined,
+                        `procedures.${index}.sessionDates`,
+                        checked && autorizacao
+                          ? proporDatasSessoes(autorizacao, hojeLocalISO(), quantidade)
+                          : undefined,
                       )
                     })
                   }}
                 />
               }
-              label="Usar quantidade sem agendamento"
+              label="Registrar sessões realizadas"
             />
           )}
         />
@@ -385,7 +428,8 @@ export function GuiaForm({
         const itemError = errors.procedures?.[index]
 
         return (
-          <Stack key={field.id} direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="flex-start">
+          <Stack key={field.id} spacing={1}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="flex-start">
             <Controller
               name={`procedures.${index}.procedureId`}
               control={control}
@@ -434,8 +478,6 @@ export function GuiaForm({
                   onChange={(event) => {
                     const next = Number(event.target.value)
                     qtyField.onChange(next)
-                    if (!getValues('usarQuantidade') || usedTouched.has(index) || !Number.isFinite(next)) return
-                    setValue(`procedures.${index}.usedQuantity`, next)
                   }}
                   error={Boolean(itemError?.authorizedQuantity)}
                   helperText={itemError?.authorizedQuantity?.message ?? ' '}
@@ -458,33 +500,11 @@ export function GuiaForm({
                 />
               )}
             />
-            {usarQuantidade ? (
-              <Controller
-                name={`procedures.${index}.usedQuantity`}
-                control={control}
-                render={({ field: usedField }) => (
-                  <TextField
-                    label="Qtd. utilizada"
-                    type="number"
-                    inputProps={{ min: 1, step: 1 }}
-                    value={usedField.value ?? ''}
-                    onChange={(event) => {
-                      const raw = event.target.value
-                      usedField.onChange(raw === '' ? undefined : Number(raw))
-                      setUsedTouched((atual) => new Set(atual).add(index))
-                    }}
-                    error={Boolean(itemError?.usedQuantity)}
-                    helperText={itemError?.usedQuantity?.message ?? ' '}
-                    sx={{ width: { xs: '100%', sm: 140 } }}
-                  />
-                )}
-              />
-            ) : null}
             <IconButton
               aria-label="Remover procedimento"
               onClick={() => {
                 remove(index)
-                setUsedTouched((atual) => {
+                setSessoesTouched((atual) => {
                   const next = new Set<number>()
                   for (const item of atual) {
                     if (item < index) next.add(item)
@@ -499,6 +519,29 @@ export function GuiaForm({
               <DeleteOutlineIcon />
             </IconButton>
           </Stack>
+          {registrarSessoes ? (
+            <Controller
+              name={`procedures.${index}.sessionDates`}
+              control={control}
+              render={({ field: datesField }) => (
+                <DatasSessoesProcedimento
+                  dates={datesField.value ?? []}
+                  min={authorizationDate}
+                  max={hojeLocalISO()}
+                  error={
+                    typeof itemError?.sessionDates?.message === 'string'
+                      ? itemError.sessionDates.message
+                      : undefined
+                  }
+                  onChange={(dates) => {
+                    datesField.onChange(dates)
+                    setSessoesTouched((atual) => new Set(atual).add(index))
+                  }}
+                />
+              )}
+            />
+          ) : null}
+          </Stack>
         )
       })}
       <Button
@@ -510,7 +553,9 @@ export function GuiaForm({
             procedureId: undefined as unknown as number,
             authorizedQuantity: 1,
             value: undefined as unknown as number,
-            ...(getValues('usarQuantidade') ? { usedQuantity: 1 } : {}),
+            ...(getValues('registrarSessoes') && getValues('authorizationDate')
+              ? { sessionDates: proporDatasSessoes(getValues('authorizationDate'), hojeLocalISO(), 1) }
+              : {}),
           })
         }
         disabled={
