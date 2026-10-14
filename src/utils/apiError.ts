@@ -55,6 +55,14 @@ const MENSAGENS_EXATAS: Record<string, string> = {
     'A chave da API do Google não está configurada. Defina GEMINI_API_KEY no backend (Render → Environment).',
   'OPENROUTER_API_KEY is not configured':
     'A chave da API do OpenRouter não está configurada. Defina OPENROUTER_API_KEY no backend.',
+  'HERMES_API_KEY is not configured':
+    'A chave da API do Hermes não está configurada. Defina HERMES_API_KEY no backend.',
+  'Hermes vision is unreachable':
+    'Não foi possível conectar ao Hermes para ler a guia.',
+  'Hermes vision failed to extract guide data':
+    'Não foi possível ler a guia com o Hermes. Tente outra imagem.',
+  'Hermes guide vision accepts JPEG and PNG only':
+    'O teste com o Hermes aceita somente JPEG e PNG. Envie uma imagem da guia.',
   'OpenRouter vision is unreachable':
     'Não foi possível conectar ao OpenRouter para ler a guia.',
   'OpenRouter vision model is unavailable':
