@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { TISS_PARTICIPATION_DEGREE_CODES } from '../types/tiss'
 import { hojeLocalISO } from '../utils/dataISO'
 
 const procedimentoImportadoSchema = z.object({
@@ -29,6 +30,7 @@ export const importarGuiaSchema = z
     cardExpirationDate: z.string(),
     guideNumber: z.string().trim().min(1, 'Informe o número da guia'),
     authorizationPassword: z.string().trim().max(20, 'A senha deve ter no máximo 20 caracteres').optional(),
+    participationDegree: z.enum(TISS_PARTICIPATION_DEGREE_CODES),
     authorizationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe a data de autorização'),
     expirationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe a data de validade'),
     registrarSessoes: z.boolean().optional(),

@@ -155,10 +155,6 @@ export const profissionalSchema = z.object({
   }),
   councilNumber: z.string().min(1, 'Informe o numero do conselho'),
   councilUf: z.enum(UFS_BRASIL, { error: 'Selecione a UF do conselho' }),
-  cbosCode: z
-    .string()
-    .transform((v) => v.replace(/\D/g, ''))
-    .refine((v) => v.length === 6, { message: 'CBO-S deve ter 6 dígitos' }),
   cpf: z
     .string()
     .transform((v) => v.replace(/\D/g, ''))

@@ -31,16 +31,19 @@ export function EspecialidadesPage() {
   const [success, setSuccess] = useState<string | null>(null)
   const [editando, setEditando] = useState<Especialidade | null>(null)
   const [nomeEdicao, setNomeEdicao] = useState('')
+  const [cbosEdicao, setCbosEdicao] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
 
   function abrirEdicao(especialidade: Especialidade) {
     setEditando(especialidade)
     setNomeEdicao(especialidade.nome)
+    setCbosEdicao(especialidade.cbosCode ?? '')
   }
 
   function fecharEdicao() {
     setEditando(null)
     setNomeEdicao('')
+    setCbosEdicao('')
   }
 
   async function salvarEdicao() {
@@ -49,7 +52,10 @@ export function EspecialidadesPage() {
     setError(null)
     setSuccess(null)
     try {
-      const atualizado = await atualizarEspecialidade(editando.id, { name: nomeEdicao.trim() })
+      const atualizado = await atualizarEspecialidade(editando.id, {
+        name: nomeEdicao.trim(),
+        cbosCode: cbosEdicao.replace(/\D/g, ''),
+      })
       setEspecialidades((prev) =>
         prev.map((item) => (item.id === atualizado.id ? atualizado : item)),
       )
@@ -63,6 +69,7 @@ export function EspecialidadesPage() {
   }
 
   const nomeInvalido = nomeEdicao.trim().length < 2
+  const cbosInvalido = cbosEdicao.replace(/\D/g, '').length !== 6
 
   async function excluir(especialidade: Especialidade) {
     const confirmou = window.confirm(
@@ -152,10 +159,27 @@ export function EspecialidadesPage() {
             error={Boolean(nomeEdicao) && nomeInvalido}
             helperText={Boolean(nomeEdicao) && nomeInvalido ? 'Minimo 2 caracteres' : ' '}
           />
+          <TextField
+            label="CBO-S"
+            value={cbosEdicao}
+            onChange={(event) => setCbosEdicao(event.target.value)}
+            fullWidth
+            margin="dense"
+            error={Boolean(cbosEdicao) && cbosInvalido}
+            helperText={
+              Boolean(cbosEdicao) && cbosInvalido
+                ? 'CBO-S deve ter 6 dígitos'
+                : '6 dígitos da ocupação desta especialidade'
+            }
+          />
         </DialogContent>
         <DialogActions>
           <Button onClick={fecharEdicao}>Cancelar</Button>
-          <Button onClick={salvarEdicao} variant="contained" disabled={savingEdit || nomeInvalido}>
+          <Button
+            onClick={salvarEdicao}
+            variant="contained"
+            disabled={savingEdit || nomeInvalido || cbosInvalido}
+          >
             Salvar
           </Button>
         </DialogActions>

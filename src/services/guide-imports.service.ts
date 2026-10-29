@@ -49,7 +49,6 @@ interface BackendProfessional {
   councilType: CouncilType
   councilNumber: string
   councilUf?: string | null
-  cbosCode?: string | null
   cpf: string
   phone?: string | null
   email?: string | null
@@ -124,7 +123,6 @@ function mapProfessional(item: BackendProfessional): HealthProfessional {
     councilType: item.councilType,
     councilNumber: item.councilNumber,
     councilUf: (item.councilUf as UfBrasil | null) ?? null,
-    cbosCode: item.cbosCode ?? null,
     cpf: item.cpf,
     phone: item.phone ?? null,
     email: item.email ?? null,

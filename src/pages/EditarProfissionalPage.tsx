@@ -52,7 +52,6 @@ export function EditarProfissionalPage() {
   const [councilType, setCouncilType] = useState<CouncilType>('CRM')
   const [councilNumber, setCouncilNumber] = useState('')
   const [councilUf, setCouncilUf] = useState<UfBrasil | ''>('')
-  const [cbosCode, setCbosCode] = useState('')
   const [cpf, setCpf] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
@@ -86,7 +85,6 @@ export function EditarProfissionalPage() {
         setCouncilType(profissionalCarregado.councilType)
         setCouncilNumber(profissionalCarregado.councilNumber)
         setCouncilUf(profissionalCarregado.councilUf ?? '')
-        setCbosCode(profissionalCarregado.cbosCode ?? '')
         setCpf(profissionalCarregado.cpf)
         setPhone(profissionalCarregado.phone ?? '')
         setEmail(profissionalCarregado.email ?? '')
@@ -150,7 +148,6 @@ export function EditarProfissionalPage() {
         councilType,
         councilNumber: councilNumber.trim(),
         councilUf: councilUf === '' ? null : councilUf,
-        cbosCode: cbosCode.replace(/\D/g, '') || null,
         cpf: cpfDigits,
         phone: phone.trim() || null,
         email: email.trim() || null,
@@ -310,12 +307,6 @@ export function EditarProfissionalPage() {
               </MenuItem>
             ))}
           </TextField>
-          <TextField
-            label="CBO-S"
-            value={cbosCode}
-            onChange={(event) => setCbosCode(event.target.value)}
-            helperText="6 dígitos da ocupação"
-          />
           <TextField
             label="CPF"
             value={cpf}

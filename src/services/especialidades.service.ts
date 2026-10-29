@@ -8,12 +8,14 @@ import type {
 interface BackendSpecialty {
   id: number
   name: string
+  cbosCode?: string | null
 }
 
 function mapBackendSpecialty(item: BackendSpecialty): Especialidade {
   return {
     id: item.id,
     nome: item.name,
+    cbosCode: item.cbosCode ?? null,
   }
 }
 

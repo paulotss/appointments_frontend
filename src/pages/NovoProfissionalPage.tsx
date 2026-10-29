@@ -74,7 +74,6 @@ export function NovoProfissionalPage() {
       councilType: 'CRM',
       councilNumber: '',
       councilUf: 'SP',
-      cbosCode: '',
       cpf: '',
       phone: '',
       email: '',
@@ -118,7 +117,6 @@ export function NovoProfissionalPage() {
         councilType: values.councilType,
         councilNumber: values.councilNumber,
         councilUf: values.councilUf,
-        cbosCode: values.cbosCode,
         cpf: values.cpf,
         isActive: values.isActive,
         ...(values.phone != null ? { phone: values.phone } : {}),
@@ -284,12 +282,6 @@ export function NovoProfissionalPage() {
                 ))}
               </TextField>
             )}
-          />
-          <TextField
-            label="CBO-S"
-            error={Boolean(errors.cbosCode)}
-            helperText={errors.cbosCode?.message ?? '6 dígitos da ocupação'}
-            {...register('cbosCode')}
           />
           <TextField
             label="CPF"

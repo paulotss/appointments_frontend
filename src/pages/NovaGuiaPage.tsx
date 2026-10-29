@@ -53,6 +53,7 @@ export function NovaGuiaPage() {
         ...(values.authorizationPassword?.trim()
           ? { authorizationPassword: values.authorizationPassword.trim() }
           : {}),
+        participationDegree: values.participationDegree,
         procedures: values.procedures.map((item) => ({
           procedureId: item.procedureId,
           authorizedQuantity: item.authorizedQuantity,
@@ -121,6 +122,7 @@ export function NovaGuiaPage() {
               status: 'pending',
               guideNumber: '',
               authorizationPassword: '',
+              participationDegree: '12',
               authorizationDate: hojeLocalISO(),
               expirationDate: '',
               registrarSessoes: false,

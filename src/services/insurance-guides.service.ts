@@ -9,7 +9,12 @@ import type {
   UpdateInsuranceGuideRequest,
 } from '../types/guia'
 import type { PagedList } from '../types/listEnvelope'
-import type { TissGuideType } from '../types/tiss'
+import {
+  TISS_PARTICIPATION_DEGREE_CODES,
+  TISS_PARTICIPATION_DEGREE_DEFAULT,
+  type TissGuideType,
+  type TissParticipationDegree,
+} from '../types/tiss'
 import { isoDatePrefix } from '../utils/dataISO'
 import { apiClient } from './apiClient'
 import { mapBackendBillingBatch } from './billing-batches.service'
@@ -72,12 +77,23 @@ interface BackendInsuranceGuide {
   isBilled: boolean
   status: InsuranceGuideStatus
   tissGuideType?: TissGuideType | null
+  participationDegree?: string | null
   healthPlan?: BackendPlanRef
   patient?: BackendRef
   healthProfessional?: BackendRef
   procedures?: BackendGuideProcedure[]
   documents?: BackendGuideDocument[]
   billingBatchGuide?: { billingBatchId: number } | null
+}
+
+function mapParticipationDegree(value: string | null | undefined): TissParticipationDegree {
+  if (
+    value != null &&
+    (TISS_PARTICIPATION_DEGREE_CODES as readonly string[]).includes(value)
+  ) {
+    return value as TissParticipationDegree
+  }
+  return TISS_PARTICIPATION_DEGREE_DEFAULT
 }
 
 function mapGuideProcedure(item: BackendGuideProcedure): InsuranceGuideProcedure {
@@ -117,6 +133,7 @@ export function mapBackendGuide(item: BackendInsuranceGuide): InsuranceGuide {
     billingBatchId: item.billingBatchGuide?.billingBatchId ?? null,
     status: item.status ?? 'pending',
     tissGuideType: item.tissGuideType ?? null,
+    participationDegree: mapParticipationDegree(item.participationDegree),
     healthPlan: item.healthPlan,
     patient: item.patient,
     healthProfessional: item.healthProfessional,

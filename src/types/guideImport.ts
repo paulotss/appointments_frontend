@@ -3,7 +3,7 @@ import type { Patient } from './paciente'
 import type { HealthPlan } from './planoSaude'
 import type { Procedure } from './procedimento'
 import type { HealthProfessional } from './profissional'
-import type { TissGuideType } from './tiss'
+import type { TissGuideType, TissParticipationDegree } from './tiss'
 
 export type ProfessionalSource = 'executante' | 'solicitante'
 
@@ -107,6 +107,7 @@ export interface CommitGuideImportRequest {
       }
   guideNumber?: string
   authorizationPassword?: string | null
+  participationDegree?: TissParticipationDegree
   authorizationDate?: string
   expirationDate?: string
   status?: InsuranceGuideStatus

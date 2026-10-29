@@ -58,6 +58,7 @@ function aplicarAnalise(analise: GuideImportAnalysis): DefaultValues<ImportarGui
     guideNumber:
       analise.extracted.guide.providerGuideNumber ?? analise.extracted.guide.operatorGuideNumber ?? '',
     authorizationPassword: analise.extracted.guide.authorizationPassword ?? '',
+    participationDegree: '12',
     authorizationDate: autorizacao,
     expirationDate: validade,
   }
@@ -103,6 +104,7 @@ export function ImportarGuiaPage() {
       guideNumber: '',
       authorizationDate: hojeLocalISO(),
       authorizationPassword: '',
+      participationDegree: '12',
       expirationDate: '',
       registrarSessoes: false,
     },
@@ -214,6 +216,7 @@ export function ImportarGuiaPage() {
         ...(values.authorizationPassword?.trim()
           ? { authorizationPassword: values.authorizationPassword.trim() }
           : {}),
+        participationDegree: values.participationDegree,
         authorizationDate: values.authorizationDate,
         expirationDate: values.expirationDate,
       })

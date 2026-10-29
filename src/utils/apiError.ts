@@ -55,6 +55,14 @@ const MENSAGENS_EXATAS: Record<string, string> = {
     'A chave da API do Google não está configurada. Defina GEMINI_API_KEY no backend (Render → Environment).',
   'OPENROUTER_API_KEY is not configured':
     'A chave da API do OpenRouter não está configurada. Defina OPENROUTER_API_KEY no backend.',
+  'HERMES_API_KEY is not configured':
+    'A chave da API do Hermes não está configurada. Defina HERMES_API_KEY no backend.',
+  'Hermes vision is unreachable':
+    'Não foi possível conectar ao Hermes para ler a guia.',
+  'Hermes vision failed to extract guide data':
+    'Não foi possível ler a guia com o Hermes. Tente outra imagem.',
+  'Hermes guide vision accepts JPEG and PNG only':
+    'O teste com o Hermes aceita somente JPEG e PNG. Envie uma imagem da guia.',
   'OpenRouter vision is unreachable':
     'Não foi possível conectar ao OpenRouter para ler a guia.',
   'OpenRouter vision model is unavailable':
@@ -103,6 +111,8 @@ const MENSAGENS_EXATAS: Record<string, string> = {
   'Billing batch is already cancelled': 'O lote já está cancelado.',
   'procedures cannot mix consulta and sp_sadt tissGuideType':
     'Não misture procedimentos de consulta e SP/SADT na mesma guia.',
+  'procedures must belong to the same specialty':
+    'Os procedimentos da guia devem ser da mesma especialidade.',
   'Only admins can set used quantity without an appointment':
     'Somente administradores podem usar quantidade sem agendamento.',
   'Only admins and receptionists can register realized sessions':
