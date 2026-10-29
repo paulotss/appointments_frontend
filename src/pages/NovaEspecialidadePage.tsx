@@ -24,6 +24,7 @@ export function NovaEspecialidadePage() {
     resolver: zodResolver(especialidadeSchema),
     defaultValues: {
       name: '',
+      cbosCode: '',
     },
   })
 
@@ -69,6 +70,12 @@ export function NovaEspecialidadePage() {
           error={Boolean(errors.name)}
           helperText={errors.name?.message}
           {...register('name')}
+        />
+        <TextField
+          label="CBO-S"
+          error={Boolean(errors.cbosCode)}
+          helperText={errors.cbosCode?.message ?? '6 dígitos da ocupação desta especialidade'}
+          {...register('cbosCode')}
         />
         <Button type="submit" variant="contained" disabled={loading}>
           {loading ? 'Salvando...' : 'Cadastrar especialidade'}

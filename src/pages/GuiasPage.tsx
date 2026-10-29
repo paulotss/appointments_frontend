@@ -33,6 +33,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { CampoValorMoeda } from '../components/CampoValorMoeda'
 import { CampoData } from '../components/CampoData'
+import { GrauParticipacaoField } from '../components/GrauParticipacaoField'
 import { GuiasTable } from '../components/GuiasTable'
 import { PacienteBuscaAutocomplete } from '../components/PacienteBuscaAutocomplete'
 import { ProfissionalBuscaAutocomplete } from '../components/ProfissionalBuscaAutocomplete'
@@ -62,6 +63,7 @@ import type { HealthPlan } from '../types/planoSaude'
 import type { Procedure } from '../types/procedimento'
 import { tissCodeDoPlano, valorDoPlano } from '../types/procedimento'
 import type { HealthProfessional } from '../types/profissional'
+import { type TissParticipationDegree } from '../types/tiss'
 import { mensagemConflitoNumeroGuia, mensagemErroApi } from '../utils/apiError'
 import { adicionarDiasISO, statusPrazoGuia } from '../utils/dataISO'
 import { formatarMoedaBRL, parseValorDecimal } from '../utils/moedaBRL'
@@ -123,6 +125,7 @@ export function GuiasPage() {
   const [statusEdicao, setStatusEdicao] = useState<InsuranceGuideStatus>('pending')
   const [guideNumberEdicao, setGuideNumberEdicao] = useState('')
   const [senhaEdicao, setSenhaEdicao] = useState('')
+  const [grauParticipacaoEdicao, setGrauParticipacaoEdicao] = useState<TissParticipationDegree>('12')
   const [guideNumberEdicaoError, setGuideNumberEdicaoError] = useState<string | null>(null)
   const [authorizationDateEdicao, setAuthorizationDateEdicao] = useState('')
   const [expirationDateEdicao, setExpirationDateEdicao] = useState('')
@@ -160,9 +163,32 @@ export function GuiasPage() {
   }, [profissionalEdicao])
 
   const procedimentosElegiveis = useMemo(() => {
-    if (especialidadeIdsDoProfissional.size === 0) return procedimentosPlano
-    return procedimentosPlano.filter((item) => especialidadeIdsDoProfissional.has(item.specialtyId))
-  }, [procedimentosPlano, especialidadeIdsDoProfissional])
+    const daEspecialidade =
+      especialidadeIdsDoProfissional.size === 0
+        ? procedimentosPlano
+        : procedimentosPlano.filter((item) => especialidadeIdsDoProfissional.has(item.specialtyId))
+    const primeiroId = procedimentosEdicao.find((item) => item.procedureId !== '')?.procedureId
+    const primeiro =
+      typeof primeiroId === 'number'
+        ? daEspecialidade.find((item) => item.id === primeiroId)
+        : undefined
+    if (!primeiro) return daEspecialidade
+    return daEspecialidade.filter(
+      (item) =>
+        item.specialtyId === primeiro.specialtyId && item.tissGuideType === primeiro.tissGuideType,
+    )
+  }, [procedimentosPlano, especialidadeIdsDoProfissional, procedimentosEdicao])
+
+  const tipoGuiaEdicao = useMemo(() => {
+    const primeiroId = procedimentosEdicao.find((item) => item.procedureId !== '')?.procedureId
+    if (typeof primeiroId === 'number') {
+      const proc =
+        procedimentosPlano.find((item) => item.id === primeiroId) ??
+        editando?.procedures.find((item) => item.procedureId === primeiroId)?.procedure
+      if (proc?.tissGuideType) return proc.tissGuideType
+    }
+    return editando?.tissGuideType ?? null
+  }, [procedimentosEdicao, procedimentosPlano, editando])
 
   const prazoPlano =
     healthPlanIdEdicao === ''
@@ -195,6 +221,7 @@ export function GuiasPage() {
     setStatusEdicao(guia.status)
     setGuideNumberEdicao(guia.guideNumber ?? '')
     setSenhaEdicao(guia.authorizationPassword ?? '')
+    setGrauParticipacaoEdicao(guia.participationDegree ?? '12')
     setGuideNumberEdicaoError(null)
     setExpirationDateEdicao(guia.expirationDate)
     setAuthorizationDateEdicao(
@@ -227,6 +254,7 @@ export function GuiasPage() {
     setStatusEdicao('pending')
     setGuideNumberEdicao('')
     setSenhaEdicao('')
+    setGrauParticipacaoEdicao('12')
     setGuideNumberEdicaoError(null)
     setAuthorizationDateEdicao('')
     setExpirationDateEdicao('')
@@ -291,6 +319,7 @@ export function GuiasPage() {
         status: statusEdicao,
         guideNumber: guideNumberEdicao.trim() ? guideNumberEdicao.trim() : null,
         authorizationPassword: senhaEdicao.trim() ? senhaEdicao.trim() : null,
+        participationDegree: grauParticipacaoEdicao,
         authorizationDate: authorizationDateEdicao,
         expirationDate: expirationDateEdicao,
         procedures: procedures.map((item) => ({
@@ -809,6 +838,12 @@ export function GuiasPage() {
               inputProps={{ maxLength: 20 }}
               helperText="Opcional. Algumas operadoras exigem esta senha no XML de SP/SADT."
             />
+            {tipoGuiaEdicao === 'sp_sadt' ? (
+              <GrauParticipacaoField
+                value={grauParticipacaoEdicao}
+                onChange={setGrauParticipacaoEdicao}
+              />
+            ) : null}
             <CampoData
               label="Data de autorização"
               value={authorizationDateEdicao}

@@ -29,6 +29,7 @@ import {
   type UseFormWatch,
 } from 'react-hook-form'
 import { Link as RouterLink } from 'react-router-dom'
+import { GrauParticipacaoField } from './GrauParticipacaoField'
 import type { ImportarGuiaFormInput } from '../schemas/importarGuia.schema'
 import { getUserRole } from '../services/authStorage'
 import { buscarPaciente } from '../services/patients.service'
@@ -222,7 +223,36 @@ export function ImportarGuiaForm({
     setValue('procedures', [{ procedureId: undefined as unknown as number, authorizedQuantity: 1 }])
   }, [analise, getValues, setValue])
 
-  const procedimentosVisiveis = healthPlanId == null ? [] : procedimentosPlano
+  const especialidadeIdsDoProfissional = useMemo(
+    () => new Set((profissionalSelecionado?.specialties ?? []).map((item) => item.specialtyId)),
+    [profissionalSelecionado],
+  )
+  const procedimentosVisiveis = useMemo(() => {
+    if (healthPlanId == null) return []
+    const daEspecialidade =
+      especialidadeIdsDoProfissional.size === 0
+        ? procedimentosPlano
+        : procedimentosPlano.filter((item) => especialidadeIdsDoProfissional.has(item.specialtyId))
+    const primeiroId = procedures?.find(
+      (item) => typeof item?.procedureId === 'number' && item.procedureId > 0,
+    )?.procedureId
+    const primeiro =
+      primeiroId != null ? daEspecialidade.find((item) => item.id === primeiroId) : undefined
+    if (!primeiro) return daEspecialidade
+    return daEspecialidade.filter(
+      (item) =>
+        item.specialtyId === primeiro.specialtyId && item.tissGuideType === primeiro.tissGuideType,
+    )
+  }, [healthPlanId, procedimentosPlano, especialidadeIdsDoProfissional, procedures])
+  const tipoGuiaAtual = useMemo(() => {
+    const primeiroId = procedures?.find(
+      (item) => typeof item?.procedureId === 'number' && item.procedureId > 0,
+    )?.procedureId
+    if (primeiroId != null) {
+      return procedimentosPlano.find((item) => item.id === primeiroId)?.tissGuideType ?? null
+    }
+    return analise?.extracted.tissGuideType ?? null
+  }, [procedures, procedimentosPlano, analise])
   const linhasProcedimento = analise ? Math.max(procedures?.length ?? 0, 1) : 0
   const procedimentosNaoCasados = (analise?.procedures ?? []).filter((_, index) => {
     const selecionado = procedures?.[index]?.procedureId
@@ -625,6 +655,20 @@ export function ImportarGuiaForm({
               InputLabelProps={{ shrink: true }}
               {...register('authorizationPassword')}
             />
+            {tipoGuiaAtual === 'sp_sadt' ? (
+              <Controller
+                name="participationDegree"
+                control={control}
+                render={({ field }) => (
+                  <GrauParticipacaoField
+                    value={field.value}
+                    onChange={field.onChange}
+                    error={Boolean(errors.participationDegree)}
+                    helperText={errors.participationDegree?.message}
+                  />
+                )}
+              />
+            ) : null}
             <Controller
               name="authorizationDate"
               control={control}

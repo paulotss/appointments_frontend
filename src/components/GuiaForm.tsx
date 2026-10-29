@@ -22,6 +22,7 @@ import { guiaSchema, type GuiaFormInput, type GuiaFormValues } from '../schemas/
 import { getUserRole } from '../services/authStorage'
 import { listarProcedimentos } from '../services/procedures.service'
 import { CampoData } from './CampoData'
+import { GrauParticipacaoField } from './GrauParticipacaoField'
 import { DatasSessoesProcedimento } from './DatasSessoesProcedimento'
 import {
   GUIDE_DOCUMENT_MAX_FILES,
@@ -119,12 +120,13 @@ export function GuiaForm({
       especialidadeIdsDoProfissional.has(item.specialtyId),
     )
     const primeiroId = proceduresWatch?.[0]?.procedureId
-    const tipoPrimeiro =
-      primeiroId != null
-        ? daEspecialidade.find((item) => item.id === primeiroId)?.tissGuideType
-        : undefined
-    if (!tipoPrimeiro) return daEspecialidade
-    return daEspecialidade.filter((item) => item.tissGuideType === tipoPrimeiro)
+    const primeiro =
+      primeiroId != null ? daEspecialidade.find((item) => item.id === primeiroId) : undefined
+    if (!primeiro) return daEspecialidade
+    return daEspecialidade.filter(
+      (item) =>
+        item.tissGuideType === primeiro.tissGuideType && item.specialtyId === primeiro.specialtyId,
+    )
   }, [procedimentosPlano, especialidadeIdsDoProfissional, proceduresWatch])
 
   const tipoGuiaAtual = useMemo(() => {
@@ -326,6 +328,20 @@ export function GuiaForm({
           />
         )}
       />
+      {tipoGuiaAtual === 'sp_sadt' ? (
+        <Controller
+          name="participationDegree"
+          control={control}
+          render={({ field }) => (
+            <GrauParticipacaoField
+              value={field.value}
+              onChange={field.onChange}
+              error={Boolean(errors.participationDegree)}
+              helperText={errors.participationDegree?.message}
+            />
+          )}
+        />
+      ) : null}
       <Controller
         name="authorizationDate"
         control={control}
@@ -363,8 +379,8 @@ export function GuiaForm({
       </Typography>
       {tipoGuiaAtual ? (
         <Alert severity="info">
-          Esta guia será {TISS_GUIDE_TYPE_LABELS[tipoGuiaAtual]}. Não misture consulta e SP/SADT na
-          mesma guia.
+          Esta guia será {TISS_GUIDE_TYPE_LABELS[tipoGuiaAtual]}. Os demais procedimentos precisam ser
+          do mesmo tipo e da mesma especialidade.
         </Alert>
       ) : null}
       {errors.procedures?.root?.message || errors.procedures?.message ? (

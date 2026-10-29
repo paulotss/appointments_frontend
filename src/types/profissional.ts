@@ -44,7 +44,6 @@ export interface HealthProfessional {
   councilType: CouncilType
   councilNumber: string
   councilUf: UfBrasil | null
-  cbosCode: string | null
   cpf: string
   phone: string | null
   email: string | null
@@ -60,7 +59,6 @@ export interface CreateHealthProfessionalRequest {
   councilType: CouncilType
   councilNumber: string
   councilUf?: UfBrasil
-  cbosCode?: string
   cpf: string
   phone?: string
   email?: string
@@ -75,7 +73,6 @@ export interface UpdateHealthProfessionalRequest {
   councilType?: CouncilType
   councilNumber?: string
   councilUf?: UfBrasil | null
-  cbosCode?: string | null
   cpf?: string
   phone?: string | null
   email?: string | null

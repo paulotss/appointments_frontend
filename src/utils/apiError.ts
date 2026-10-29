@@ -111,6 +111,8 @@ const MENSAGENS_EXATAS: Record<string, string> = {
   'Billing batch is already cancelled': 'O lote já está cancelado.',
   'procedures cannot mix consulta and sp_sadt tissGuideType':
     'Não misture procedimentos de consulta e SP/SADT na mesma guia.',
+  'procedures must belong to the same specialty':
+    'Os procedimentos da guia devem ser da mesma especialidade.',
   'Only admins can set used quantity without an appointment':
     'Somente administradores podem usar quantidade sem agendamento.',
   'Only admins and receptionists can register realized sessions':

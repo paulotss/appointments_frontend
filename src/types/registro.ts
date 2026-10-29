@@ -41,6 +41,7 @@ export interface CriarRegistroAtendimentoInput {
 export interface Especialidade {
   id: number
   nome: string
+  cbosCode: string | null
 }
 
 export interface BackendAppointment {
@@ -88,8 +89,10 @@ export interface CreateAppointmentRequest {
 
 export interface CreateSpecialtyRequest {
   name: string
+  cbosCode: string
 }
 
 export interface UpdateSpecialtyRequest {
   name: string
+  cbosCode: string
 }

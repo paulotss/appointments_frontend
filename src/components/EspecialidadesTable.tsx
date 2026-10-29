@@ -20,6 +20,7 @@ export function EspecialidadesTable({
         <TableHead>
           <TableRow>
             <TableCell>Nome</TableCell>
+            <TableCell>CBO-S</TableCell>
             <TableCell align="right">Ações</TableCell>
           </TableRow>
         </TableHead>
@@ -27,6 +28,7 @@ export function EspecialidadesTable({
           {especialidades.map((especialidade) => (
             <TableRow key={especialidade.id} hover>
               <TableCell>{especialidade.nome}</TableCell>
+              <TableCell>{especialidade.cbosCode ?? '—'}</TableCell>
               <TableCell align="right">
                 <IconButton size="small" aria-label="Editar especialidade" onClick={() => onEditar(especialidade)}>
                   <EditIcon fontSize="small" />

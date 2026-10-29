@@ -335,6 +335,9 @@ export function LoteTissDetalhePage() {
               <strong>Protocolo:</strong> {lote.protocolNumber ?? '—'}
             </Typography>
             <Typography>
+              <strong>Guias:</strong> {lote.guides.length}
+            </Typography>
+            <Typography>
               <strong>Valor faturado:</strong> {formatarMoedaBRL(lote.billedAmount)}
             </Typography>
             <Typography>

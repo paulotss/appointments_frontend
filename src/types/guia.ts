@@ -1,4 +1,4 @@
-import type { TissGuideType } from './tiss'
+import type { TissGuideType, TissParticipationDegree } from './tiss'
 
 export const INSURANCE_GUIDE_STATUSES = ['pending', 'under_analysis', 'authorized'] as const
 
@@ -72,6 +72,7 @@ export interface InsuranceGuide {
   billingBatchId: number | null
   status: InsuranceGuideStatus
   tissGuideType: TissGuideType | null
+  participationDegree: TissParticipationDegree
   healthPlan?: InsuranceGuidePlanRef
   patient?: InsuranceGuideRef
   healthProfessional?: InsuranceGuideRef
@@ -89,6 +90,7 @@ export interface CreateInsuranceGuideRequest {
   expirationDate?: string
   isBilled?: boolean
   status?: InsuranceGuideStatus
+  participationDegree?: TissParticipationDegree
   procedures: InsuranceGuideProcedureInput[]
 }
 
@@ -102,6 +104,7 @@ export interface UpdateInsuranceGuideRequest {
   expirationDate?: string
   isBilled?: boolean
   status?: InsuranceGuideStatus
+  participationDegree?: TissParticipationDegree
   procedures?: InsuranceGuideProcedureInput[]
 }
 
