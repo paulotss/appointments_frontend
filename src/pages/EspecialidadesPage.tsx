@@ -16,6 +16,7 @@ import {
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { EspecialidadesTable } from '../components/EspecialidadesTable'
+import { CbosAutocomplete } from '../components/CbosAutocomplete'
 import {
   atualizarEspecialidade,
   excluirEspecialidade,
@@ -159,17 +160,15 @@ export function EspecialidadesPage() {
             error={Boolean(nomeEdicao) && nomeInvalido}
             helperText={Boolean(nomeEdicao) && nomeInvalido ? 'Minimo 2 caracteres' : ' '}
           />
-          <TextField
+          <CbosAutocomplete
             label="CBO-S"
             value={cbosEdicao}
-            onChange={(event) => setCbosEdicao(event.target.value)}
-            fullWidth
-            margin="dense"
+            onChange={setCbosEdicao}
             error={Boolean(cbosEdicao) && cbosInvalido}
             helperText={
               Boolean(cbosEdicao) && cbosInvalido
                 ? 'CBO-S deve ter 6 dígitos'
-                : '6 dígitos da ocupação desta especialidade'
+                : 'Código da ocupação desta especialidade'
             }
           />
         </DialogContent>

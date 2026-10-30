@@ -1,7 +1,9 @@
 import { z } from 'zod'
 import { INSURANCE_GUIDE_STATUSES } from '../types/guia'
+import { isCouncilType } from '../types/profissional'
 import { TISS_PARTICIPATION_DEGREE_CODES } from '../types/tiss'
 import { hojeLocalISO } from '../utils/dataISO'
+import { UFS_BRASIL } from '../utils/ufBrasil'
 
 const procedimentoGuiaSchema = z.object({
   procedureId: z.number({ error: 'Selecione o procedimento' }).int().positive('Selecione o procedimento'),
@@ -30,6 +32,17 @@ export const guiaSchema = z.object({
   authorizationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe a data de autorização'),
   expirationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe a data de validade'),
   registrarSessoes: z.boolean().optional(),
+  executorCbosCode: z
+    .string()
+    .transform((value) => value.replace(/\D/g, ''))
+    .refine((value) => /^\d{6}$/.test(value), { message: 'Selecione o CBOS do executante' }),
+  tissGuideType: z.enum(['consulta', 'sp_sadt']).nullable().optional(),
+  requesterName: z.string().optional(),
+  requesterCouncilType: z.string().optional(),
+  requesterCouncilNumber: z.string().optional(),
+  requesterCouncilUf: z.string().optional(),
+  requesterCbosCode: z.string().optional(),
+  saveRequesterForNextAuthorizations: z.boolean().optional(),
   procedures: z
     .array(procedimentoGuiaSchema)
     .min(1, 'Informe ao menos um procedimento')
@@ -71,6 +84,23 @@ export const guiaSchema = z.object({
       })
     }
   })
+}).superRefine((values, ctx) => {
+  if (values.tissGuideType !== 'sp_sadt') return
+  if ((values.requesterName ?? '').trim().length < 3) {
+    ctx.addIssue({ code: 'custom', message: 'Informe o nome do solicitante', path: ['requesterName'] })
+  }
+  if (!isCouncilType(values.requesterCouncilType ?? '')) {
+    ctx.addIssue({ code: 'custom', message: 'Selecione o conselho', path: ['requesterCouncilType'] })
+  }
+  if ((values.requesterCouncilNumber ?? '').trim().length < 1) {
+    ctx.addIssue({ code: 'custom', message: 'Informe o número do conselho', path: ['requesterCouncilNumber'] })
+  }
+  if (!(UFS_BRASIL as readonly string[]).includes((values.requesterCouncilUf ?? '').trim().toUpperCase())) {
+    ctx.addIssue({ code: 'custom', message: 'Selecione a UF', path: ['requesterCouncilUf'] })
+  }
+  if (!/^\d{6}$/.test((values.requesterCbosCode ?? '').replace(/\D/g, ''))) {
+    ctx.addIssue({ code: 'custom', message: 'Selecione o CBO-S', path: ['requesterCbosCode'] })
+  }
 })
 
 export type GuiaFormInput = z.input<typeof guiaSchema>

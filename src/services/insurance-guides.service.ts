@@ -15,6 +15,7 @@ import {
   type TissGuideType,
   type TissParticipationDegree,
 } from '../types/tiss'
+import { isCouncilType } from '../types/profissional'
 import { isoDatePrefix } from '../utils/dataISO'
 import { apiClient } from './apiClient'
 import { mapBackendBillingBatch } from './billing-batches.service'
@@ -78,6 +79,12 @@ interface BackendInsuranceGuide {
   status: InsuranceGuideStatus
   tissGuideType?: TissGuideType | null
   participationDegree?: string | null
+  executorCbosCode?: string | null
+  requesterName?: string | null
+  requesterCouncilType?: string | null
+  requesterCouncilNumber?: string | null
+  requesterCouncilUf?: string | null
+  requesterCbosCode?: string | null
   healthPlan?: BackendPlanRef
   patient?: BackendRef
   healthProfessional?: BackendRef
@@ -134,6 +141,15 @@ export function mapBackendGuide(item: BackendInsuranceGuide): InsuranceGuide {
     status: item.status ?? 'pending',
     tissGuideType: item.tissGuideType ?? null,
     participationDegree: mapParticipationDegree(item.participationDegree),
+    executorCbosCode: item.executorCbosCode ?? null,
+    requesterName: item.requesterName ?? null,
+    requesterCouncilType:
+      item.requesterCouncilType && isCouncilType(item.requesterCouncilType)
+        ? item.requesterCouncilType
+        : null,
+    requesterCouncilNumber: item.requesterCouncilNumber ?? null,
+    requesterCouncilUf: item.requesterCouncilUf ?? null,
+    requesterCbosCode: item.requesterCbosCode ?? null,
     healthPlan: item.healthPlan,
     patient: item.patient,
     healthProfessional: item.healthProfessional,

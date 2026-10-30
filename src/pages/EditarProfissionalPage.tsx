@@ -22,6 +22,7 @@ import { listarEspecialidades } from '../services/especialidades.service'
 import { atualizarProfissional, buscarProfissional } from '../services/health-professionals.service'
 import type { Especialidade } from '../types/registro'
 import {
+  COUNCIL_LABELS,
   COUNCIL_TYPES,
   type CouncilType,
   type HealthProfessional,
@@ -248,7 +249,7 @@ export function EditarProfissionalPage() {
                   </MenuItem>
                   {opcoes.map((esp) => (
                     <MenuItem key={esp.id} value={esp.id}>
-                      {esp.nome}
+                      {esp.cbosCode ? `${esp.nome} — ${esp.cbosCode}` : esp.nome}
                     </MenuItem>
                   ))}
                 </TextField>
@@ -281,7 +282,7 @@ export function EditarProfissionalPage() {
           >
             {COUNCIL_TYPES.map((tipo) => (
               <MenuItem key={tipo} value={tipo}>
-                {tipo}
+                {COUNCIL_LABELS[tipo]}
               </MenuItem>
             ))}
           </TextField>

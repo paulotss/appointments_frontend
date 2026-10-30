@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { intervalosSobrepostos, paraIntervalo } from '../utils/bloqueioHorario'
+import { COUNCIL_TYPES } from '../types/profissional'
 import { UFS_BRASIL } from '../utils/ufBrasil'
 
 const optionalText = z
@@ -150,7 +151,7 @@ export const profissionalSchema = z.object({
         })
       }
     }),
-  councilType: z.enum(['CRM', 'CRO', 'CRP', 'COREN', 'OTHER'], {
+  councilType: z.enum(COUNCIL_TYPES, {
     error: 'Selecione o tipo de conselho',
   }),
   councilNumber: z.string().min(1, 'Informe o numero do conselho'),

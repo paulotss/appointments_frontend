@@ -21,6 +21,7 @@ export interface ListarProfissionaisParams {
 interface BackendSpecialtyRef {
   id: number
   name: string
+  cbosCode?: string | null
 }
 
 interface BackendHealthProfessionalSpecialty {

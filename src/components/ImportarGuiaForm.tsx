@@ -30,11 +30,14 @@ import {
 } from 'react-hook-form'
 import { Link as RouterLink } from 'react-router-dom'
 import { GrauParticipacaoField } from './GrauParticipacaoField'
+import { ProfissionalSolicitanteFields, type SolicitanteFormValue } from './ProfissionalSolicitanteFields'
+import { SeletorCbosExecutante } from './SeletorCbosExecutante'
 import type { ImportarGuiaFormInput } from '../schemas/importarGuia.schema'
 import { getUserRole } from '../services/authStorage'
 import { buscarPaciente } from '../services/patients.service'
 import { listarProcedimentos } from '../services/procedures.service'
 import type { GuideImportAnalysis } from '../types/guideImport'
+import { solicitanteIncompleto } from '../utils/guiaTiss'
 import type { Patient } from '../types/paciente'
 import type { HealthPlan } from '../types/planoSaude'
 import { tissCodeDoPlano, type Procedure } from '../types/procedimento'
@@ -253,6 +256,20 @@ export function ImportarGuiaForm({
     }
     return analise?.extracted.tissGuideType ?? null
   }, [procedures, procedimentosPlano, analise])
+
+  useEffect(() => {
+    setValue('tissGuideType', tipoGuiaAtual)
+  }, [setValue, tipoGuiaAtual])
+
+  const executorCbosCode = watch('executorCbosCode') ?? ''
+  const solicitanteValor: SolicitanteFormValue = {
+    name: watch('requesterName') ?? '',
+    councilType: (watch('requesterCouncilType') ?? '') as SolicitanteFormValue['councilType'],
+    councilNumber: watch('requesterCouncilNumber') ?? '',
+    councilUf: watch('requesterCouncilUf') ?? '',
+    cbosCode: watch('requesterCbosCode') ?? '',
+    saveForNext: Boolean(watch('saveRequesterForNextAuthorizations')),
+  }
   const linhasProcedimento = analise ? Math.max(procedures?.length ?? 0, 1) : 0
   const procedimentosNaoCasados = (analise?.procedures ?? []).filter((_, index) => {
     const selecionado = procedures?.[index]?.procedureId
@@ -265,12 +282,32 @@ export function ImportarGuiaForm({
     (item) => typeof item?.procedureId === 'number' && item.procedureId > 0,
   )
   const conferenciaIncompleta =
-    faltaPlano || faltaProfissional || faltaProcedimentoSelecionado
+    faltaPlano ||
+    faltaProfissional ||
+    faltaProcedimentoSelecionado ||
+    !/^\d{6}$/.test(executorCbosCode) ||
+    (tipoGuiaAtual === 'sp_sadt' && solicitanteIncompleto(solicitanteValor))
   const precisaCarteirinha =
     patientMode === 'create' || !pacienteTemCarteirinha(pacienteDetalhe, healthPlanId)
 
   async function avancarDaConferencia() {
-    const valido = await trigger(['healthPlanId', 'healthProfessionalId', 'procedures'])
+    setValue('tissGuideType', tipoGuiaAtual)
+    const campos: Array<keyof ImportarGuiaFormInput> = [
+      'healthPlanId',
+      'healthProfessionalId',
+      'procedures',
+      'executorCbosCode',
+    ]
+    if (tipoGuiaAtual === 'sp_sadt') {
+      campos.push(
+        'requesterName',
+        'requesterCouncilType',
+        'requesterCouncilNumber',
+        'requesterCouncilUf',
+        'requesterCbosCode',
+      )
+    }
+    const valido = await trigger(campos)
     if (!valido || conferenciaIncompleta) return
     setActiveStep(2)
   }
@@ -460,6 +497,14 @@ export function ImportarGuiaForm({
                 />
               )}
             />
+            {profissionalSelecionado ? (
+              <SeletorCbosExecutante
+                profissional={profissionalSelecionado}
+                value={executorCbosCode}
+                onChange={(code) => setValue('executorCbosCode', code, { shouldValidate: true })}
+                error={errors.executorCbosCode?.message}
+              />
+            ) : null}
 
             {Array.from({ length: linhasProcedimento }, (_, index) => {
               const lido = analise?.procedures[index]
@@ -502,6 +547,26 @@ export function ImportarGuiaForm({
               )
             })}
             {erroProcedimentos ? <Alert severity="error">{erroProcedimentos}</Alert> : null}
+            {tipoGuiaAtual === 'sp_sadt' ? (
+              <ProfissionalSolicitanteFields
+                value={solicitanteValor}
+                onChange={(next) => {
+                  setValue('requesterName', next.name, { shouldValidate: true })
+                  setValue('requesterCouncilType', next.councilType, { shouldValidate: true })
+                  setValue('requesterCouncilNumber', next.councilNumber, { shouldValidate: true })
+                  setValue('requesterCouncilUf', next.councilUf, { shouldValidate: true })
+                  setValue('requesterCbosCode', next.cbosCode, { shouldValidate: true })
+                  setValue('saveRequesterForNextAuthorizations', next.saveForNext)
+                }}
+                errors={{
+                  name: errors.requesterName?.message,
+                  councilType: errors.requesterCouncilType?.message,
+                  councilNumber: errors.requesterCouncilNumber?.message,
+                  councilUf: errors.requesterCouncilUf?.message,
+                  cbosCode: errors.requesterCbosCode?.message,
+                }}
+              />
+            ) : null}
 
             <Stack direction="row" spacing={1}>
               <Button onClick={() => setActiveStep(0)}>Voltar</Button>

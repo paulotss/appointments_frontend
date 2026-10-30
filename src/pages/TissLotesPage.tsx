@@ -11,7 +11,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TissLotesTable } from '../components/TissLotesTable'
 import { listarLotesTiss } from '../services/billing-batches.service'
@@ -37,32 +37,32 @@ export function TissLotesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const carregar = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const resultado = await listarLotesTiss({
-        page: page + 1,
-        limit: rowsPerPage,
-        ...(planoFiltro === '' ? {} : { healthPlanId: planoFiltro }),
-        ...(statusFiltro ? { status: statusFiltro } : {}),
-      })
-      setLotes(resultado.data)
-      setMeta(resultado.meta)
-    } catch (err) {
-      setError(mensagemErroApi(err, 'Não foi possível carregar os lotes.'))
-    } finally {
-      setLoading(false)
+  useEffect(() => {
+    let ativo = true
+    async function carregar() {
+      setLoading(true)
+      setError(null)
+      try {
+        const resultado = await listarLotesTiss({
+          page: page + 1,
+          limit: rowsPerPage,
+          ...(planoFiltro === '' ? {} : { healthPlanId: planoFiltro }),
+          ...(statusFiltro ? { status: statusFiltro } : {}),
+        })
+        if (!ativo) return
+        setLotes(resultado.data)
+        setMeta(resultado.meta)
+      } catch (err) {
+        if (ativo) setError(mensagemErroApi(err, 'Não foi possível carregar os lotes.'))
+      } finally {
+        if (ativo) setLoading(false)
+      }
+    }
+    void carregar()
+    return () => {
+      ativo = false
     }
   }, [page, rowsPerPage, planoFiltro, statusFiltro])
-
-  useEffect(() => {
-    void carregar()
-  }, [carregar])
-
-  useEffect(() => {
-    setPage(0)
-  }, [planoFiltro, statusFiltro])
 
   useEffect(() => {
     async function carregarPlanos() {
@@ -94,7 +94,10 @@ export function TissLotesPage() {
           label="Plano de saúde"
           size="small"
           value={planoFiltro}
-          onChange={(event) => setPlanoFiltro(event.target.value === '' ? '' : Number(event.target.value))}
+          onChange={(event) => {
+            setPlanoFiltro(event.target.value === '' ? '' : Number(event.target.value))
+            setPage(0)
+          }}
           sx={{ minWidth: 240 }}
         >
           <MenuItem value="">Todos</MenuItem>
@@ -109,7 +112,10 @@ export function TissLotesPage() {
           label="Status"
           size="small"
           value={statusFiltro}
-          onChange={(event) => setStatusFiltro(event.target.value as BillingBatchStatus | '')}
+          onChange={(event) => {
+            setStatusFiltro(event.target.value as BillingBatchStatus | '')
+            setPage(0)
+          }}
           sx={{ minWidth: 180 }}
         >
           <MenuItem value="">Todos</MenuItem>
@@ -128,15 +134,15 @@ export function TissLotesPage() {
         </Paper>
       ) : null}
 
-      {!loading && !error && lotes.length === 0 ? (
-        <Paper sx={{ p: 3 }}>
-          <Typography>Nenhum lote encontrado.</Typography>
-        </Paper>
-      ) : null}
-
-      {!loading && !error && lotes.length > 0 ? (
+      {!loading && !error ? (
         <Paper sx={{ p: 0 }}>
-          <TissLotesTable lotes={lotes} />
+          {lotes.length === 0 ? (
+            <Box sx={{ p: 3 }}>
+              <Typography>Nenhum lote encontrado.</Typography>
+            </Box>
+          ) : (
+            <TissLotesTable lotes={lotes} />
+          )}
           <TablePagination
             component="div"
             count={meta.total}

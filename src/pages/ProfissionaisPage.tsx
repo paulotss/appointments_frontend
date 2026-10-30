@@ -10,7 +10,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ProfissionaisTable } from '../components/ProfissionaisTable'
 import { listarProfissionais } from '../services/health-professionals.service'
@@ -40,36 +40,45 @@ export function ProfissionaisPage() {
     navigate('/profissionais', { replace: true, state: null })
   }, [location.state, navigate])
 
+  const filtroAplicado = useRef('')
+
   useEffect(() => {
-    const timer = window.setTimeout(() => setFiltroNomeDebounced(filtroNome.trim()), 300)
+    const timer = window.setTimeout(() => {
+      const next = filtroNome.trim()
+      setFiltroNomeDebounced(next)
+      if (filtroAplicado.current !== next) {
+        filtroAplicado.current = next
+        setPage(0)
+      }
+    }, 300)
     return () => window.clearTimeout(timer)
   }, [filtroNome])
 
   useEffect(() => {
-    setPage(0)
-  }, [filtroNomeDebounced])
-
-  const carregarDados = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const profissionaisData = await listarProfissionais({
-        ...(filtroNomeDebounced ? { name: filtroNomeDebounced } : {}),
-        page: page + 1,
-        limit: rowsPerPage,
-      })
-      setProfissionais(profissionaisData.data)
-      setMeta(profissionaisData.meta)
-    } catch {
-      setError('Nao foi possivel carregar os profissionais.')
-    } finally {
-      setLoading(false)
+    let ativo = true
+    async function carregarDados() {
+      setLoading(true)
+      setError(null)
+      try {
+        const profissionaisData = await listarProfissionais({
+          ...(filtroNomeDebounced ? { name: filtroNomeDebounced } : {}),
+          page: page + 1,
+          limit: rowsPerPage,
+        })
+        if (!ativo) return
+        setProfissionais(profissionaisData.data)
+        setMeta(profissionaisData.meta)
+      } catch {
+        if (ativo) setError('Nao foi possivel carregar os profissionais.')
+      } finally {
+        if (ativo) setLoading(false)
+      }
+    }
+    void carregarDados()
+    return () => {
+      ativo = false
     }
   }, [filtroNomeDebounced, page, rowsPerPage])
-
-  useEffect(() => {
-    void carregarDados()
-  }, [carregarDados])
 
   return (
     <Stack spacing={2}>
@@ -104,18 +113,18 @@ export function ProfissionaisPage() {
         </Paper>
       ) : null}
 
-      {!loading && !error && profissionais.length === 0 ? (
-        <Paper sx={{ p: 3 }}>
-          <Typography>Nenhum profissional encontrado.</Typography>
-        </Paper>
-      ) : null}
-
-      {!loading && !error && profissionais.length > 0 ? (
+      {!loading && !error ? (
         <Paper sx={{ p: 0 }}>
-          <ProfissionaisTable
-            profissionais={profissionais}
-            onEditar={(profissional) => navigate(`/profissionais/${profissional.id}`)}
-          />
+          {profissionais.length === 0 ? (
+            <Box sx={{ p: 3 }}>
+              <Typography>Nenhum profissional encontrado.</Typography>
+            </Box>
+          ) : (
+            <ProfissionaisTable
+              profissionais={profissionais}
+              onEditar={(profissional) => navigate(`/profissionais/${profissional.id}`)}
+            />
+          )}
           <TablePagination
             component="div"
             count={meta.total}

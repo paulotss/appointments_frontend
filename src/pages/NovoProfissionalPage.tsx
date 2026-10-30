@@ -27,7 +27,7 @@ import {
 } from '../schemas/profissional.schema'
 import { listarEspecialidades } from '../services/especialidades.service'
 import { criarProfissional } from '../services/health-professionals.service'
-import { COUNCIL_TYPES } from '../types/profissional'
+import { COUNCIL_LABELS, COUNCIL_TYPES } from '../types/profissional'
 import { mensagemErroApi } from '../utils/apiError'
 import { UFS_BRASIL } from '../utils/ufBrasil'
 import type { Especialidade } from '../types/registro'
@@ -210,7 +210,7 @@ export function NovoProfissionalPage() {
                       </MenuItem>
                       {opcoes.map((esp) => (
                         <MenuItem key={esp.id} value={esp.id}>
-                          {esp.nome}
+                          {esp.cbosCode ? `${esp.nome} — ${esp.cbosCode}` : esp.nome}
                         </MenuItem>
                       ))}
                     </TextField>
@@ -251,7 +251,7 @@ export function NovoProfissionalPage() {
               >
                 {COUNCIL_TYPES.map((tipo) => (
                   <MenuItem key={tipo} value={tipo}>
-                    {tipo}
+                    {COUNCIL_LABELS[tipo]}
                   </MenuItem>
                 ))}
               </TextField>

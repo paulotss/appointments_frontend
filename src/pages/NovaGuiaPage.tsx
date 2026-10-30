@@ -9,6 +9,7 @@ import { criarGuia, enviarDocumentoGuia } from '../services/insurance-guides.ser
 import type { HealthPlan } from '../types/planoSaude'
 import { mensagemConflitoNumeroGuia, mensagemErroApi } from '../utils/apiError'
 import { hojeLocalISO } from '../utils/dataISO'
+import { payloadTissGuia } from '../utils/guiaTiss'
 
 export function NovaGuiaPage() {
   const navigate = useNavigate()
@@ -54,6 +55,7 @@ export function NovaGuiaPage() {
           ? { authorizationPassword: values.authorizationPassword.trim() }
           : {}),
         participationDegree: values.participationDegree,
+        ...payloadTissGuia(values),
         procedures: values.procedures.map((item) => ({
           procedureId: item.procedureId,
           authorizedQuantity: item.authorizedQuantity,

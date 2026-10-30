@@ -12,7 +12,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PagamentosTable } from '../components/PagamentosTable'
 import { CampoData } from '../components/CampoData'
@@ -59,26 +59,32 @@ export function FinanceiroPagamentosPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const carregar = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const resultado = await listarPagamentos({
-        page: page + 1,
-        limit: rowsPerPage,
-        ...(statusFiltro ? { status: statusFiltro } : {}),
-        ...(fornecedorFiltro ? { supplierId: fornecedorFiltro.id } : {}),
-        ...periodoVencimento(vencimentoInicio, vencimentoFim),
-        ...(colunaOrdenacao
-          ? { sortBy: colunaOrdenacao, sortOrder: direcaoOrdenacao }
-          : {}),
-      })
-      setPagamentos(resultado.data)
-      setMeta(resultado.meta)
-    } catch (err) {
-      setError(mensagemErroApi(err, 'Não foi possível carregar os pagamentos.'))
-    } finally {
-      setLoading(false)
+  useEffect(() => {
+    let ativo = true
+    async function carregar() {
+      setLoading(true)
+      setError(null)
+      try {
+        const resultado = await listarPagamentos({
+          page: page + 1,
+          limit: rowsPerPage,
+          ...(statusFiltro ? { status: statusFiltro } : {}),
+          ...(fornecedorFiltro ? { supplierId: fornecedorFiltro.id } : {}),
+          ...periodoVencimento(vencimentoInicio, vencimentoFim),
+          ...(colunaOrdenacao ? { sortBy: colunaOrdenacao, sortOrder: direcaoOrdenacao } : {}),
+        })
+        if (!ativo) return
+        setPagamentos(resultado.data)
+        setMeta(resultado.meta)
+      } catch (err) {
+        if (ativo) setError(mensagemErroApi(err, 'Não foi possível carregar os pagamentos.'))
+      } finally {
+        if (ativo) setLoading(false)
+      }
+    }
+    void carregar()
+    return () => {
+      ativo = false
     }
   }, [
     page,
@@ -90,14 +96,6 @@ export function FinanceiroPagamentosPage() {
     colunaOrdenacao,
     direcaoOrdenacao,
   ])
-
-  useEffect(() => {
-    void carregar()
-  }, [carregar])
-
-  useEffect(() => {
-    setPage(0)
-  }, [statusFiltro, fornecedorFiltro, vencimentoInicio, vencimentoFim])
 
   useEffect(() => {
     async function carregarFornecedores() {
@@ -143,7 +141,10 @@ export function FinanceiroPagamentosPage() {
           label="Status"
           size="small"
           value={statusFiltro}
-          onChange={(event) => setStatusFiltro(event.target.value as PayableStatus | '')}
+          onChange={(event) => {
+            setStatusFiltro(event.target.value as PayableStatus | '')
+            setPage(0)
+          }}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 180 } }}
         >
           <MenuItem value="">Todos</MenuItem>
@@ -158,7 +159,10 @@ export function FinanceiroPagamentosPage() {
           getOptionLabel={(fornecedor) => fornecedor.tradeName}
           isOptionEqualToValue={(option, selected) => option.id === selected.id}
           value={fornecedorFiltro}
-          onChange={(_, fornecedor) => setFornecedorFiltro(fornecedor)}
+          onChange={(_, fornecedor) => {
+            setFornecedorFiltro(fornecedor)
+            setPage(0)
+          }}
           size="small"
           sx={{ width: { xs: '100%', sm: 280 }, minWidth: { sm: 240 } }}
           renderInput={(params) => (
@@ -169,14 +173,20 @@ export function FinanceiroPagamentosPage() {
           label="Vencimento início"
           size="small"
           value={vencimentoInicio}
-          onChange={setVencimentoInicio}
+          onChange={(next) => {
+            setVencimentoInicio(next)
+            setPage(0)
+          }}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 200 } }}
         />
         <CampoData
           label="Vencimento fim"
           size="small"
           value={vencimentoFim}
-          onChange={setVencimentoFim}
+          onChange={(next) => {
+            setVencimentoFim(next)
+            setPage(0)
+          }}
           min={vencimentoInicio || undefined}
           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 200 } }}
         />
@@ -189,23 +199,23 @@ export function FinanceiroPagamentosPage() {
         </Paper>
       ) : null}
 
-      {!loading && !error && pagamentos.length === 0 ? (
-        <Paper sx={{ p: 3 }}>
-          <Typography>Nenhum pagamento encontrado.</Typography>
-        </Paper>
-      ) : null}
-
-      {!loading && !error && pagamentos.length > 0 ? (
+      {!loading && !error ? (
         <Paper sx={{ p: 0 }}>
-          <PagamentosTable
-            pagamentos={pagamentos}
-            colunaOrdenacao={colunaOrdenacao}
-            direcaoOrdenacao={direcaoOrdenacao}
-            onOrdenar={alternarOrdenacao}
-            onEditar={(item) =>
-              navigate(`/financeiro/pagamentos/${item.id}`, { state: { editar: true } })
-            }
-          />
+          {pagamentos.length === 0 ? (
+            <Box sx={{ p: 3 }}>
+              <Typography>Nenhum pagamento encontrado.</Typography>
+            </Box>
+          ) : (
+            <PagamentosTable
+              pagamentos={pagamentos}
+              colunaOrdenacao={colunaOrdenacao}
+              direcaoOrdenacao={direcaoOrdenacao}
+              onOrdenar={alternarOrdenacao}
+              onEditar={(item) =>
+                navigate(`/financeiro/pagamentos/${item.id}`, { state: { editar: true } })
+              }
+            />
+          )}
           <TablePagination
             component="div"
             count={meta.total}

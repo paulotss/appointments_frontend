@@ -17,6 +17,9 @@ import type { GuideImportAnalysis } from '../types/guideImport'
 import type { HealthPlan } from '../types/planoSaude'
 import { mensagemConflitoNumeroGuia, mensagemErroApi } from '../utils/apiError'
 import { adicionarDiasISO, hojeLocalISO } from '../utils/dataISO'
+import { payloadTissGuia } from '../utils/guiaTiss'
+import { cbosInicial } from '../components/SeletorCbosExecutante'
+import { isCouncilType } from '../types/profissional'
 
 function aplicarAnalise(analise: GuideImportAnalysis): DefaultValues<ImportarGuiaFormInput> {
   const plano = analise.healthPlan
@@ -34,6 +37,9 @@ function aplicarAnalise(analise: GuideImportAnalysis): DefaultValues<ImportarGui
   const existingCard = plano
     ? analise.patient?.insuranceCards.find((card) => card.healthPlanId === plano.id)
     : undefined
+
+  const requester = analise.extracted.requester
+  const conselho = requester?.councilType && isCouncilType(requester.councilType) ? requester.councilType : ''
 
   return {
     healthPlanId: plano?.id,
@@ -61,6 +67,14 @@ function aplicarAnalise(analise: GuideImportAnalysis): DefaultValues<ImportarGui
     participationDegree: '12',
     authorizationDate: autorizacao,
     expirationDate: validade,
+    executorCbosCode: cbosInicial(analise.healthProfessional, analise.extracted.professional.cbosCode),
+    tissGuideType: analise.extracted.tissGuideType,
+    requesterName: requester?.name ?? '',
+    requesterCouncilType: conselho,
+    requesterCouncilNumber: requester?.councilNumber ?? '',
+    requesterCouncilUf: requester?.councilUf ?? '',
+    requesterCbosCode: (requester?.cbosCode ?? '').replace(/\D/g, ''),
+    saveRequesterForNextAuthorizations: false,
   }
 }
 
@@ -107,6 +121,14 @@ export function ImportarGuiaPage() {
       participationDegree: '12',
       expirationDate: '',
       registrarSessoes: false,
+      executorCbosCode: '',
+      tissGuideType: null,
+      requesterName: '',
+      requesterCouncilType: '',
+      requesterCouncilNumber: '',
+      requesterCouncilUf: '',
+      requesterCbosCode: '',
+      saveRequesterForNextAuthorizations: false,
     },
   })
 
@@ -219,6 +241,7 @@ export function ImportarGuiaPage() {
         participationDegree: values.participationDegree,
         authorizationDate: values.authorizationDate,
         expirationDate: values.expirationDate,
+        ...payloadTissGuia(values),
       })
       if (arquivo) {
         try {
