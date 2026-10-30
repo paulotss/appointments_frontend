@@ -41,6 +41,8 @@ import { ConfirmacaoForaDasRegrasDialog } from '../components/ConfirmacaoForaDas
 import { GuiaProcedimentosTabela } from '../components/GuiaProcedimentosTabela'
 import { PacienteBuscaAutocomplete } from '../components/PacienteBuscaAutocomplete'
 import { ProfissionalBuscaAutocomplete } from '../components/ProfissionalBuscaAutocomplete'
+import { ProfissionalSolicitanteFields } from '../components/ProfissionalSolicitanteFields'
+import { SeletorCbosExecutante } from '../components/SeletorCbosExecutante'
 import {
   atualizarAgendamentoClinico,
   criarAgendamentoClinico,
@@ -85,6 +87,7 @@ import type { HealthProfessional } from '../types/profissional'
 import { TISS_GUIDE_TYPE_LABELS, type TissParticipationDegree } from '../types/tiss'
 import { mensagemConflitoNumeroGuia, mensagemErroApi } from '../utils/apiError'
 import { adicionarDiasISO, formatarDataISO, hojeLocalISO } from '../utils/dataISO'
+import { payloadTissGuia, solicitanteDaGuia, solicitanteIncompleto, solicitanteVazio } from '../utils/guiaTiss'
 import { ACCEPT_ARQUIVOS_GUIA, validarArquivosGuia } from '../utils/guiaArquivos'
 import { formatarMoedaBRL, parseValorDecimal } from '../utils/moedaBRL'
 import { formatarTamanhoArquivo } from '../utils/pagamentoArquivos'
@@ -178,6 +181,8 @@ export function GuiaDetalhePage() {
   const [guideNumberEdicao, setGuideNumberEdicao] = useState('')
   const [senhaEdicao, setSenhaEdicao] = useState('')
   const [grauParticipacaoEdicao, setGrauParticipacaoEdicao] = useState<TissParticipationDegree>('12')
+  const [executorCbosEdicao, setExecutorCbosEdicao] = useState('')
+  const [solicitanteEdicao, setSolicitanteEdicao] = useState(solicitanteVazio)
   const [guideNumberEdicaoError, setGuideNumberEdicaoError] = useState<string | null>(null)
   const [authorizationDateEdicao, setAuthorizationDateEdicao] = useState('')
   const [expirationDateEdicao, setExpirationDateEdicao] = useState('')
@@ -397,6 +402,8 @@ export function GuiaDetalhePage() {
     setGuideNumberEdicao(g.guideNumber ?? '')
     setSenhaEdicao(g.authorizationPassword ?? '')
     setGrauParticipacaoEdicao(g.participationDegree ?? '12')
+    setExecutorCbosEdicao(g.executorCbosCode ?? '')
+    setSolicitanteEdicao(solicitanteDaGuia(g))
     setGuideNumberEdicaoError(null)
     setExpirationDateEdicao(g.expirationDate)
     setAuthorizationDateEdicao(
@@ -430,6 +437,8 @@ export function GuiaDetalhePage() {
     setGuideNumberEdicao('')
     setSenhaEdicao('')
     setGrauParticipacaoEdicao('12')
+    setExecutorCbosEdicao('')
+    setSolicitanteEdicao(solicitanteVazio())
     setGuideNumberEdicaoError(null)
     setAuthorizationDateEdicao('')
     setExpirationDateEdicao('')
@@ -465,7 +474,9 @@ export function GuiaDetalhePage() {
     healthProfessionalIdEdicao === '' ||
     proceduresInvalidos ||
     authorizationDateInvalida ||
-    expirationInvalida
+    expirationInvalida ||
+    !/^\d{6}$/.test(executorCbosEdicao) ||
+    (tipoGuiaEdicao === 'sp_sadt' && solicitanteIncompleto(solicitanteEdicao))
 
   async function salvarEdicaoGuia() {
     if (!editandoGuia || guiaFormInvalido) return
@@ -490,6 +501,16 @@ export function GuiaDetalhePage() {
         guideNumber: guideNumberEdicao.trim() ? guideNumberEdicao.trim() : null,
         authorizationPassword: senhaEdicao.trim() ? senhaEdicao.trim() : null,
         participationDegree: grauParticipacaoEdicao,
+        ...payloadTissGuia({
+          executorCbosCode: executorCbosEdicao,
+          tissGuideType: tipoGuiaEdicao,
+          requesterName: solicitanteEdicao.name,
+          requesterCouncilType: solicitanteEdicao.councilType,
+          requesterCouncilNumber: solicitanteEdicao.councilNumber,
+          requesterCouncilUf: solicitanteEdicao.councilUf,
+          requesterCbosCode: solicitanteEdicao.cbosCode,
+          saveRequesterForNextAuthorizations: solicitanteEdicao.saveForNext,
+        }),
         authorizationDate: authorizationDateEdicao,
         expirationDate: expirationDateEdicao,
         procedures,
@@ -889,7 +910,14 @@ export function GuiaDetalhePage() {
               </Typography>
               <Typography>
                 <strong>Profissional:</strong> {guia.healthProfessional?.name ?? '—'}
+                {guia.executorCbosCode ? ` · CBOS ${guia.executorCbosCode}` : ''}
               </Typography>
+              {guia.tissGuideType === 'sp_sadt' && guia.requesterName ? (
+                <Typography>
+                  <strong>Solicitante:</strong> {guia.requesterName} · {guia.requesterCouncilType}{' '}
+                  {guia.requesterCouncilNumber}/{guia.requesterCouncilUf} · CBO {guia.requesterCbosCode}
+                </Typography>
+              ) : null}
               <Typography>
                 <strong>Tipo TISS:</strong>{' '}
                 {guia.tissGuideType ? TISS_GUIDE_TYPE_LABELS[guia.tissGuideType] : '—'}
@@ -1206,6 +1234,13 @@ export function GuiaDetalhePage() {
               error={healthProfessionalIdEdicao === ''}
               helperText={healthProfessionalIdEdicao === '' ? 'Selecione o profissional' : ' '}
             />
+            {profissionalEdicao ? (
+              <SeletorCbosExecutante
+                profissional={profissionalEdicao}
+                value={executorCbosEdicao}
+                onChange={setExecutorCbosEdicao}
+              />
+            ) : null}
             <TextField
               select
               label="Status"
@@ -1240,6 +1275,9 @@ export function GuiaDetalhePage() {
                 value={grauParticipacaoEdicao}
                 onChange={setGrauParticipacaoEdicao}
               />
+            ) : null}
+            {tipoGuiaEdicao === 'sp_sadt' ? (
+              <ProfissionalSolicitanteFields value={solicitanteEdicao} onChange={setSolicitanteEdicao} />
             ) : null}
             <CampoData
               label="Data de autorização"

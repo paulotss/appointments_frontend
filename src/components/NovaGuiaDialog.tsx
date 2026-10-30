@@ -9,6 +9,7 @@ import type { HealthPlan } from '../types/planoSaude'
 import type { HealthProfessional } from '../types/profissional'
 import { mensagemConflitoNumeroGuia, mensagemErroApi } from '../utils/apiError'
 import { hojeLocalISO } from '../utils/dataISO'
+import { payloadTissGuia } from '../utils/guiaTiss'
 import { GuiaForm } from './GuiaForm'
 
 interface NovaGuiaDialogProps {
@@ -71,6 +72,7 @@ export function NovaGuiaDialog({
           ? { authorizationPassword: values.authorizationPassword.trim() }
           : {}),
         participationDegree: values.participationDegree,
+        ...payloadTissGuia(values),
         procedures: values.procedures.map((item) => ({
           procedureId: item.procedureId,
           authorizedQuantity: item.authorizedQuantity,

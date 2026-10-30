@@ -37,6 +37,8 @@ import { GrauParticipacaoField } from '../components/GrauParticipacaoField'
 import { GuiasTable } from '../components/GuiasTable'
 import { PacienteBuscaAutocomplete } from '../components/PacienteBuscaAutocomplete'
 import { ProfissionalBuscaAutocomplete } from '../components/ProfissionalBuscaAutocomplete'
+import { ProfissionalSolicitanteFields } from '../components/ProfissionalSolicitanteFields'
+import { SeletorCbosExecutante } from '../components/SeletorCbosExecutante'
 import { listarPlanosSaude } from '../services/health-plans.service'
 import { buscarProfissional } from '../services/health-professionals.service'
 import {
@@ -66,6 +68,7 @@ import type { HealthProfessional } from '../types/profissional'
 import { type TissParticipationDegree } from '../types/tiss'
 import { mensagemConflitoNumeroGuia, mensagemErroApi } from '../utils/apiError'
 import { adicionarDiasISO, statusPrazoGuia } from '../utils/dataISO'
+import { payloadTissGuia, solicitanteDaGuia, solicitanteIncompleto, solicitanteVazio } from '../utils/guiaTiss'
 import { formatarMoedaBRL, parseValorDecimal } from '../utils/moedaBRL'
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100]
@@ -126,6 +129,8 @@ export function GuiasPage() {
   const [guideNumberEdicao, setGuideNumberEdicao] = useState('')
   const [senhaEdicao, setSenhaEdicao] = useState('')
   const [grauParticipacaoEdicao, setGrauParticipacaoEdicao] = useState<TissParticipationDegree>('12')
+  const [executorCbosEdicao, setExecutorCbosEdicao] = useState('')
+  const [solicitanteEdicao, setSolicitanteEdicao] = useState(solicitanteVazio)
   const [guideNumberEdicaoError, setGuideNumberEdicaoError] = useState<string | null>(null)
   const [authorizationDateEdicao, setAuthorizationDateEdicao] = useState('')
   const [expirationDateEdicao, setExpirationDateEdicao] = useState('')
@@ -222,6 +227,8 @@ export function GuiasPage() {
     setGuideNumberEdicao(guia.guideNumber ?? '')
     setSenhaEdicao(guia.authorizationPassword ?? '')
     setGrauParticipacaoEdicao(guia.participationDegree ?? '12')
+    setExecutorCbosEdicao(guia.executorCbosCode ?? '')
+    setSolicitanteEdicao(solicitanteDaGuia(guia))
     setGuideNumberEdicaoError(null)
     setExpirationDateEdicao(guia.expirationDate)
     setAuthorizationDateEdicao(
@@ -255,6 +262,8 @@ export function GuiasPage() {
     setGuideNumberEdicao('')
     setSenhaEdicao('')
     setGrauParticipacaoEdicao('12')
+    setExecutorCbosEdicao('')
+    setSolicitanteEdicao(solicitanteVazio())
     setGuideNumberEdicaoError(null)
     setAuthorizationDateEdicao('')
     setExpirationDateEdicao('')
@@ -320,6 +329,16 @@ export function GuiasPage() {
         guideNumber: guideNumberEdicao.trim() ? guideNumberEdicao.trim() : null,
         authorizationPassword: senhaEdicao.trim() ? senhaEdicao.trim() : null,
         participationDegree: grauParticipacaoEdicao,
+        ...payloadTissGuia({
+          executorCbosCode: executorCbosEdicao,
+          tissGuideType: tipoGuiaEdicao,
+          requesterName: solicitanteEdicao.name,
+          requesterCouncilType: solicitanteEdicao.councilType,
+          requesterCouncilNumber: solicitanteEdicao.councilNumber,
+          requesterCouncilUf: solicitanteEdicao.councilUf,
+          requesterCbosCode: solicitanteEdicao.cbosCode,
+          saveRequesterForNextAuthorizations: solicitanteEdicao.saveForNext,
+        }),
         authorizationDate: authorizationDateEdicao,
         expirationDate: expirationDateEdicao,
         procedures: procedures.map((item) => ({
@@ -422,7 +441,9 @@ export function GuiasPage() {
     healthProfessionalIdEdicao === '' ||
     proceduresInvalidos ||
     authorizationDateInvalida ||
-    expirationInvalida
+    expirationInvalida ||
+    !/^\d{6}$/.test(executorCbosEdicao) ||
+    (tipoGuiaEdicao === 'sp_sadt' && solicitanteIncompleto(solicitanteEdicao))
 
   const filtrosLocaisAtivos = filtroPertoVencer || filtroVencidas || filtroSemSaldo || filtroMostrarFaturadas
 
@@ -730,30 +751,28 @@ export function GuiasPage() {
         </Stack>
       ) : null}
 
-      {!loading && !error && guias.length === 0 ? (
-        <Paper sx={{ p: 3 }}>
-          <Typography>Nenhuma guia encontrada.</Typography>
-        </Paper>
-      ) : null}
-
-      {!loading && !error && guias.length > 0 && guiasFiltradas.length === 0 ? (
-        <Paper sx={{ p: 3 }}>
-          <Typography>Nenhuma guia encontrada para os filtros selecionados.</Typography>
-        </Paper>
-      ) : null}
-
-      {!loading && !error && guiasFiltradas.length > 0 ? (
+      {!loading && !error ? (
         <Paper sx={{ p: 0 }}>
-          <GuiasTable
-            guias={guiasExibidas}
-            onAbrir={(guia) => navigate(`/guias/${guia.id}`)}
-            onEditar={abrirEdicao}
-            onExcluir={(guia) => void excluir(guia)}
-            onFaturar={(guia) => {
-              setFaturarError(null)
-              setFaturando(guia)
-            }}
-          />
+          {guiasExibidas.length === 0 ? (
+            <Box sx={{ p: 3 }}>
+              <Typography>
+                {guias.length === 0
+                  ? 'Nenhuma guia encontrada.'
+                  : 'Nenhuma guia encontrada para os filtros selecionados.'}
+              </Typography>
+            </Box>
+          ) : (
+            <GuiasTable
+              guias={guiasExibidas}
+              onAbrir={(guia) => navigate(`/guias/${guia.id}`)}
+              onEditar={abrirEdicao}
+              onExcluir={(guia) => void excluir(guia)}
+              onFaturar={(guia) => {
+                setFaturarError(null)
+                setFaturando(guia)
+              }}
+            />
+          )}
           <TablePagination
             component="div"
             count={totalExibido}
@@ -767,7 +786,7 @@ export function GuiasPage() {
             rowsPerPageOptions={PAGE_SIZE_OPTIONS}
             labelRowsPerPage="Por página"
             labelDisplayedRows={({ from, to, count }) =>
-              `${from}–${to} de ${count !== -1 ? count : `mais de ${to}`}`
+              count === 0 ? '0–0 de 0' : `${from}–${to} de ${count !== -1 ? count : `mais de ${to}`}`
             }
           />
         </Paper>
@@ -809,6 +828,13 @@ export function GuiasPage() {
               error={healthProfessionalIdEdicao === ''}
               helperText={healthProfessionalIdEdicao === '' ? 'Selecione o profissional' : ' '}
             />
+            {profissionalEdicao ? (
+              <SeletorCbosExecutante
+                profissional={profissionalEdicao}
+                value={executorCbosEdicao}
+                onChange={setExecutorCbosEdicao}
+              />
+            ) : null}
             <TextField
               select
               label="Status"
@@ -843,6 +869,9 @@ export function GuiasPage() {
                 value={grauParticipacaoEdicao}
                 onChange={setGrauParticipacaoEdicao}
               />
+            ) : null}
+            {tipoGuiaEdicao === 'sp_sadt' ? (
+              <ProfissionalSolicitanteFields value={solicitanteEdicao} onChange={setSolicitanteEdicao} />
             ) : null}
             <CampoData
               label="Data de autorização"

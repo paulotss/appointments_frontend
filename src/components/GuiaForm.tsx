@@ -43,6 +43,11 @@ import { formatarTamanhoArquivo } from '../utils/pagamentoArquivos'
 import { CampoValorMoeda } from './CampoValorMoeda'
 import { PacienteBuscaAutocomplete } from './PacienteBuscaAutocomplete'
 import { ProfissionalBuscaAutocomplete } from './ProfissionalBuscaAutocomplete'
+import {
+  ProfissionalSolicitanteFields,
+  type SolicitanteFormValue,
+} from './ProfissionalSolicitanteFields'
+import { SeletorCbosExecutante } from './SeletorCbosExecutante'
 
 interface GuiaFormProps {
   defaultValues: DefaultValues<GuiaFormInput>
@@ -81,7 +86,17 @@ export function GuiaForm({
     formState: { errors },
   } = useForm<GuiaFormInput, unknown, GuiaFormValues>({
     resolver: zodResolver(guiaSchema),
-    defaultValues,
+    defaultValues: {
+      executorCbosCode: '',
+      tissGuideType: null,
+      requesterName: '',
+      requesterCouncilType: '',
+      requesterCouncilNumber: '',
+      requesterCouncilUf: '',
+      requesterCbosCode: '',
+      saveRequesterForNextAuthorizations: false,
+      ...defaultValues,
+    },
   })
 
   const { fields, append, remove } = useFieldArray({ control, name: 'procedures' })
@@ -134,6 +149,27 @@ export function GuiaForm({
     if (primeiroId == null) return null
     return procedimentosPlano.find((item) => item.id === primeiroId)?.tissGuideType ?? null
   }, [proceduresWatch, procedimentosPlano])
+
+  const executorCbosCode = useWatch({ control, name: 'executorCbosCode' }) ?? ''
+  const requesterName = useWatch({ control, name: 'requesterName' }) ?? ''
+  const requesterCouncilType = useWatch({ control, name: 'requesterCouncilType' }) ?? ''
+  const requesterCouncilNumber = useWatch({ control, name: 'requesterCouncilNumber' }) ?? ''
+  const requesterCouncilUf = useWatch({ control, name: 'requesterCouncilUf' }) ?? ''
+  const requesterCbosCode = useWatch({ control, name: 'requesterCbosCode' }) ?? ''
+  const saveRequester = useWatch({ control, name: 'saveRequesterForNextAuthorizations' }) ?? false
+
+  useEffect(() => {
+    setValue('tissGuideType', tipoGuiaAtual)
+  }, [setValue, tipoGuiaAtual])
+
+  const solicitanteValor: SolicitanteFormValue = {
+    name: requesterName,
+    councilType: requesterCouncilType as SolicitanteFormValue['councilType'],
+    councilNumber: requesterCouncilNumber,
+    councilUf: requesterCouncilUf,
+    cbosCode: requesterCbosCode,
+    saveForNext: Boolean(saveRequester),
+  }
 
   const prazoPlano = planos.find((item) => item.id === healthPlanId)?.submissionDeadlineDays
 
@@ -269,6 +305,16 @@ export function GuiaForm({
           />
         )}
       />
+      {profissionalSelecionado || profissionais.some((item) => item.id === healthProfessionalId) ? (
+        <SeletorCbosExecutante
+          profissional={
+            profissionalSelecionado ?? profissionais.find((item) => item.id === healthProfessionalId) ?? null
+          }
+          value={executorCbosCode}
+          onChange={(code) => setValue('executorCbosCode', code, { shouldValidate: true })}
+          error={errors.executorCbosCode?.message}
+        />
+      ) : null}
       <Controller
         name="status"
         control={control}
@@ -340,6 +386,26 @@ export function GuiaForm({
               helperText={errors.participationDegree?.message}
             />
           )}
+        />
+      ) : null}
+      {tipoGuiaAtual === 'sp_sadt' ? (
+        <ProfissionalSolicitanteFields
+          value={solicitanteValor}
+          onChange={(next) => {
+            setValue('requesterName', next.name, { shouldValidate: true })
+            setValue('requesterCouncilType', next.councilType, { shouldValidate: true })
+            setValue('requesterCouncilNumber', next.councilNumber, { shouldValidate: true })
+            setValue('requesterCouncilUf', next.councilUf, { shouldValidate: true })
+            setValue('requesterCbosCode', next.cbosCode, { shouldValidate: true })
+            setValue('saveRequesterForNextAuthorizations', next.saveForNext)
+          }}
+          errors={{
+            name: errors.requesterName?.message,
+            councilType: errors.requesterCouncilType?.message,
+            councilNumber: errors.requesterCouncilNumber?.message,
+            councilUf: errors.requesterCouncilUf?.message,
+            cbosCode: errors.requesterCbosCode?.message,
+          }}
         />
       ) : null}
       <Controller

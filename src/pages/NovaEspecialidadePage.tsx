@@ -4,6 +4,7 @@ import { Alert, Button, Stack, TextField, Typography } from '@mui/material'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
+import { CbosAutocomplete } from '../components/CbosAutocomplete'
 import {
   especialidadeSchema,
   type EspecialidadeFormValues,
@@ -19,6 +20,8 @@ export function NovaEspecialidadePage() {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<EspecialidadeFormValues>({
     resolver: zodResolver(especialidadeSchema),
@@ -71,11 +74,12 @@ export function NovaEspecialidadePage() {
           helperText={errors.name?.message}
           {...register('name')}
         />
-        <TextField
+        <CbosAutocomplete
           label="CBO-S"
+          value={watch('cbosCode')}
+          onChange={(code) => setValue('cbosCode', code, { shouldValidate: true })}
           error={Boolean(errors.cbosCode)}
-          helperText={errors.cbosCode?.message ?? '6 dígitos da ocupação desta especialidade'}
-          {...register('cbosCode')}
+          helperText={errors.cbosCode?.message ?? 'Código da ocupação desta especialidade'}
         />
         <Button type="submit" variant="contained" disabled={loading}>
           {loading ? 'Salvando...' : 'Cadastrar especialidade'}

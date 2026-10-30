@@ -111,7 +111,7 @@ function mapPatient(item: BackendPatient): Patient {
 
 function mapSpecialtyLink(item: {
   specialtyId: number
-  specialty?: { id: number; name: string }
+  specialty?: { id: number; name: string; cbosCode?: string | null }
 }): HealthProfessionalSpecialtyLink {
   return { specialtyId: item.specialtyId, specialty: item.specialty }
 }
@@ -179,6 +179,13 @@ function mapExtracted(item: ExtractedGuide): ExtractedGuide {
       councilUf: item.professional?.councilUf ?? null,
       cbosCode: item.professional?.cbosCode ?? null,
       source: professionalSource,
+    },
+    requester: {
+      name: item.requester?.name ?? null,
+      councilType: item.requester?.councilType ?? null,
+      councilNumber: item.requester?.councilNumber ?? null,
+      councilUf: item.requester?.councilUf ?? null,
+      cbosCode: item.requester?.cbosCode ?? null,
     },
     procedures: (item.procedures ?? []).map((row) => ({
       tissCode: row.tissCode ?? null,

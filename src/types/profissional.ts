@@ -1,13 +1,52 @@
 import type { UfBrasil } from '../utils/ufBrasil'
 import type { ScheduleInterval } from './bloqueioHorario'
 
-export type CouncilType = 'CRM' | 'CRO' | 'CRP' | 'COREN' | 'OTHER'
+export const COUNCIL_TYPES = [
+  'CRESS',
+  'COREN',
+  'CRF',
+  'CREFONO',
+  'CREFITO',
+  'CRM',
+  'CRN',
+  'CRO',
+  'CRP',
+  'OTHER',
+  'CRBIO',
+  'CRBM',
+  'CREF',
+  'CRMV',
+  'CRTR',
+] as const
 
-export const COUNCIL_TYPES: CouncilType[] = ['CRM', 'CRO', 'CRP', 'COREN', 'OTHER']
+export type CouncilType = (typeof COUNCIL_TYPES)[number]
+
+export const COUNCIL_LABELS: Record<CouncilType, string> = {
+  CRESS: 'CRESS — Conselho Regional de Serviço Social',
+  COREN: 'COREN — Conselho Regional de Enfermagem',
+  CRF: 'CRF — Conselho Regional de Farmácia',
+  CREFONO: 'CREFONO — Conselho Regional de Fonoaudiologia',
+  CREFITO: 'CREFITO — Conselho Regional de Fisioterapia e Terapia Ocupacional',
+  CRM: 'CRM — Conselho Regional de Medicina',
+  CRN: 'CRN — Conselho Regional de Nutrição',
+  CRO: 'CRO — Conselho Regional de Odontologia',
+  CRP: 'CRP — Conselho Regional de Psicologia',
+  OTHER: 'Outros — Outros Conselhos',
+  CRBIO: 'CRBio — Conselho Regional de Biologia',
+  CRBM: 'CRBM — Conselho Regional de Biomedicina',
+  CREF: 'CREF — Conselho Regional de Educação Física',
+  CRMV: 'CRMV — Conselho Regional de Medicina Veterinária',
+  CRTR: 'CRTR — Conselho Regional de Técnicos em Radiologia',
+}
+
+export function isCouncilType(value: string): value is CouncilType {
+  return (COUNCIL_TYPES as readonly string[]).includes(value)
+}
 
 export interface HealthProfessionalSpecialtyRef {
   id: number
   name: string
+  cbosCode?: string | null
 }
 
 export interface HealthProfessionalSpecialtyLink {

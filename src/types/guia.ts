@@ -1,3 +1,4 @@
+import type { CouncilType } from './profissional'
 import type { TissGuideType, TissParticipationDegree } from './tiss'
 
 export const INSURANCE_GUIDE_STATUSES = ['pending', 'under_analysis', 'authorized'] as const
@@ -73,6 +74,12 @@ export interface InsuranceGuide {
   status: InsuranceGuideStatus
   tissGuideType: TissGuideType | null
   participationDegree: TissParticipationDegree
+  executorCbosCode: string | null
+  requesterName: string | null
+  requesterCouncilType: CouncilType | null
+  requesterCouncilNumber: string | null
+  requesterCouncilUf: string | null
+  requesterCbosCode: string | null
   healthPlan?: InsuranceGuidePlanRef
   patient?: InsuranceGuideRef
   healthProfessional?: InsuranceGuideRef
@@ -91,6 +98,15 @@ export interface CreateInsuranceGuideRequest {
   isBilled?: boolean
   status?: InsuranceGuideStatus
   participationDegree?: TissParticipationDegree
+  executorCbosCode: string
+  requester?: {
+    name: string
+    councilType: CouncilType
+    councilNumber: string
+    councilUf: string
+    cbosCode: string
+  }
+  saveRequesterForNextAuthorizations?: boolean
   procedures: InsuranceGuideProcedureInput[]
 }
 
@@ -105,6 +121,15 @@ export interface UpdateInsuranceGuideRequest {
   isBilled?: boolean
   status?: InsuranceGuideStatus
   participationDegree?: TissParticipationDegree
+  executorCbosCode?: string
+  requester?: {
+    name: string
+    councilType: CouncilType
+    councilNumber: string
+    councilUf: string
+    cbosCode: string
+  }
+  saveRequesterForNextAuthorizations?: boolean
   procedures?: InsuranceGuideProcedureInput[]
 }
 

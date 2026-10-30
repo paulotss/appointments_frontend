@@ -3,6 +3,7 @@ import type { Patient } from './paciente'
 import type { HealthPlan } from './planoSaude'
 import type { Procedure } from './procedimento'
 import type { HealthProfessional } from './profissional'
+import type { CouncilType } from './profissional'
 import type { TissGuideType, TissParticipationDegree } from './tiss'
 
 export type ProfessionalSource = 'executante' | 'solicitante'
@@ -43,11 +44,20 @@ export interface ExtractedGuideMeta {
   attendanceDate: string | null
 }
 
+export interface ExtractedRequester {
+  name: string | null
+  councilType: string | null
+  councilNumber: string | null
+  councilUf: string | null
+  cbosCode: string | null
+}
+
 export interface ExtractedGuide {
   tissGuideType: TissGuideType | null
   healthPlan: ExtractedHealthPlan
   patient: ExtractedPatient
   professional: ExtractedProfessional
+  requester: ExtractedRequester
   procedures: ExtractedProcedure[]
   guide: ExtractedGuideMeta
 }
@@ -111,4 +121,13 @@ export interface CommitGuideImportRequest {
   authorizationDate?: string
   expirationDate?: string
   status?: InsuranceGuideStatus
+  executorCbosCode: string
+  requester?: {
+    name: string
+    councilType: CouncilType
+    councilNumber: string
+    councilUf: string
+    cbosCode: string
+  }
+  saveRequesterForNextAuthorizations?: boolean
 }

@@ -10,7 +10,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { PacientesTable } from '../components/PacientesTable'
 import { listarPacientes } from '../services/patients.service'
@@ -41,36 +41,45 @@ export function PacientesPage() {
     navigate('/pacientes', { replace: true, state: null })
   }, [location.state, navigate])
 
+  const filtroAplicado = useRef('')
+
   useEffect(() => {
-    const timer = window.setTimeout(() => setFiltroNomeDebounced(filtroNome.trim()), 300)
+    const timer = window.setTimeout(() => {
+      const next = filtroNome.trim()
+      setFiltroNomeDebounced(next)
+      if (filtroAplicado.current !== next) {
+        filtroAplicado.current = next
+        setPage(0)
+      }
+    }, 300)
     return () => window.clearTimeout(timer)
   }, [filtroNome])
 
   useEffect(() => {
-    setPage(0)
-  }, [filtroNomeDebounced])
-
-  const carregarPacientes = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const resultado = await listarPacientes({
-        ...(filtroNomeDebounced ? { name: filtroNomeDebounced } : {}),
-        page: page + 1,
-        limit: rowsPerPage,
-      })
-      setPacientes(resultado.data)
-      setMeta(resultado.meta)
-    } catch (err) {
-      setError(mensagemErroApi(err, 'Não foi possível carregar os pacientes.'))
-    } finally {
-      setLoading(false)
+    let ativo = true
+    async function carregarPacientes() {
+      setLoading(true)
+      setError(null)
+      try {
+        const resultado = await listarPacientes({
+          ...(filtroNomeDebounced ? { name: filtroNomeDebounced } : {}),
+          page: page + 1,
+          limit: rowsPerPage,
+        })
+        if (!ativo) return
+        setPacientes(resultado.data)
+        setMeta(resultado.meta)
+      } catch (err) {
+        if (ativo) setError(mensagemErroApi(err, 'Não foi possível carregar os pacientes.'))
+      } finally {
+        if (ativo) setLoading(false)
+      }
+    }
+    void carregarPacientes()
+    return () => {
+      ativo = false
     }
   }, [filtroNomeDebounced, page, rowsPerPage])
-
-  useEffect(() => {
-    void carregarPacientes()
-  }, [carregarPacientes])
 
   return (
     <Stack spacing={2}>
@@ -101,18 +110,18 @@ export function PacientesPage() {
         </Paper>
       ) : null}
 
-      {!loading && !error && pacientes.length === 0 ? (
-        <Paper sx={{ p: 3 }}>
-          <Typography>Nenhum paciente encontrado.</Typography>
-        </Paper>
-      ) : null}
-
-      {!loading && !error && pacientes.length > 0 ? (
+      {!loading && !error ? (
         <Paper sx={{ p: 0 }}>
-          <PacientesTable
-            pacientes={pacientes}
-            onEditar={(paciente) => navigate(`/pacientes/${paciente.id}`)}
-          />
+          {pacientes.length === 0 ? (
+            <Box sx={{ p: 3 }}>
+              <Typography>Nenhum paciente encontrado.</Typography>
+            </Box>
+          ) : (
+            <PacientesTable
+              pacientes={pacientes}
+              onEditar={(paciente) => navigate(`/pacientes/${paciente.id}`)}
+            />
+          )}
           <TablePagination
             component="div"
             count={meta.total}
