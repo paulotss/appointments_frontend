@@ -29,7 +29,7 @@ import {
   type CampaignRecipientState,
 } from '../types/confirmacao'
 import { mensagemErroApi } from '../utils/apiError'
-import { pendenciaResolvivel } from '../utils/contatoConfirmacao'
+import { acaoDaPendencia, falhaDeConsulta, pendenciaResolvivel } from '../utils/contatoConfirmacao'
 import { VerificarContatoDialog, type ContextoContato } from './VerificarContatoDialog'
 
 const ESTADO_COR: Record<CampaignRecipientState, 'success' | 'warning' | 'default'> = {
@@ -83,6 +83,13 @@ export function ConfirmacaoCampanhaPage() {
     return error ? <Alert severity="error">{error}</Alert> : <Typography>Carregando campanha.</Typography>
   }
 
+  const agendamentos = campanha.items.filter((item) => !falhaDeConsulta(item))
+  const falhas = campanha.items.filter((item) => falhaDeConsulta(item))
+  const registroIndisponivel = agendamentos.some((item) => item.reasonCode === 'registry_unavailable')
+    || campanha.consultationReason === 'registry_unavailable'
+  const autorizacaoPendente = agendamentos.some((item) =>
+    item.reasonCode === 'authorization_missing' || item.reasonCode === 'authorization_revoked')
+
   return (
     <Stack spacing={2}>
       <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
@@ -106,11 +113,30 @@ export function ConfirmacaoCampanhaPage() {
         . Aprovar esta campanha não autoriza destinatários inválidos e não envia WhatsApp.
       </Alert>
       {error ? <Alert severity="error">{error}</Alert> : null}
-      <Stack direction="row" spacing={1}>
-        <Chip label={`${campanha.appointmentsAnalyzed} analisados`} />
+      <Alert severity="info">
+        A recepção pode resolver verificação ausente, verificação revogada e responsável legal não verificado.
+        Autorização de contato, registro indisponível, idade não confirmada e falha de agenda dependem de correção técnica.
+        Nenhuma dessas ações envia mensagem.
+      </Alert>
+      {registroIndisponivel ? (
+        <Alert severity="warning">
+          O registro de contatos está indisponível. Verificação e autorização não foram consultadas.
+          Essas linhas não ficam aptas e a recepção não as resolve.
+        </Alert>
+      ) : null}
+      {autorizacaoPendente ? (
+        <Alert severity="info">
+          Há contato verificado sem autorização vigente. Registrar a verificação não cria autorização nem libera o envio.
+        </Alert>
+      ) : null}
+      <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+        <Chip label={`${campanha.appointmentsAnalyzed} agendamentos`} />
         <Chip color="success" label={`${campanha.eligibleRecipients} aptos`} />
         <Chip color="warning" label={`${campanha.pendingVerifications} pendentes`} />
         <Chip label={`${campanha.unavailableRecipients} indisponíveis`} />
+        {campanha.technicalFailures > 0 ? (
+          <Chip color="error" label={`${campanha.technicalFailures} falhas técnicas`} />
+        ) : null}
       </Stack>
       <Stack direction="row" spacing={1}>
         {campanha.status === 'DRAFT' ? (
@@ -129,6 +155,7 @@ export function ConfirmacaoCampanhaPage() {
           </Button>
         ) : null}
       </Stack>
+      <Typography variant="h6">Agendamentos</Typography>
       <Paper>
         <Table size="small">
           <TableHead>
@@ -142,7 +169,7 @@ export function ConfirmacaoCampanhaPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {campanha.items.map((item) => (
+            {agendamentos.map((item) => (
               <TableRow key={item.id}>
                 <TableCell>{item.appointmentTime ?? '—'}</TableCell>
                 <TableCell>{item.professionalName ?? 'Profissional não informado'}</TableCell>
@@ -185,20 +212,52 @@ export function ConfirmacaoCampanhaPage() {
                         phoneStatus: item.phoneStatus,
                         identityStatus: item.identityStatus,
                         reasonCode: item.reasonCode,
-                        horariosRelacionados: campanha.items.filter(
+                        horariosRelacionados: agendamentos.filter(
                           (outro) => outro.recipientRef && outro.recipientRef === item.recipientRef,
                         ).length,
                       })}
                     >
                       Resolver pendência
                     </Button>
-                  ) : null}
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      {acaoDaPendencia(item) ?? '—'}
+                    </Typography>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </Paper>
+      {falhas.length > 0 ? (
+        <>
+          <Typography variant="h6">Falhas técnicas da consulta</Typography>
+          <Alert severity="warning">
+            A coleta ficou incompleta. Estas linhas não são agendamentos e não podem ser resolvidas pela recepção.
+          </Alert>
+          <Paper>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Agenda</TableCell>
+                  <TableCell>Motivo</TableCell>
+                  <TableCell>Ação</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {falhas.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>{item.agendaRef ?? 'Agenda não identificada'}</TableCell>
+                    <TableCell>{item.reasonCode ? (REASON_LABELS[item.reasonCode] ?? item.reasonCode) : '—'}</TableCell>
+                    <TableCell>Correção técnica</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Paper>
+        </>
+      ) : null}
       {contexto ? (
         <VerificarContatoDialog
           contexto={contexto}

@@ -34,6 +34,7 @@ export interface CampaignSummary {
   createdBy: StaffActor
   approvedBy: StaffActor | null
   dispatchEnabled: false
+  technicalFailures: number
 }
 
 export type IdentityStatus = 'ready' | 'partial' | 'unavailable'
