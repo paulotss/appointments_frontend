@@ -36,6 +36,9 @@ export interface CampaignSummary {
   dispatchEnabled: false
 }
 
+export type IdentityStatus = 'ready' | 'partial' | 'unavailable'
+export type PhoneStatus = 'available' | 'missing' | 'invalid'
+
 export interface CampaignItem {
   id: number
   appointmentRef: string
@@ -49,6 +52,27 @@ export interface CampaignItem {
   isMinor: boolean | null
   recipientState: CampaignRecipientState
   reasonCode: string | null
+  displayName?: string | null
+  maskedPhone?: string | null
+  professionalName?: string | null
+  phoneStatus?: PhoneStatus | null
+  identityStatus?: IdentityStatus | null
+}
+
+export interface PatientCandidate {
+  displayName: string
+  maskedPhone: string | null
+  phoneStatus: PhoneStatus
+  patientRef: string
+  recipientRef: string
+  phoneRef: string | null
+}
+
+export interface PatientSearchResult {
+  state: 'ready' | 'empty' | 'partial' | 'unavailable'
+  truncated: boolean
+  people: PatientCandidate[]
+  dispatchEnabled: false
 }
 
 export interface CampaignEvent {

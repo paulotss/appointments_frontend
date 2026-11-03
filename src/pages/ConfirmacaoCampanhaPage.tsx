@@ -145,8 +145,23 @@ export function ConfirmacaoCampanhaPage() {
             {campanha.items.map((item) => (
               <TableRow key={item.id}>
                 <TableCell>{item.appointmentTime ?? '—'}</TableCell>
-                <TableCell>{item.professionalRef ?? '—'}</TableCell>
-                <TableCell>{item.patientRef ? 'Da agenda' : 'Não identificado'}</TableCell>
+                <TableCell>{item.professionalName ?? 'Profissional não informado'}</TableCell>
+                <TableCell>
+                  {item.identityStatus === 'unavailable'
+                    ? 'Identificação indisponível'
+                    : (
+                      <>
+                        {item.displayName ?? 'Nome indisponível'}
+                        <Typography variant="body2" color="text.secondary">
+                          {item.phoneStatus === 'available' && item.maskedPhone
+                            ? item.maskedPhone
+                            : item.phoneStatus === 'invalid'
+                              ? 'Telefone inválido'
+                              : 'Telefone não disponível'}
+                        </Typography>
+                      </>
+                    )}
+                </TableCell>
                 <TableCell>
                   <Chip
                     size="small"
@@ -164,7 +179,11 @@ export function ConfirmacaoCampanhaPage() {
                         recipientRef: item.recipientRef ?? '',
                         informedPhoneRef: item.informedPhoneRef,
                         appointmentTime: item.appointmentTime,
-                        professionalRef: item.professionalRef,
+                        professionalName: item.professionalName,
+                        displayName: item.displayName,
+                        maskedPhone: item.maskedPhone,
+                        phoneStatus: item.phoneStatus,
+                        identityStatus: item.identityStatus,
                         reasonCode: item.reasonCode,
                         horariosRelacionados: campanha.items.filter(
                           (outro) => outro.recipientRef && outro.recipientRef === item.recipientRef,

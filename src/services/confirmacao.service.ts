@@ -11,6 +11,7 @@ import type {
   ContactSubjectRole,
   ContactVerification,
   ContactVerificationProcedure,
+  PatientSearchResult,
 } from '../types/confirmacao'
 
 export async function listarCampanhas(): Promise<CampaignSummary[]> {
@@ -59,6 +60,11 @@ export async function aprovarCampanha(id: number): Promise<CampaignDetail> {
 
 export async function reabrirCampanha(id: number): Promise<CampaignDetail> {
   const response = await apiClient.post<CampaignDetail>(`/confirmation-campaigns/${id}/reopen`)
+  return response.data
+}
+
+export async function pesquisarPacientes(name: string): Promise<PatientSearchResult> {
+  const response = await apiClient.post<PatientSearchResult>('/contact-registry/patient-search', { name })
   return response.data
 }
 
