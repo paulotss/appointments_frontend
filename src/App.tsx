@@ -61,6 +61,9 @@ import { ProdutosEstoquePage } from './pages/ProdutosEstoquePage'
 import { ProfissionaisPage } from './pages/ProfissionaisPage'
 import { SaidasPage } from './pages/SaidasPage'
 import { SetoresPage } from './pages/SetoresPage'
+import { ConfirmacaoCampanhaPage } from './pages/ConfirmacaoCampanhaPage'
+import { ConfirmacaoCampanhasPage } from './pages/ConfirmacaoCampanhasPage'
+import { ConfirmacaoContatosPage } from './pages/ConfirmacaoContatosPage'
 import { TokensServicoPage } from './pages/TokensServicoPage'
 import { UsuariosPage } from './pages/UsuariosPage'
 import { ADMIN_ROLES, CLINICAL_STAFF_ROLES, STAFF_ROLES } from './routes/access'
@@ -264,6 +267,30 @@ function App() {
           element={
             <RoleRoute roles={ADMIN_ROLES}>
               <NovoUsuarioPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/confirmacao/campanhas"
+          element={
+            <RoleRoute roles={STAFF_ROLES}>
+              <ConfirmacaoCampanhasPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/confirmacao/campanhas/:id"
+          element={
+            <RoleRoute roles={STAFF_ROLES}>
+              <ConfirmacaoCampanhaPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/confirmacao/contatos"
+          element={
+            <RoleRoute roles={STAFF_ROLES}>
+              <ConfirmacaoContatosPage />
             </RoleRoute>
           }
         />
