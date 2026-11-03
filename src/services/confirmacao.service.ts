@@ -26,7 +26,14 @@ export async function obterCampanha(id: number): Promise<CampaignDetail> {
 export async function criarCampanha(payload: {
   campaignDate: string
   source: CampaignSourceKey
-  items: Array<Omit<CampaignItem, 'id'>>
+  items?: Array<{
+    appointmentRef: string
+    patientRef?: string | null
+    recipientRef?: string | null
+    informedPhoneRef?: string | null
+    recipientState: CampaignItem['recipientState']
+    reasonCode?: string | null
+  }>
 }): Promise<CampaignDetail> {
   const response = await apiClient.post<CampaignDetail>('/confirmation-campaigns', payload)
   return response.data

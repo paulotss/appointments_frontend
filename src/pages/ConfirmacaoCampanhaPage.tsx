@@ -22,6 +22,8 @@ import {
 import {
   AUDIT_ACTION_LABELS,
   CAMPAIGN_STATUS_LABELS,
+  CONSULTATION_LABELS,
+  REASON_LABELS,
   RECIPIENT_STATE_LABELS,
   type CampaignDetail,
   type CampaignRecipientState,
@@ -93,8 +95,12 @@ export function ConfirmacaoCampanhaPage() {
           Voltar
         </Button>
       </Stack>
-      <Alert severity="warning">
-        Aprovar esta campanha não autoriza destinatários inválidos e não envia WhatsApp.
+      <Alert severity={campanha.consultationState === 'FAILED' ? 'error' : campanha.consultationState === 'EMPTY' ? 'info' : 'warning'}>
+        {CONSULTATION_LABELS[campanha.consultationState]}
+        {campanha.consultationReason
+          ? ` · ${REASON_LABELS[campanha.consultationReason] ?? campanha.consultationReason}`
+          : ''}
+        . Aprovar esta campanha não autoriza destinatários inválidos e não envia WhatsApp.
       </Alert>
       {error ? <Alert severity="error">{error}</Alert> : null}
       <Stack direction="row" spacing={1}>
@@ -124,9 +130,9 @@ export function ConfirmacaoCampanhaPage() {
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>Agendamento</TableCell>
+              <TableCell>Horário</TableCell>
+              <TableCell>Profissional</TableCell>
               <TableCell>Paciente</TableCell>
-              <TableCell>Destinatário</TableCell>
               <TableCell>Situação</TableCell>
               <TableCell>Pendência</TableCell>
               <TableCell />
@@ -135,9 +141,9 @@ export function ConfirmacaoCampanhaPage() {
           <TableBody>
             {campanha.items.map((item) => (
               <TableRow key={item.id}>
-                <TableCell>{item.appointmentRef}</TableCell>
+                <TableCell>{item.appointmentTime ?? '—'}</TableCell>
+                <TableCell>{item.professionalRef ?? '—'}</TableCell>
                 <TableCell>{item.patientRef ?? '—'}</TableCell>
-                <TableCell>{item.recipientRef ?? '—'}</TableCell>
                 <TableCell>
                   <Chip
                     size="small"
@@ -145,7 +151,7 @@ export function ConfirmacaoCampanhaPage() {
                     label={RECIPIENT_STATE_LABELS[item.recipientState]}
                   />
                 </TableCell>
-                <TableCell>{item.reasonCode ?? '—'}</TableCell>
+                <TableCell>{item.reasonCode ? (REASON_LABELS[item.reasonCode] ?? item.reasonCode) : '—'}</TableCell>
                 <TableCell>
                   {item.patientRef ? (
                     <Button
