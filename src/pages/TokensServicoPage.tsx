@@ -169,7 +169,11 @@ export function TokensServicoPage() {
               {tokens.map((token) => (
                 <TableRow key={token.id} hover>
                   <TableCell>{token.name}</TableCell>
-                  <TableCell>{token.scopes.map((scope) => SERVICE_TOKEN_SCOPE_LABELS[scope]).join(', ')}</TableCell>
+                  <TableCell>
+                    {token.scopes
+                      .map((scope) => SERVICE_TOKEN_SCOPE_LABELS[scope as keyof typeof SERVICE_TOKEN_SCOPE_LABELS] ?? scope)
+                      .join(', ')}
+                  </TableCell>
                   <TableCell>{formatarData(token.createdAt)}</TableCell>
                   <TableCell>{formatarData(token.expiresAt)}</TableCell>
                   <TableCell>

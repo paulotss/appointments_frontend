@@ -1,12 +1,13 @@
 import { apiClient } from './apiClient'
 
-export const SERVICE_TOKEN_SCOPES = ['CALLS_WRITE', 'AGENT_DATA_READ'] as const
+export const SERVICE_TOKEN_SCOPES = ['CALLS_WRITE', 'AGENT_DATA_READ', 'CLINIC_REGISTRY_READ'] as const
 
 export type ServiceTokenScope = (typeof SERVICE_TOKEN_SCOPES)[number]
 
 export const SERVICE_TOKEN_SCOPE_LABELS: Record<ServiceTokenScope, string> = {
   CALLS_WRITE: 'Registrar ligações (tarifador)',
   AGENT_DATA_READ: 'Ler dados do agente (MCP)',
+  CLINIC_REGISTRY_READ: 'Ler registro de contatos (resolvedor)',
 }
 
 export interface ServiceAccessToken {

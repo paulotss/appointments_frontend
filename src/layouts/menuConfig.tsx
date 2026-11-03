@@ -1,4 +1,5 @@
 import AssessmentIcon from '@mui/icons-material/Assessment'
+import FactCheckIcon from '@mui/icons-material/FactCheck'
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
 import CreditCardIcon from '@mui/icons-material/CreditCard'
@@ -54,6 +55,17 @@ const allMenuItems: MenuItem[] = [
       { kind: 'link', label: 'Registros', to: '/registros' },
       { kind: 'link', label: 'Chamadas', to: '/chamadas' },
       { kind: 'link', label: 'Mensagens', to: '/mensagens' },
+    ],
+  },
+  {
+    kind: 'submenu',
+    id: 'confirmacao',
+    label: 'Confirmação',
+    icon: <FactCheckIcon />,
+    roles: STAFF_ROLES,
+    items: [
+      { kind: 'link', label: 'Campanhas', to: '/confirmacao/campanhas' },
+      { kind: 'link', label: 'Contatos', to: '/confirmacao/contatos' },
     ],
   },
   {
