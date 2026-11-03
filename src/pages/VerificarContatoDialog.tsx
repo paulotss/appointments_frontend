@@ -24,12 +24,28 @@ import {
 import { mensagemErroApi } from '../utils/apiError'
 import { situacaoAutorizacao } from '../utils/contatoConfirmacao'
 
+function textoTelefone(
+  maskedPhone?: string | null,
+  phoneStatus?: 'available' | 'missing' | 'invalid' | null,
+  identityStatus?: 'ready' | 'partial' | 'unavailable' | null,
+): string {
+  if (identityStatus === 'unavailable') return 'identificação indisponível'
+  if (phoneStatus === 'invalid') return 'inválido nesta consulta'
+  if (phoneStatus === 'available' && maskedPhone) return maskedPhone
+  return 'não disponível'
+}
+
 export interface ContextoContato {
   patientRef: string
   recipientRef: string
   informedPhoneRef: string | null
   appointmentTime?: string | null
   professionalRef?: string | null
+  professionalName?: string | null
+  displayName?: string | null
+  maskedPhone?: string | null
+  phoneStatus?: 'available' | 'missing' | 'invalid' | null
+  identityStatus?: 'ready' | 'partial' | 'unavailable' | null
   reasonCode?: string | null
   horariosRelacionados?: number
 }
@@ -135,7 +151,15 @@ export function VerificarContatoDialog({
             Salvar registra a conferência da recepção. Não envia mensagem e não libera o contato.
           </Alert>
           <Typography>
-            Agendamento {contexto.appointmentTime ?? 'sem horário'} · {contexto.professionalRef ?? 'profissional não informado'}
+            {contexto.identityStatus === 'unavailable'
+              ? 'Identificação indisponível'
+              : (contexto.displayName ?? 'Nome indisponível')}
+          </Typography>
+          <Typography>
+            Agendamento {contexto.appointmentTime ?? 'sem horário'} · {contexto.professionalName ?? 'Profissional não informado'}
+          </Typography>
+          <Typography>
+            Telefone cadastrado: {textoTelefone(contexto.maskedPhone, contexto.phoneStatus, contexto.identityStatus)}
           </Typography>
           <Typography color="text.secondary">Pendência: {motivo}</Typography>
           {(contexto.horariosRelacionados ?? 0) > 1 ? (
@@ -143,9 +167,6 @@ export function VerificarContatoDialog({
               Este contato aparece em {contexto.horariosRelacionados} horários. Um registro vale para todos.
             </Typography>
           ) : null}
-          <Typography>
-            Telefone cadastrado: {numeroDisponivel ? 'não exibido. A referência já veio com o agendamento.' : 'não disponível nesta tela.'}
-          </Typography>
           <TextField
             select
             label="De quem é o número"

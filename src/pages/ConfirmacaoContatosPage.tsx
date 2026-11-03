@@ -16,14 +16,14 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useState } from 'react'
 import {
   associarPaciente,
   listarAssociacoes,
   listarAuditoriaContato,
   listarAutorizacoes,
   listarVerificacoes,
+  pesquisarPacientes,
   revogarAutorizacao,
   revogarVerificacao,
 } from '../services/confirmacao.service'
@@ -37,6 +37,7 @@ import {
   type ContactAuditEvent,
   type ContactAuthorization,
   type ContactVerification,
+  type PatientCandidate,
 } from '../types/confirmacao'
 import { mensagemErroApi } from '../utils/apiError'
 import { situacaoAutorizacao } from '../utils/contatoConfirmacao'
@@ -49,9 +50,12 @@ function quando(valor: string): string {
 }
 
 export function ConfirmacaoContatosPage() {
-  const [params] = useSearchParams()
-  const consultaInicial = params.get('patientRef') ?? ''
-  const [patientRef, setPatientRef] = useState(consultaInicial)
+  const [nome, setNome] = useState('')
+  const [resultados, setResultados] = useState<PatientCandidate[]>([])
+  const [pesquisa, setPesquisa] = useState<'idle' | 'empty' | 'ready' | 'partial' | 'unavailable'>('idle')
+  const [truncado, setTruncado] = useState(false)
+  const [selecionado, setSelecionado] = useState<PatientCandidate | null>(null)
+  const [patientRef, setPatientRef] = useState('')
   const [higiaPatientId, setHigiaPatientId] = useState('')
   const [verificacoes, setVerificacoes] = useState<ContactVerification[]>([])
   const [autorizacoes, setAutorizacoes] = useState<ContactAuthorization[]>([])
@@ -82,18 +86,32 @@ export function ConfirmacaoContatosPage() {
     setConsultado(true)
   }
 
-  useEffect(() => {
-    if (!consultaInicial) return
-    let ativo = true
-    void consultar(consultaInicial).catch((reason: unknown) => {
-      if (ativo) setError(mensagemErroApi(reason, 'Consulta não concluída.'))
-    })
-    return () => {
-      ativo = false
+  async function pesquisar() {
+    setError(null)
+    setInfo(null)
+    setSelecionado(null)
+    setConsultado(false)
+    try {
+      const resposta = await pesquisarPacientes(nome.trim())
+      setResultados(resposta.people)
+      setTruncado(resposta.truncated)
+      setPesquisa(resposta.state === 'ready' && resposta.people.length === 0 ? 'empty' : resposta.state)
+    } catch (reason) {
+      setResultados([])
+      setPesquisa('unavailable')
+      setError(mensagemErroApi(reason, 'Não foi possível pesquisar pacientes.'))
     }
-    // A referência da URL é o único critério desta consulta inicial.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [consultaInicial])
+  }
+
+  async function escolher(pessoa: PatientCandidate) {
+    setSelecionado(pessoa)
+    setError(null)
+    try {
+      await consultar(pessoa.patientRef)
+    } catch (reason) {
+      setError(mensagemErroApi(reason, 'Consulta não concluída.'))
+    }
+  }
 
   async function executar(acao: () => Promise<void>, sucesso: string) {
     setError(null)
@@ -119,16 +137,63 @@ export function ConfirmacaoContatosPage() {
       <div>
         <Typography variant="h5">Contatos da confirmação</Typography>
         <Typography color="text.secondary">
-          Consulte a situação, a origem, a verificação e a autorização. O envio continua bloqueado.
+          Pesquise pelo nome do paciente na agenda. O nome não comprova titularidade e o envio continua bloqueado.
         </Typography>
       </div>
       {error ? <Alert severity="error">{error}</Alert> : null}
       {info ? <Alert severity="success">{info}</Alert> : null}
-      {!consultado ? (
-        <Alert severity="info">
-          A recepção resolve a pendência na campanha. Esta página mostra o que já foi registrado.
-        </Alert>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+        <TextField
+          fullWidth
+          label="Nome do paciente"
+          value={nome}
+          onChange={(event) => setNome(event.target.value)}
+        />
+        <Button variant="contained" onClick={() => void pesquisar()}>Pesquisar</Button>
+      </Stack>
+      {pesquisa === 'unavailable' ? <Alert severity="warning">Identificação indisponível.</Alert> : null}
+      {pesquisa === 'empty' ? <Alert severity="info">Nenhum paciente encontrado com esse nome.</Alert> : null}
+      {pesquisa === 'partial' ? <Alert severity="warning">A pesquisa ficou incompleta. Os nomes abaixo são só os que a agenda conseguiu identificar.</Alert> : null}
+      {truncado ? <Alert severity="info">Há mais pacientes com esse nome. Refine a pesquisa antes de escolher.</Alert> : null}
+      {resultados.length > 0 ? (
+        <Paper>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Paciente</TableCell>
+                <TableCell>Telefone</TableCell>
+                <TableCell />
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {resultados.map((pessoa) => (
+                <TableRow key={pessoa.patientRef} selected={selecionado?.patientRef === pessoa.patientRef}>
+                  <TableCell>{pessoa.displayName}</TableCell>
+                  <TableCell>
+                    {pessoa.phoneStatus === 'available' && pessoa.maskedPhone
+                      ? pessoa.maskedPhone
+                      : pessoa.phoneStatus === 'invalid'
+                        ? 'Telefone inválido'
+                        : 'Telefone não disponível'}
+                  </TableCell>
+                  <TableCell>
+                    <Button size="small" onClick={() => void escolher(pessoa)}>Selecionar</Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Paper>
       ) : null}
+      {selecionado ? (
+        <Alert severity="info">
+          {selecionado.displayName} selecionado. A escolha não vincula outro cadastro e não autoriza envio.
+        </Alert>
+      ) : (
+        <Alert severity="info">
+          Escolha o paciente certo quando houver homônimos. A pesquisa não seleciona ninguém sozinha.
+        </Alert>
+      )}
       {consultado ? (
         <>
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
@@ -248,16 +313,8 @@ export function ConfirmacaoContatosPage() {
         <AccordionDetails>
           <Stack spacing={1.5}>
             <Typography variant="body2" color="text.secondary">
-              A referência interna identifica o paciente da agenda. Ela não é o telefone e não deve ser usada no atendimento comum.
+              Os identificadores abaixo pertencem ao paciente selecionado. Eles não são digitados no atendimento.
             </Typography>
-            <TextField
-              label="Referência interna do paciente"
-              value={patientRef}
-              onChange={(event) => setPatientRef(event.target.value)}
-            />
-            <Button variant="outlined" onClick={() => void consultar().catch((reason: unknown) => setError(mensagemErroApi(reason, 'Consulta não concluída.')))}>
-              Consultar
-            </Button>
             {consultado ? (
               <>
                 <Typography variant="body2">Número e identificadores ficam restritos a esta seção.</Typography>
