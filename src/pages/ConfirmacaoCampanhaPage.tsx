@@ -29,6 +29,8 @@ import {
   type CampaignRecipientState,
 } from '../types/confirmacao'
 import { mensagemErroApi } from '../utils/apiError'
+import { pendenciaResolvivel } from '../utils/contatoConfirmacao'
+import { VerificarContatoDialog, type ContextoContato } from './VerificarContatoDialog'
 
 const ESTADO_COR: Record<CampaignRecipientState, 'success' | 'warning' | 'default'> = {
   ELIGIBLE: 'success',
@@ -42,6 +44,7 @@ export function ConfirmacaoCampanhaPage() {
   const [campanha, setCampanha] = useState<CampaignDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [contexto, setContexto] = useState<ContextoContato | null>(null)
 
   useEffect(() => {
     if (!Number.isInteger(campaignId)) {
@@ -132,7 +135,7 @@ export function ConfirmacaoCampanhaPage() {
             <TableRow>
               <TableCell>Horário</TableCell>
               <TableCell>Profissional</TableCell>
-              <TableCell>Paciente</TableCell>
+              <TableCell>Contato</TableCell>
               <TableCell>Situação</TableCell>
               <TableCell>Pendência</TableCell>
               <TableCell />
@@ -143,7 +146,7 @@ export function ConfirmacaoCampanhaPage() {
               <TableRow key={item.id}>
                 <TableCell>{item.appointmentTime ?? '—'}</TableCell>
                 <TableCell>{item.professionalRef ?? '—'}</TableCell>
-                <TableCell>{item.patientRef ?? '—'}</TableCell>
+                <TableCell>{item.patientRef ? 'Da agenda' : 'Não identificado'}</TableCell>
                 <TableCell>
                   <Chip
                     size="small"
@@ -153,13 +156,22 @@ export function ConfirmacaoCampanhaPage() {
                 </TableCell>
                 <TableCell>{item.reasonCode ? (REASON_LABELS[item.reasonCode] ?? item.reasonCode) : '—'}</TableCell>
                 <TableCell>
-                  {item.patientRef ? (
+                  {pendenciaResolvivel(item) ? (
                     <Button
                       size="small"
-                      component={RouterLink}
-                      to={`/confirmacao/contatos?patientRef=${encodeURIComponent(item.patientRef)}&recipientRef=${encodeURIComponent(item.recipientRef ?? '')}&informedPhoneRef=${encodeURIComponent(item.informedPhoneRef ?? '')}`}
+                      onClick={() => setContexto({
+                        patientRef: item.patientRef ?? '',
+                        recipientRef: item.recipientRef ?? '',
+                        informedPhoneRef: item.informedPhoneRef,
+                        appointmentTime: item.appointmentTime,
+                        professionalRef: item.professionalRef,
+                        reasonCode: item.reasonCode,
+                        horariosRelacionados: campanha.items.filter(
+                          (outro) => outro.recipientRef && outro.recipientRef === item.recipientRef,
+                        ).length,
+                      })}
                     >
-                      Registrar contato
+                      Resolver pendência
                     </Button>
                   ) : null}
                 </TableCell>
@@ -168,6 +180,16 @@ export function ConfirmacaoCampanhaPage() {
           </TableBody>
         </Table>
       </Paper>
+      {contexto ? (
+        <VerificarContatoDialog
+          contexto={contexto}
+          onClose={() => setContexto(null)}
+          onSaved={async () => {
+            setContexto(null)
+            setCampanha(await obterCampanha(campaignId))
+          }}
+        />
+      ) : null}
       <Typography variant="h6">Histórico</Typography>
       <Stack spacing={1}>
         {campanha.events.map((event) => (
