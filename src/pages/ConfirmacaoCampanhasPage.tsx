@@ -25,6 +25,7 @@ import { Link as RouterLink } from 'react-router-dom'
 import { criarCampanha, listarCampanhas } from '../services/confirmacao.service'
 import {
   CAMPAIGN_STATUS_LABELS,
+  CONSULTATION_LABELS,
   RECIPIENT_STATE_LABELS,
   type CampaignRecipientState,
   type CampaignSourceKey,
@@ -68,10 +69,11 @@ export function ConfirmacaoCampanhasPage() {
     setSalvando(true)
     setErroModal(null)
     try {
+      const manual = origem === 'HIGIA' && agendamento.trim()
       await criarCampanha({
         campaignDate: data,
         source: origem,
-        items: agendamento.trim()
+        items: manual
           ? [
               {
                 appointmentRef: agendamento.trim(),
@@ -125,6 +127,7 @@ export function ConfirmacaoCampanhasPage() {
               <TableCell>Data</TableCell>
               <TableCell>Origem</TableCell>
               <TableCell>Estado</TableCell>
+              <TableCell>Consulta</TableCell>
               <TableCell>Analisados</TableCell>
               <TableCell>Aptos</TableCell>
               <TableCell>Pendências</TableCell>
@@ -138,6 +141,7 @@ export function ConfirmacaoCampanhasPage() {
                 <TableCell>{campanha.campaignDate}</TableCell>
                 <TableCell>{campanha.sourceLabel}</TableCell>
                 <TableCell>{CAMPAIGN_STATUS_LABELS[campanha.status]}</TableCell>
+                <TableCell>{CONSULTATION_LABELS[campanha.consultationState]}</TableCell>
                 <TableCell>{campanha.appointmentsAnalyzed}</TableCell>
                 <TableCell>
                   <Chip size="small" color={ESTADO_COR.ELIGIBLE} label={campanha.eligibleRecipients} />
@@ -177,23 +181,29 @@ export function ConfirmacaoCampanhasPage() {
               <MenuItem value="HIGIA">Higia</MenuItem>
             </TextField>
             <Typography variant="body2" color="text.secondary">
-              A origem ainda não é consultada automaticamente. Informe a referência opaca do agendamento, se já houver uma pendência.
+              {origem === 'SAUDEVIANET'
+                ? 'A agenda do dia é consultada automaticamente. Um horário marcado não fica apto sem as verificações do contato. Esta abertura não envia mensagem.'
+                : 'A origem Higia ainda não consulta a agenda. Informe a referência opaca do agendamento, se já houver uma pendência.'}
             </Typography>
-            <TextField label="Referência do agendamento" value={agendamento} onChange={(event) => setAgendamento(event.target.value)} />
-            <TextField label="Referência do paciente" value={paciente} onChange={(event) => setPaciente(event.target.value)} />
-            <TextField label="Referência do destinatário" value={destinatario} onChange={(event) => setDestinatario(event.target.value)} />
-            <TextField
-              label="Referência do número informado"
-              value={telefone}
-              onChange={(event) => setTelefone(event.target.value)}
-              helperText="Não cole o telefone. Use a referência opaca. Informar não comprova titularidade."
-            />
-            <TextField select label="Situação na revisão" value={estado} onChange={(event) => setEstado(event.target.value as CampaignRecipientState)}>
-              {Object.entries(RECIPIENT_STATE_LABELS).map(([value, label]) => (
-                <MenuItem key={value} value={value}>{label}</MenuItem>
-              ))}
-            </TextField>
-            <TextField label="Código da pendência" value={pendencia} onChange={(event) => setPendencia(event.target.value)} />
+            {origem === 'HIGIA' ? (
+              <>
+                <TextField label="Referência do agendamento" value={agendamento} onChange={(event) => setAgendamento(event.target.value)} />
+                <TextField label="Referência do paciente" value={paciente} onChange={(event) => setPaciente(event.target.value)} />
+                <TextField label="Referência do destinatário" value={destinatario} onChange={(event) => setDestinatario(event.target.value)} />
+                <TextField
+                  label="Referência do número informado"
+                  value={telefone}
+                  onChange={(event) => setTelefone(event.target.value)}
+                  helperText="Não cole o telefone. Use a referência opaca. Informar não comprova titularidade."
+                />
+                <TextField select label="Situação na revisão" value={estado} onChange={(event) => setEstado(event.target.value as CampaignRecipientState)}>
+                  {Object.entries(RECIPIENT_STATE_LABELS).map(([value, label]) => (
+                    <MenuItem key={value} value={value}>{label}</MenuItem>
+                  ))}
+                </TextField>
+                <TextField label="Código da pendência" value={pendencia} onChange={(event) => setPendencia(event.target.value)} />
+              </>
+            ) : null}
           </Stack>
         </DialogContent>
         <DialogActions>

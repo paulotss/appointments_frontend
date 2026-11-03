@@ -1,5 +1,6 @@
 export type CampaignSourceKey = 'SAUDEVIANET' | 'HIGIA'
 export type CampaignAdminStatus = 'DRAFT' | 'IN_REVIEW' | 'APPROVED'
+export type CampaignConsultationState = 'NOT_CONNECTED' | 'READY' | 'EMPTY' | 'PARTIAL' | 'FAILED'
 export type CampaignRecipientState = 'ELIGIBLE' | 'PENDING' | 'UNAVAILABLE'
 export type ContactOrigin = 'IN_PERSON' | 'PHONE' | 'WHATSAPP'
 export type ContactSubjectRole = 'PATIENT' | 'GUARDIAN'
@@ -26,6 +27,8 @@ export interface CampaignSummary {
   eligibleRecipients: number
   pendingVerifications: number
   unavailableRecipients: number
+  consultationState: CampaignConsultationState
+  consultationReason: string | null
   approvedAt: string | null
   createdAt: string
   createdBy: StaffActor
@@ -39,6 +42,11 @@ export interface CampaignItem {
   patientRef: string | null
   recipientRef: string | null
   informedPhoneRef: string | null
+  professionalRef: string | null
+  appointmentTime: string | null
+  agendaRef: string | null
+  sourceResolution: string | null
+  isMinor: boolean | null
   recipientState: CampaignRecipientState
   reasonCode: string | null
 }
@@ -125,6 +133,35 @@ export const RECIPIENT_STATE_LABELS: Record<CampaignRecipientState, string> = {
   UNAVAILABLE: 'Indisponível',
 }
 
+export const CONSULTATION_LABELS: Record<CampaignConsultationState, string> = {
+  NOT_CONNECTED: 'Origem ainda não consultada',
+  READY: 'Agenda consultada',
+  EMPTY: 'Agenda vazia neste dia',
+  PARTIAL: 'Consulta parcial',
+  FAILED: 'Falha na consulta da agenda',
+}
+
+export const REASON_LABELS: Record<string, string> = {
+  verification_missing: 'Verificação do contato ausente',
+  authorization_missing: 'Autorização de contato ausente',
+  authorization_revoked: 'Autorização revogada',
+  ownership_revoked: 'Verificação revogada',
+  contact_ready: 'Verificações exigidas concluídas',
+  phone_missing: 'Número utilizável ausente',
+  phone_invalid: 'Número informado inválido',
+  not_mobile: 'Contato não é celular',
+  ambiguous: 'Contato ambíguo',
+  age_unknown: 'Idade não confirmada',
+  minor_guardian_missing: 'Responsável legal não verificado',
+  registry_unavailable: 'Registro de contatos indisponível',
+  revalidation_mismatch: 'Revalidação não confirmou o agendamento',
+  query_failed: 'Falha ao consultar a agenda',
+  source_not_configured: 'Integração da agenda não configurada',
+  unexpected_response: 'Resposta da agenda incompatível',
+  reclassification_unavailable: 'Não foi possível atualizar a pendência',
+  partial_consultation: 'Parte das agendas não pôde ser consultada',
+}
+
 export const CONTACT_ORIGIN_LABELS: Record<ContactOrigin, string> = {
   IN_PERSON: 'Presencial',
   PHONE: 'Telefone',
@@ -161,4 +198,5 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   CAMPAIGN_SUBMITTED: 'Enviada para revisão',
   CAMPAIGN_APPROVED: 'Aprovação administrativa',
   CAMPAIGN_REOPENED: 'Revisão reaberta',
+  ITEM_RECLASSIFIED: 'Pendência atualizada',
 }
