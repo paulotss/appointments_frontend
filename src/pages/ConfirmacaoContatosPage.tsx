@@ -202,7 +202,7 @@ export function ConfirmacaoContatosPage() {
           </Stack>
           <Alert severity={autorizacao === 'pendente' ? 'warning' : 'info'}>
             {autorizacao === 'pendente'
-              ? 'A autorização permanece pendente. Não há política configurada para criá-la nesta tela.'
+              ? 'A autorização permanece pendente. Verificar o número não cria uma autorização de contato.'
               : autorizacao === 'revogada'
                 ? 'A autorização foi revogada e não será recriada automaticamente.'
                 : 'A autorização vigente não envia mensagem e não dispensa a verificação do número.'}
@@ -274,7 +274,7 @@ export function ConfirmacaoContatosPage() {
                 {autorizacoes.length === 0 ? (
                   <TableRow>
                     <TableCell>Pendente</TableCell>
-                    <TableCell>Nenhuma política foi aplicada</TableCell>
+                    <TableCell>Nenhuma autorização registrada</TableCell>
                     <TableCell />
                   </TableRow>
                 ) : autorizacoes.map((item) => (
