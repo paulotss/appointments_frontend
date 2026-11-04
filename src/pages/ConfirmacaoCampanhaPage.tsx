@@ -31,6 +31,7 @@ import {
 import { mensagemErroApi } from '../utils/apiError'
 import { acaoDaPendencia, falhaDeConsulta, pendenciaResolvivel } from '../utils/contatoConfirmacao'
 import { VerificarContatoDialog, type ContextoContato } from './VerificarContatoDialog'
+import { ConfirmacaoSimulacoes } from './ConfirmacaoSimulacoes'
 
 const ESTADO_COR: Record<CampaignRecipientState, 'success' | 'warning' | 'default'> = {
   ELIGIBLE: 'success',
@@ -268,6 +269,7 @@ export function ConfirmacaoCampanhaPage() {
           }}
         />
       ) : null}
+      <ConfirmacaoSimulacoes campaignId={campaignId} revision={`${campanha.status}:${campanha.events.length}`} />
       <Typography variant="h6">Histórico</Typography>
       <Stack spacing={1}>
         {campanha.events.map((event) => (

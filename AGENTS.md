@@ -68,5 +68,7 @@
 
 - Executar npm run build, que inclui a verificação TypeScript.
 - Validar os fluxos afetados com dados fictícios.
-- Não há script de testes automatizados no package.json atual.
-  Informar essa limitação e descrever a validação funcional realizada.
+- Executar npm run test:contact-status para alterações na situação da autorização.
+- Para o fluxo administrativo, executar a homologação isolada de navegador
+  conforme test/README-confirmation-admin.md. Informar limitações e descrever
+  a validação funcional realizada.

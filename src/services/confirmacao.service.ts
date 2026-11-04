@@ -19,6 +19,26 @@ export async function listarCampanhas(): Promise<CampaignSummary[]> {
   return response.data
 }
 
+export interface CampaignSimulation {
+  mode: 'simulation'
+  dispatchEnabled: false
+  runId: string
+  status: 'RUNNING' | 'COMPLETED' | 'INVALIDATED'
+  currentApproval: boolean
+  leaseExpired: boolean
+  createdAt: string
+  completedAt: string | null
+  report: null | {
+    blocked: string | null
+    items: Array<{ itemId: number; result: string }>
+  }
+}
+
+export async function listarSimulacoes(id: number): Promise<CampaignSimulation[]> {
+  const response = await apiClient.get<CampaignSimulation[]>(`/confirmation-campaigns/${id}/simulations`)
+  return response.data
+}
+
 export async function obterCampanha(id: number): Promise<CampaignDetail> {
   const response = await apiClient.get<CampaignDetail>(`/confirmation-campaigns/${id}`)
   return response.data

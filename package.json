@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:confirmation-admin": "node test/confirmation-admin.homologation.mjs",
+    "test:contact-status": "node test/contatoConfirmacao.test.mjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -33,6 +35,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "playwright": "^1.64.1",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.57.0",
     "vite": "^8.0.1"
