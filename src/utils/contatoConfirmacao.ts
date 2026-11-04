@@ -53,6 +53,6 @@ export function situacaoAutorizacao(
     return !Number.isNaN(inicio.getTime()) && !Number.isNaN(fim.getTime()) && inicio <= agora && agora < fim
   })
   if (vigente) return 'vigente'
-  if (autorizacoes.length > 0) return 'revogada'
+  if (autorizacoes.some((item) => item.revokedAt)) return 'revogada'
   return 'pendente'
 }
