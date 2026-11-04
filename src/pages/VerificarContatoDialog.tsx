@@ -136,7 +136,7 @@ export function VerificarContatoDialog({
     ? (REASON_LABELS[contexto.reasonCode] ?? contexto.reasonCode)
     : 'Pendência de contato'
   const textoAutorizacao = {
-    pendente: 'Pendente. A clínica ainda não configurou uma política para registrar a autorização nesta tela.',
+    pendente: 'Pendente. Verificar o número não cria uma autorização de contato.',
     vigente: 'Há autorização vigente no registro. Ela não autoriza o envio por si só.',
     revogada: 'A autorização anterior foi revogada. Nenhuma nova autorização será criada aqui.',
   }[autorizacao]
