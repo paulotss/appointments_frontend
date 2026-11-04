@@ -1,21 +1,45 @@
 import type { CampaignItem, ContactAuthorization } from '../types/confirmacao'
 
-const BLOQUEIO_OPERACIONAL = new Set([
-  'query_failed',
-  'registry_unavailable',
-  'revalidation_mismatch',
-  'unexpected_response',
-  'source_not_configured',
-  'ambiguous',
-  'reclassification_unavailable',
-  'partial_consultation',
+const RECEPCAO_PODE_RESOLVER = new Set([
+  'verification_missing',
+  'ownership_revoked',
+  'minor_guardian_missing',
 ])
 
+const AUTORIZACAO = new Set([
+  'authorization_missing',
+  'authorization_revoked',
+])
+
+export function falhaDeConsulta(item: CampaignItem): boolean {
+  return item.appointmentRef.startsWith('fail:')
+}
+
 export function pendenciaResolvivel(item: CampaignItem): boolean {
-  if (item.recipientState !== 'PENDING' || !item.patientRef || !item.recipientRef) {
-    return false
+  return item.recipientState === 'PENDING'
+    && Boolean(item.patientRef)
+    && Boolean(item.recipientRef)
+    && Boolean(item.reasonCode && RECEPCAO_PODE_RESOLVER.has(item.reasonCode))
+    && !falhaDeConsulta(item)
+}
+
+export function acaoDaPendencia(item: CampaignItem): string | null {
+  if (pendenciaResolvivel(item)) {
+    return null
   }
-  return !(item.reasonCode && BLOQUEIO_OPERACIONAL.has(item.reasonCode))
+  if (falhaDeConsulta(item)) {
+    return 'Correção técnica'
+  }
+  if (item.reasonCode && AUTORIZACAO.has(item.reasonCode)) {
+    return 'Autorização fora desta tela'
+  }
+  if (item.reasonCode === 'registry_unavailable') {
+    return 'Correção técnica'
+  }
+  if (item.recipientState === 'UNAVAILABLE' || item.reasonCode === 'age_unknown') {
+    return 'Correção técnica'
+  }
+  return null
 }
 
 export function situacaoAutorizacao(
