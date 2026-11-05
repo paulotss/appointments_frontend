@@ -10,11 +10,13 @@ import {
   TableHead,
   TableRow,
   Typography,
+  TextField,
 } from '@mui/material'
 import { useEffect, useState } from 'react'
 import { Link as RouterLink, useParams } from 'react-router-dom'
 import {
   aprovarCampanha,
+  definirPrazoResposta,
   colocarCampanhaEmRevisao,
   obterCampanha,
   reabrirCampanha,
@@ -29,11 +31,23 @@ import {
   type CampaignRecipientState,
 } from '../types/confirmacao'
 import { mensagemErroApi } from '../utils/apiError'
-import { acaoDaPendencia, falhaDeConsulta, pendenciaResolvivel } from '../utils/contatoConfirmacao'
-import { VerificarContatoDialog, type ContextoContato } from './VerificarContatoDialog'
+import {
+  acaoDaPendencia,
+  falhaDeConsulta,
+  pendenciaResolvivel,
+} from '../utils/contatoConfirmacao'
+import {
+  VerificarContatoDialog,
+  type ContextoContato,
+} from './VerificarContatoDialog'
 import { ConfirmacaoSimulacoes } from './ConfirmacaoSimulacoes'
 
-const ESTADO_COR: Record<CampaignRecipientState, 'success' | 'warning' | 'default'> = {
+import { ConfirmacaoRespostas, localInstant } from './ConfirmacaoRespostas'
+
+const ESTADO_COR: Record<
+  CampaignRecipientState,
+  'success' | 'warning' | 'default'
+> = {
   ELIGIBLE: 'success',
   PENDING: 'warning',
   UNAVAILABLE: 'default',
@@ -44,6 +58,7 @@ export function ConfirmacaoCampanhaPage() {
   const campaignId = Number(id)
   const [campanha, setCampanha] = useState<CampaignDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [prazo, setPrazo] = useState('')
   const [busy, setBusy] = useState(false)
   const [contexto, setContexto] = useState<ContextoContato | null>(null)
 
@@ -57,7 +72,10 @@ export function ConfirmacaoCampanhaPage() {
         if (ativo) setCampanha(carregada)
       })
       .catch((reason: unknown) => {
-        if (ativo) setError(mensagemErroApi(reason, 'Não foi possível abrir a campanha.'))
+        if (ativo)
+          setError(
+            mensagemErroApi(reason, 'Não foi possível abrir a campanha.'),
+          )
       })
     return () => {
       ativo = false
@@ -70,7 +88,9 @@ export function ConfirmacaoCampanhaPage() {
     try {
       setCampanha(await acao(campaignId))
     } catch (reason) {
-      setError(mensagemErroApi(reason, 'Não foi possível atualizar a campanha.'))
+      setError(
+        mensagemErroApi(reason, 'Não foi possível atualizar a campanha.'),
+      )
     } finally {
       setBusy(false)
     }
@@ -81,77 +101,149 @@ export function ConfirmacaoCampanhaPage() {
   }
 
   if (!campanha) {
-    return error ? <Alert severity="error">{error}</Alert> : <Typography>Carregando campanha.</Typography>
+    return error ? (
+      <Alert severity="error">{error}</Alert>
+    ) : (
+      <Typography>Carregando campanha.</Typography>
+    )
   }
 
   const agendamentos = campanha.items.filter((item) => !falhaDeConsulta(item))
   const falhas = campanha.items.filter((item) => falhaDeConsulta(item))
-  const registroIndisponivel = agendamentos.some((item) => item.reasonCode === 'registry_unavailable')
-    || campanha.consultationReason === 'registry_unavailable'
-  const autorizacaoPendente = agendamentos.some((item) =>
-    item.reasonCode === 'authorization_missing' || item.reasonCode === 'authorization_revoked')
+  const registroIndisponivel =
+    agendamentos.some((item) => item.reasonCode === 'registry_unavailable') ||
+    campanha.consultationReason === 'registry_unavailable'
+  const autorizacaoPendente = agendamentos.some(
+    (item) =>
+      item.reasonCode === 'authorization_missing' ||
+      item.reasonCode === 'authorization_revoked',
+  )
 
   return (
     <Stack spacing={2}>
-      <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+      <Stack
+        direction="row"
+        sx={{ justifyContent: 'space-between', alignItems: 'center' }}
+      >
         <div>
-          <Typography variant="h5">
-            Campanha {campanha.campaignDate}
-          </Typography>
+          <Typography variant="h5">Campanha {campanha.campaignDate}</Typography>
           <Typography color="text.secondary">
-            {campanha.sourceLabel} · {CAMPAIGN_STATUS_LABELS[campanha.status]} · disparo desligado
+            {campanha.sourceLabel} · {CAMPAIGN_STATUS_LABELS[campanha.status]} ·
+            disparo desligado
           </Typography>
         </div>
         <Button component={RouterLink} to="/confirmacao/campanhas">
           Voltar
         </Button>
       </Stack>
-      <Alert severity={campanha.consultationState === 'FAILED' ? 'error' : campanha.consultationState === 'EMPTY' ? 'info' : 'warning'}>
+      <Alert
+        severity={
+          campanha.consultationState === 'FAILED'
+            ? 'error'
+            : campanha.consultationState === 'EMPTY'
+              ? 'info'
+              : 'warning'
+        }
+      >
         {CONSULTATION_LABELS[campanha.consultationState]}
         {campanha.consultationReason
           ? ` · ${REASON_LABELS[campanha.consultationReason] ?? campanha.consultationReason}`
           : ''}
-        . Aprovar esta campanha não autoriza destinatários inválidos e não envia WhatsApp.
+        . Aprovar esta campanha não autoriza destinatários inválidos e não envia
+        WhatsApp.
       </Alert>
       {error ? <Alert severity="error">{error}</Alert> : null}
       <Alert severity="info">
-        A recepção pode resolver verificação ausente, verificação revogada e responsável legal não verificado.
-        Autorização de contato, registro indisponível, idade não confirmada e falha de agenda dependem de correção técnica.
-        Nenhuma dessas ações envia mensagem.
+        A recepção pode resolver verificação ausente, verificação revogada e
+        responsável legal não verificado. Autorização de contato, registro
+        indisponível, idade não confirmada e falha de agenda dependem de
+        correção técnica. Nenhuma dessas ações envia mensagem.
       </Alert>
       {registroIndisponivel ? (
         <Alert severity="warning">
-          O registro de contatos está indisponível. Verificação e autorização não foram consultadas.
-          Essas linhas não ficam aptas e a recepção não as resolve.
+          O registro de contatos está indisponível. Verificação e autorização
+          não foram consultadas. Essas linhas não ficam aptas e a recepção não
+          as resolve.
         </Alert>
       ) : null}
       {autorizacaoPendente ? (
         <Alert severity="info">
-          Há contato verificado sem autorização vigente. Registrar a verificação não cria autorização nem libera o envio.
+          Há contato verificado sem autorização vigente. Registrar a verificação
+          não cria autorização nem libera o envio.
         </Alert>
       ) : null}
       <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
         <Chip label={`${campanha.appointmentsAnalyzed} agendamentos`} />
         <Chip color="success" label={`${campanha.eligibleRecipients} aptos`} />
-        <Chip color="warning" label={`${campanha.pendingVerifications} pendentes`} />
+        <Chip
+          color="warning"
+          label={`${campanha.pendingVerifications} pendentes`}
+        />
         <Chip label={`${campanha.unavailableRecipients} indisponíveis`} />
         {campanha.technicalFailures > 0 ? (
-          <Chip color="error" label={`${campanha.technicalFailures} falhas técnicas`} />
+          <Chip
+            color="error"
+            label={`${campanha.technicalFailures} falhas técnicas`}
+          />
         ) : null}
       </Stack>
+      <Paper sx={{ p: 2 }}>
+        <Typography variant="h6">Prazo para resposta</Typography>
+        <Typography>
+          {campanha.responseDeadlineAt
+            ? localInstant(campanha.responseDeadlineAt)
+            : 'Prazo não definido'}{' '}
+          · America/Sao_Paulo
+        </Typography>
+        {campanha.status !== 'APPROVED' && (
+          <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+            <TextField
+              type="datetime-local"
+              label="Novo prazo em São Paulo"
+              slotProps={{ inputLabel: { shrink: true } }}
+              value={prazo}
+              onChange={(event) => setPrazo(event.target.value)}
+            />
+            <Button
+              disabled={busy || !prazo}
+              onClick={() =>
+                void executar((id) =>
+                  definirPrazoResposta(
+                    id,
+                    new Date(`${prazo}:00-03:00`).toISOString(),
+                  ),
+                )
+              }
+            >
+              Salvar prazo
+            </Button>
+          </Stack>
+        )}
+      </Paper>
       <Stack direction="row" spacing={1}>
         {campanha.status === 'DRAFT' ? (
-          <Button variant="contained" disabled={busy} onClick={() => void executar(colocarCampanhaEmRevisao)}>
+          <Button
+            variant="contained"
+            disabled={busy}
+            onClick={() => void executar(colocarCampanhaEmRevisao)}
+          >
             Colocar em revisão
           </Button>
         ) : null}
         {campanha.status === 'IN_REVIEW' ? (
-          <Button variant="contained" disabled={busy} onClick={() => void executar(aprovarCampanha)}>
+          <Button
+            variant="contained"
+            disabled={busy || !campanha.responseDeadlineAt}
+            onClick={() => void executar(aprovarCampanha)}
+          >
             Aprovar administrativamente
           </Button>
         ) : null}
         {campanha.status === 'APPROVED' ? (
-          <Button disabled={busy} onClick={() => void executar(reabrirCampanha)}>
+          <Button
+            disabled={busy}
+            onClick={() => void executar(reabrirCampanha)}
+          >
             Reabrir revisão
           </Button>
         ) : null}
@@ -173,22 +265,24 @@ export function ConfirmacaoCampanhaPage() {
             {agendamentos.map((item) => (
               <TableRow key={item.id}>
                 <TableCell>{item.appointmentTime ?? '—'}</TableCell>
-                <TableCell>{item.professionalName ?? 'Profissional não informado'}</TableCell>
                 <TableCell>
-                  {item.identityStatus === 'unavailable'
-                    ? 'Identificação indisponível'
-                    : (
-                      <>
-                        {item.displayName ?? 'Nome indisponível'}
-                        <Typography variant="body2" color="text.secondary">
-                          {item.phoneStatus === 'available' && item.maskedPhone
-                            ? item.maskedPhone
-                            : item.phoneStatus === 'invalid'
-                              ? 'Telefone inválido'
-                              : 'Telefone não disponível'}
-                        </Typography>
-                      </>
-                    )}
+                  {item.professionalName ?? 'Profissional não informado'}
+                </TableCell>
+                <TableCell>
+                  {item.identityStatus === 'unavailable' ? (
+                    'Identificação indisponível'
+                  ) : (
+                    <>
+                      {item.displayName ?? 'Nome indisponível'}
+                      <Typography variant="body2" color="text.secondary">
+                        {item.phoneStatus === 'available' && item.maskedPhone
+                          ? item.maskedPhone
+                          : item.phoneStatus === 'invalid'
+                            ? 'Telefone inválido'
+                            : 'Telefone não disponível'}
+                      </Typography>
+                    </>
+                  )}
                 </TableCell>
                 <TableCell>
                   <Chip
@@ -197,26 +291,34 @@ export function ConfirmacaoCampanhaPage() {
                     label={RECIPIENT_STATE_LABELS[item.recipientState]}
                   />
                 </TableCell>
-                <TableCell>{item.reasonCode ? (REASON_LABELS[item.reasonCode] ?? item.reasonCode) : '—'}</TableCell>
+                <TableCell>
+                  {item.reasonCode
+                    ? (REASON_LABELS[item.reasonCode] ?? item.reasonCode)
+                    : '—'}
+                </TableCell>
                 <TableCell>
                   {pendenciaResolvivel(item) ? (
                     <Button
                       size="small"
-                      onClick={() => setContexto({
-                        patientRef: item.patientRef ?? '',
-                        recipientRef: item.recipientRef ?? '',
-                        informedPhoneRef: item.informedPhoneRef,
-                        appointmentTime: item.appointmentTime,
-                        professionalName: item.professionalName,
-                        displayName: item.displayName,
-                        maskedPhone: item.maskedPhone,
-                        phoneStatus: item.phoneStatus,
-                        identityStatus: item.identityStatus,
-                        reasonCode: item.reasonCode,
-                        horariosRelacionados: agendamentos.filter(
-                          (outro) => outro.recipientRef && outro.recipientRef === item.recipientRef,
-                        ).length,
-                      })}
+                      onClick={() =>
+                        setContexto({
+                          patientRef: item.patientRef ?? '',
+                          recipientRef: item.recipientRef ?? '',
+                          informedPhoneRef: item.informedPhoneRef,
+                          appointmentTime: item.appointmentTime,
+                          professionalName: item.professionalName,
+                          displayName: item.displayName,
+                          maskedPhone: item.maskedPhone,
+                          phoneStatus: item.phoneStatus,
+                          identityStatus: item.identityStatus,
+                          reasonCode: item.reasonCode,
+                          horariosRelacionados: agendamentos.filter(
+                            (outro) =>
+                              outro.recipientRef &&
+                              outro.recipientRef === item.recipientRef,
+                          ).length,
+                        })
+                      }
                     >
                       Resolver pendência
                     </Button>
@@ -235,7 +337,8 @@ export function ConfirmacaoCampanhaPage() {
         <>
           <Typography variant="h6">Falhas técnicas da consulta</Typography>
           <Alert severity="warning">
-            A coleta ficou incompleta. Estas linhas não são agendamentos e não podem ser resolvidas pela recepção.
+            A coleta ficou incompleta. Estas linhas não são agendamentos e não
+            podem ser resolvidas pela recepção.
           </Alert>
           <Paper>
             <Table size="small">
@@ -249,8 +352,14 @@ export function ConfirmacaoCampanhaPage() {
               <TableBody>
                 {falhas.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell>{item.agendaRef ?? 'Agenda não identificada'}</TableCell>
-                    <TableCell>{item.reasonCode ? (REASON_LABELS[item.reasonCode] ?? item.reasonCode) : '—'}</TableCell>
+                    <TableCell>
+                      {item.agendaRef ?? 'Agenda não identificada'}
+                    </TableCell>
+                    <TableCell>
+                      {item.reasonCode
+                        ? (REASON_LABELS[item.reasonCode] ?? item.reasonCode)
+                        : '—'}
+                    </TableCell>
                     <TableCell>Correção técnica</TableCell>
                   </TableRow>
                 ))}
@@ -269,18 +378,27 @@ export function ConfirmacaoCampanhaPage() {
           }}
         />
       ) : null}
-      <ConfirmacaoSimulacoes campaignId={campaignId} revision={`${campanha.status}:${campanha.events.length}`} />
+      <ConfirmacaoRespostas campaignId={campaignId} />
+      <ConfirmacaoSimulacoes
+        campaignId={campaignId}
+        revision={`${campanha.status}:${campanha.events.length}`}
+      />
       <Typography variant="h6">Histórico</Typography>
       <Stack spacing={1}>
         {campanha.events.map((event) => (
           <Paper key={event.id} sx={{ p: 1.5 }}>
             <Typography>
-              {AUDIT_ACTION_LABELS[event.action] ?? event.action} · {event.actor.name}
+              {AUDIT_ACTION_LABELS[event.action] ?? event.action} ·{' '}
+              {event.actor.name}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               {event.createdAt}
-              {event.fromStatus ? ` · ${CAMPAIGN_STATUS_LABELS[event.fromStatus]}` : ''}
-              {event.toStatus ? ` → ${CAMPAIGN_STATUS_LABELS[event.toStatus]}` : ''}
+              {event.fromStatus
+                ? ` · ${CAMPAIGN_STATUS_LABELS[event.fromStatus]}`
+                : ''}
+              {event.toStatus
+                ? ` → ${CAMPAIGN_STATUS_LABELS[event.toStatus]}`
+                : ''}
             </Typography>
           </Paper>
         ))}

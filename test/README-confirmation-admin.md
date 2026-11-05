@@ -33,3 +33,13 @@ Arquivos de sessão, credenciais e tokens não fazem parte das evidências nem d
 
 A suíte cobre o fluxo administrativo. Leitura real da agenda, envio WhatsApp,
 confirmação no legado, dispatcher e deploy continuam fora desta homologação.
+
+## Respostas e pendências (4B)
+
+A homologação específica usa `test/confirmation-replies.homologation.mjs`, iniciada
+pelo runner `appointments_backend/test/run-confirmation-replies.py --browser`.
+Ela usa frontend 5181, API 3111 e banco descartável 5551, sem carregar o `.env` local.
+Valida prazo de São Paulo com navegador em UTC, edição bloqueada após aprovação,
+assunção, conclusão obrigatória da mesma pendência, filtros e ausência de referências
+sensíveis na página. Evidências fictícias ficam em `/tmp/higia-replies-browser`.
+Não executar o teste apontando para serviços da clínica.

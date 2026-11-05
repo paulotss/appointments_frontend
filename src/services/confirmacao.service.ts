@@ -170,3 +170,25 @@ export async function listarAuditoriaContato(patientRef: string): Promise<Contac
   })
   return response.data
 }
+
+export async function definirPrazoResposta(id: number, responseDeadlineAt: string): Promise<CampaignDetail> {
+  return (await apiClient.put<CampaignDetail>(`/confirmation-campaigns/${id}/response-deadline`, { responseDeadlineAt })).data
+}
+
+export interface CampaignResponses {
+  dispatchEnabled: false
+  responses: Array<{ executionKey: string; itemId: number; appointmentTime: string; transportStatus: string; deliveryStatus: string | null; responseStatus: string; updatedAt: string; responseDeadlineAt: string; conversationUrl: string | null }>
+  pending: Array<{ id: string; executionKey: string; reason: string; status: 'OPEN' | 'ASSIGNED' | 'COMPLETED'; version: number; assignedUserId: number | null; resolution: string | null; createdAt: string }>
+  events: Array<{ eventId: string; executionKey: string; sequence: number; createdAt: string; result: { kind: string; reason: string | null; responseStatus: string; occurredAt: string } }>
+  actions: Array<{ id: number; pendingId: string; actorUserId: number; action: string; resolution: string | null; createdAt: string }>
+  users: Array<{ id: number; name: string }>
+}
+export async function listarRespostas(id: number): Promise<CampaignResponses> {
+  return (await apiClient.get<CampaignResponses>(`/confirmation-campaigns/${id}/responses`)).data
+}
+export async function assumirPendencia(campaignId: number, id: string, version: number) {
+  await apiClient.post(`/confirmation-campaigns/${campaignId}/responses/pending/${id}/assign`, { version })
+}
+export async function concluirPendencia(campaignId: number, id: string, version: number, resolution: string) {
+  await apiClient.post(`/confirmation-campaigns/${campaignId}/responses/pending/${id}/complete`, { version, resolution })
+}
