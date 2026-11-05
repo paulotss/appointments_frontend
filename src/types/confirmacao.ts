@@ -30,6 +30,7 @@ export interface CampaignSummary {
   consultationState: CampaignConsultationState
   consultationReason: string | null
   approvedAt: string | null
+  responseDeadlineAt: string | null
   createdAt: string
   createdBy: StaffActor
   approvedBy: StaffActor | null
