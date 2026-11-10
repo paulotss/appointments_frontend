@@ -51,6 +51,9 @@ const labels: Record<string, string> = {
   transport_rejected: 'Tentativa rejeitada pelo transporte',
   delivery_failed: 'Falha de entrega',
   channel_unavailable: 'Conversa indisponível',
+  appointment_blocked: 'Confirmação no Saúde Vianet bloqueada',
+  appointment_refused: 'Confirmação no Saúde Vianet recusada',
+  appointment_indeterminate: 'Resultado no Saúde Vianet desconhecido — análise necessária',
   OPEN: 'Aberta',
   ASSIGNED: 'Em atendimento',
   COMPLETED: 'Concluída',
@@ -63,6 +66,14 @@ const labels: Record<string, string> = {
 }
 export const responseLabel = (value: string) =>
   labels[value] ?? 'Situação indisponível'
+export const appointmentLabel = (value?: string) => ({
+  not_requested: 'Não solicitada',
+  confirmed: 'Confirmado no Saúde Vianet',
+  already_confirmed: 'Já confirmado no Saúde Vianet',
+  blocked: 'Confirmação bloqueada',
+  refused: 'Confirmação recusada',
+  indeterminate: 'Resultado desconhecido — análise necessária',
+}[value ?? 'not_requested'] ?? 'Situação indisponível')
 export const localInstant = (value: string) =>
   new Intl.DateTimeFormat('pt-BR', {
     timeZone: 'America/Sao_Paulo',
@@ -149,8 +160,8 @@ export function ConfirmacaoRespostas({ campaignId }: { campaignId: number }) {
     <Stack spacing={2}>
       <Typography variant="h6">Respostas e pendências</Typography>
       <Typography color="text.secondary">
-        Confirmação recebida registra a resposta do paciente. Não confirma o
-        agendamento no Saúde Vianet.
+        A resposta do paciente e o resultado da confirmação no Saúde Vianet
+        são apresentados separadamente.
       </Typography>
       {error && <Alert severity="error">{error}</Alert>}
       <Stack direction="row" spacing={2}>
@@ -191,6 +202,7 @@ export function ConfirmacaoRespostas({ campaignId }: { campaignId: number }) {
                 <TableCell>Horário</TableCell>
                 <TableCell>Transporte / entrega</TableCell>
                 <TableCell>Resposta</TableCell>
+                <TableCell>Saúde Vianet</TableCell>
                 <TableCell>Prazo</TableCell>
                 <TableCell>Pendências e histórico</TableCell>
               </TableRow>
@@ -233,6 +245,7 @@ export function ConfirmacaoRespostas({ campaignId }: { campaignId: number }) {
                       {localInstant(row.updatedAt)}
                     </Typography>
                   </TableCell>
+                  <TableCell>{appointmentLabel(row.appointmentStatus)}</TableCell>
                   <TableCell>{localInstant(row.responseDeadlineAt)}</TableCell>
                   <TableCell>
                     <Stack spacing={1}>

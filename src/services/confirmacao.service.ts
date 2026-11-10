@@ -177,7 +177,7 @@ export async function definirPrazoResposta(id: number, responseDeadlineAt: strin
 
 export interface CampaignResponses {
   dispatchEnabled: false
-  responses: Array<{ executionKey: string; itemId: number; appointmentTime: string; transportStatus: string; deliveryStatus: string | null; responseStatus: string; updatedAt: string; responseDeadlineAt: string; conversationUrl: string | null }>
+  responses: Array<{ executionKey: string; itemId: number; appointmentTime: string; transportStatus: string; deliveryStatus: string | null; responseStatus: string; appointmentStatus?: string; updatedAt: string; responseDeadlineAt: string; conversationUrl: string | null }>
   pending: Array<{ id: string; executionKey: string; reason: string; status: 'OPEN' | 'ASSIGNED' | 'COMPLETED'; version: number; assignedUserId: number | null; resolution: string | null; createdAt: string }>
   events: Array<{ eventId: string; executionKey: string; sequence: number; createdAt: string; result: { kind: string; reason: string | null; responseStatus: string; occurredAt: string } }>
   actions: Array<{ id: number; pendingId: string; actorUserId: number; action: string; resolution: string | null; createdAt: string }>

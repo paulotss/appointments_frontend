@@ -43,3 +43,16 @@ Valida prazo de São Paulo com navegador em UTC, edição bloqueada após aprova
 assunção, conclusão obrigatória da mesma pendência, filtros e ausência de referências
 sensíveis na página. Evidências fictícias ficam em `/tmp/higia-replies-browser`.
 Não executar o teste apontando para serviços da clínica.
+
+## Resultado da confirmação no Saúde Vianet
+
+`test/confirmation-legacy.homologation.mjs` é executado pelo runner descartável
+`appointments_backend/test/run-confirmation-legacy.py`, com `--frontend-root`
+e `--playwright-module`. Usa Vite 5183, API 3113, Python 8879 e PostgreSQL 5553.
+O teste distingue a manifestação do paciente do resultado confirmado no legado,
+com autenticação real sobre fixtures e sem requisições externas. O legado usa
+somente HTTP simulado. O runner remove os serviços e as sessões ao terminar.
+
+Contratos, resultados e pendências de ativação estão em
+`appointments_backend/docs/confirmacao-legado.md`. A nova coluna também distingue
+confirmação bloqueada, recusada e desconhecida; não habilita escrita ou envio real.
