@@ -113,11 +113,7 @@ export function ConfirmacaoCampanhaPage() {
   const registroIndisponivel =
     agendamentos.some((item) => item.reasonCode === 'registry_unavailable') ||
     campanha.consultationReason === 'registry_unavailable'
-  const autorizacaoPendente = agendamentos.some(
-    (item) =>
-      item.reasonCode === 'authorization_missing' ||
-      item.reasonCode === 'authorization_revoked',
-  )
+  const contatoRevogado = agendamentos.some(item => item.reasonCode === 'authorization_revoked')
 
   return (
     <Stack spacing={2}>
@@ -155,21 +151,20 @@ export function ConfirmacaoCampanhaPage() {
       {error ? <Alert severity="error">{error}</Alert> : null}
       <Alert severity="info">
         A recepção pode resolver verificação ausente, verificação revogada e
-        responsável legal não verificado. Autorização de contato, registro
+        responsável legal não verificado. Contato revogado, registro
         indisponível, idade não confirmada e falha de agenda dependem de
         correção técnica. Nenhuma dessas ações envia mensagem.
       </Alert>
       {registroIndisponivel ? (
         <Alert severity="warning">
-          O registro de contatos está indisponível. Verificação e autorização
+          O registro de contatos está indisponível. Verificações e revogações
           não foram consultadas. Essas linhas não ficam aptas e a recepção não
           as resolve.
         </Alert>
       ) : null}
-      {autorizacaoPendente ? (
-        <Alert severity="info">
-          Há contato verificado sem autorização vigente. Registrar a verificação
-          não cria autorização nem libera o envio.
+      {contatoRevogado ? (
+        <Alert severity="warning">
+          Há contato com revogação registrada. A conferência do número não remove esse bloqueio.
         </Alert>
       ) : null}
       <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>

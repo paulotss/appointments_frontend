@@ -58,30 +58,29 @@ Contratos, resultados e pendências de ativação estão em
 confirmação bloqueada, recusada e desconhecida; não habilita escrita ou envio real.
 
 
-## Registro de autorização de contato
+## Política de contato da confirmação
 
-`npm run test:confirmation-authorization` inicia Vite somente em
-`127.0.0.1:5186`, sem arquivo `.env` ou configuração local. Renderiza a página
-real de contatos com a API inteiramente simulada no navegador e bloqueia
-requisições externas. Não depende de tokens, banco ou pacientes reais. Requer
-Chromium do Playwright instalado. `PLAYWRIGHT_MODULE` pode apontar para uma
-instalação temporária da versão do lockfile.
+A autorização de contato deixou de ser requisito da confirmação por decisão
+explícita da clínica. O formulário e o aviso de autorização pendente foram
+retirados. Nenhuma autorização é criada para contornar a ausência desse registro.
+Histórico e revogações continuam preservados. Verificação do número e da pessoa,
+responsável legal para menores, idade conhecida e revalidação independente continuam
+obrigatórios. A mudança não aprova campanhas nem habilita dispatcher ou escrita.
 
-Cobre o destinatário vinculado à verificação selecionada, evidência e fundamento
-sem preenchimento automático, validade no fuso do dispositivo, clique repetido,
-evidência já registrada (inclusive revogada), falha de consulta, recusa de
-permissão, atualização da tela após sucesso e resultado de escrita incerto.
-Atualizar a consulta não repete o POST. Resultado incerto bloqueia a repetição
-naquele formulário e exige conferir o histórico. A consulta prévia da evidência
-reduz duplicações, mas não substitui idempotência transacional no backend.
+`Reavaliar contato` envia uma ação administrativa autenticada, com a referência
+do paciente selecionado, para atualizar a classificação das campanhas existentes.
+A seleção do paciente e as consultas não executam essa ação automaticamente.
+Campanhas aprovadas continuam sujeitas ao snapshot aprovado e à sua revalidação;
+a reavaliação não cria aprovação nem altera esse snapshot.
 
-O formulário registra uma autorização já obtida; não solicita uma nova autorização
-ao paciente, não escolhe fundamento jurídico nem define validade automaticamente.
-As referências da evidência e do fundamento devem corresponder a registros reais
-mantidos pela clínica, sem dados pessoais ou texto de conversas. Reutilizar a
-mesma evidência não renova uma autorização revogada. O backend continua responsável
-pela elegibilidade, vínculo do responsável legal e revalidação antes de envio.
+`npm run test:confirmation-contact-policy` usa Vite somente em
+`127.0.0.1:5186`, sem `.env`, API simulada e bloqueio de acesso externo. Cobre
+remoção do formulário, histórico de revogações, reavaliação explícita e falha
+técnica sem promoção local. Requer Chromium/Playwright; `PLAYWRIGHT_MODULE` pode
+apontar para uma instalação temporária da versão fixada no lockfile.
 
-Este teste de interface usa mocks; a integração autenticada backend → Python →
-legado fictício → Higia foi executada separadamente com o runner de legado.
-Nenhuma autorização ou verificação clínica real é criada pelos testes.
+A homologação administrativa completa continua em
+`test/confirmation-admin.homologation.mjs`, com banco descartável e APIs reais
+sobre fixtures. Seus casos refletem a política: ausência/expiração não bloqueiam
+contato verificado, mas revogação, número divergente e responsável não verificado
+continuam bloqueando. Nenhum serviço de envio é iniciado.

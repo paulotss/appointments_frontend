@@ -10,8 +10,8 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useEffect, useState } from 'react'
-import { informarContato, listarAutorizacoes, listarVerificacoes, verificarContato } from '../services/confirmacao.service'
+import { useState } from 'react'
+import { informarContato, listarVerificacoes, verificarContato } from '../services/confirmacao.service'
 import {
   CONTACT_ORIGIN_LABELS,
   CONTACT_ROLE_LABELS,
@@ -22,7 +22,6 @@ import {
   type ContactVerificationProcedure,
 } from '../types/confirmacao'
 import { mensagemErroApi } from '../utils/apiError'
-import { situacaoAutorizacao } from '../utils/contatoConfirmacao'
 
 function textoTelefone(
   maskedPhone?: string | null,
@@ -64,24 +63,9 @@ export function VerificarContatoDialog({
   const [conferencia, setConferencia] = useState<'informada' | 'verificada'>('informada')
   const [procedimento, setProcedimento] = useState<ContactVerificationProcedure | ''>('')
   const [vinculo, setVinculo] = useState(false)
-  const [autorizacao, setAutorizacao] = useState<'pendente' | 'vigente' | 'revogada'>('pendente')
   const [error, setError] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
   const numeroDisponivel = Boolean(contexto.informedPhoneRef)
-
-  useEffect(() => {
-    let ativo = true
-    void listarAutorizacoes(contexto.patientRef)
-      .then((rows) => {
-        if (ativo) setAutorizacao(situacaoAutorizacao(rows))
-      })
-      .catch(() => {
-        if (ativo) setAutorizacao('pendente')
-      })
-    return () => {
-      ativo = false
-    }
-  }, [contexto.patientRef])
 
   async function salvar() {
     setError(null)
@@ -135,11 +119,6 @@ export function VerificarContatoDialog({
   const motivo = contexto.reasonCode
     ? (REASON_LABELS[contexto.reasonCode] ?? contexto.reasonCode)
     : 'Pendência de contato'
-  const textoAutorizacao = {
-    pendente: 'Pendente. Verificar o número não cria uma autorização de contato.',
-    vigente: 'Há autorização vigente no registro. Ela não autoriza o envio por si só.',
-    revogada: 'A autorização anterior foi revogada. Nenhuma nova autorização será criada aqui.',
-  }[autorizacao]
 
   return (
     <Dialog open onClose={salvando ? undefined : onClose} fullWidth maxWidth="sm">
@@ -225,7 +204,7 @@ export function VerificarContatoDialog({
               <MenuItem value="sim">Verificado neste atendimento</MenuItem>
             </TextField>
           ) : null}
-          <Alert severity={autorizacao === 'vigente' ? 'info' : 'warning'}>{textoAutorizacao}</Alert>
+          <Alert severity="info">O sistema revalida a identidade e eventuais revogações antes de qualquer envio. Registrar este procedimento não dispara mensagens.</Alert>
         </Stack>
       </DialogContent>
       <DialogActions>

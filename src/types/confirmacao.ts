@@ -169,8 +169,8 @@ export const CONSULTATION_LABELS: Record<CampaignConsultationState, string> = {
 
 export const REASON_LABELS: Record<string, string> = {
   verification_missing: 'Verificação do contato ausente',
-  authorization_missing: 'Autorização de contato ausente',
-  authorization_revoked: 'Autorização revogada',
+  authorization_missing: 'Contato precisa ser reavaliado',
+  authorization_revoked: 'Contato revogado',
   ownership_revoked: 'Verificação revogada',
   contact_ready: 'Verificações exigidas concluídas',
   phone_missing: 'Número utilizável ausente',

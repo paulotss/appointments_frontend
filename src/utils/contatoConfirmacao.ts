@@ -6,11 +6,6 @@ const RECEPCAO_PODE_RESOLVER = new Set([
   'minor_guardian_missing',
 ])
 
-const AUTORIZACAO = new Set([
-  'authorization_missing',
-  'authorization_revoked',
-])
-
 export function falhaDeConsulta(item: CampaignItem): boolean {
   return item.appointmentRef.startsWith('fail:')
 }
@@ -30,9 +25,8 @@ export function acaoDaPendencia(item: CampaignItem): string | null {
   if (falhaDeConsulta(item)) {
     return 'Correção técnica'
   }
-  if (item.reasonCode && AUTORIZACAO.has(item.reasonCode)) {
-    return 'Autorização fora desta tela'
-  }
+  if (item.reasonCode === 'authorization_revoked') return 'Contato revogado'
+  if (item.reasonCode === 'authorization_missing') return 'Reavaliar contato em Contatos da confirmação'
   if (item.reasonCode === 'registry_unavailable') {
     return 'Correção técnica'
   }
