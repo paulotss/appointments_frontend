@@ -156,6 +156,7 @@ export function ConfirmacaoCampanhaPage() {
 
   const agendamentos = campanha.items.filter((item) => !falhaDeConsulta(item))
   const falhas = campanha.items.filter((item) => falhaDeConsulta(item))
+  const reconsultaInicial = campanha.consultationState === 'FAILED' && campanha.items.length === 0
   const registroIndisponivel =
     agendamentos.some((item) => item.reasonCode === 'registry_unavailable') ||
     campanha.consultationReason === 'registry_unavailable'
@@ -291,12 +292,12 @@ export function ConfirmacaoCampanhaPage() {
         ) : null}
       </Stack>
       <Paper sx={{ p: 2 }}>
-        <Button variant="outlined" disabled={busy || campanha.status === 'APPROVED' || agendamentos.length === 0}
+        <Button variant="outlined" disabled={busy || campanha.status === 'APPROVED' || (agendamentos.length === 0 && !reconsultaInicial)}
           onClick={() => void resolverAutomaticamente()}>
-          {resolvendo ? 'Reavaliando pendências...' : 'Resolver pendências automaticamente'}
+          {resolvendo ? (reconsultaInicial ? 'Consultando agenda...' : 'Reavaliando pendências...') : (reconsultaInicial ? 'Tentar consultar agenda novamente' : 'Resolver pendências automaticamente')}
         </Button>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          Usa o celular cadastrado no Saúde Vianet para adultos, sem formulário de verificação. Números inválidos, contatos ambíguos, revogações e falhas técnicas continuam bloqueados. Menores precisam de responsável legal verificado.
+          {reconsultaInicial ? 'A primeira consulta falhou e nenhum agendamento foi carregado. Tente novamente nesta mesma campanha; a nova consulta não envia mensagens.' : 'Usa o celular cadastrado no Saúde Vianet para adultos, sem formulário de verificação.'} Números inválidos, contatos ambíguos, revogações e falhas técnicas continuam bloqueados. Menores precisam de responsável legal verificado.
         </Typography>
         {campanha.status === 'APPROVED' ? <Typography variant="body2">Reabra a revisão para atualizar as pendências desta campanha.</Typography> : null}
       </Paper>

@@ -43,6 +43,9 @@ try {
           recipientState: 'PENDING', reasonCode: 'authorization_revoked', displayName: 'Fixture Revoked', identityStatus: 'ready' },
       ],
     }
+    const initialItems = campaign.items
+    if (options.emptyFailed) campaign = { ...campaign, consultationState: 'FAILED', consultationReason: 'query_failed',
+      appointmentsAnalyzed: 0, pendingVerifications: 0, items: [] }
     await context.route('**/*', async route => {
       const request = route.request(), url = new URL(request.url()), path = url.pathname
       if (url.origin !== origin) { external.push(url.origin); return route.abort() }
@@ -66,6 +69,11 @@ try {
       if (path.endsWith('/resolve-pending')) {
         if (options.bulkFailure) return ok({ message: 'A agenda está indisponível.' }, 503)
         if (options.delay) await new Promise(resolve => setTimeout(resolve, 250))
+        if (options.emptyFailed) {
+          campaign = { ...campaign, consultationState: 'READY', consultationReason: null, items: initialItems,
+            appointmentsAnalyzed: 2, pendingVerifications: 2 }
+          return ok({ campaign, summary: { evaluated: 2, updated: 2, resolved: 0, remaining: 2, referencesRecovered: 0, dispatchEnabled: false } }, 201)
+        }
         const single = request.postDataJSON().itemId
         campaign = { ...campaign, items: campaign.items.map(item => item.id !== 101 ? item : {
           ...item, informedPhoneRef: phoneRef, recipientState: single ? 'PENDING' : 'ELIGIBLE', reasonCode: single ? (options.adult ? 'contact_ready' : 'minor_guardian_missing') : 'contact_ready',
@@ -111,7 +119,24 @@ try {
     await select(page, 'Verificação do número', 'Verificação realizada neste atendimento')
     await select(page, 'Procedimento realizado', 'Confirmação presencial')
   }
-  let f = await scenario({ adult: true })
+  let f = await scenario({ emptyFailed: true })
+  const retry = f.page.getByRole('button', { name: 'Tentar consultar agenda novamente', exact: true })
+  assert.equal(await retry.isEnabled(), true)
+  await retry.click()
+  await f.page.getByRole('button', { name: 'Resolver pendências automaticamente', exact: true }).waitFor()
+  await f.page.getByRole('row').filter({ hasText: 'Fixture Patient' }).waitFor()
+  assert.deepEqual(f.writes, [{ path: '/api/confirmation-campaigns/1/resolve-pending', body: {} }])
+  passed('empty failed collection can be retried in the same campaign without approving or sending')
+  await close(f)
+  f = await scenario({ emptyFailed: true, bulkFailure: true })
+  await f.page.getByRole('button', { name: 'Tentar consultar agenda novamente', exact: true }).click()
+  await f.page.getByText('A agenda está indisponível.', { exact: true }).waitFor()
+  assert.equal(await f.page.getByRole('button', { name: 'Tentar consultar agenda novamente', exact: true }).isEnabled(), true)
+  assert.equal(await f.page.getByText('Fixture Patient', { exact: true }).count(), 0)
+  assert.equal(f.writes.length, 1)
+  passed('another collection failure remains visible without a fabricated agenda or automatic retry')
+  await close(f)
+  f = await scenario({ adult: true })
   assert.equal(await f.page.getByRole('button', { name: 'Resolver pendência', exact: true }).count(), 0)
   await f.page.getByRole('button', { name: 'Atualizar contato', exact: true }).click()
   await f.page.getByText('agendamento(s) reavaliado(s)', { exact: false }).waitFor()
