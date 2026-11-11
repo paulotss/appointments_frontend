@@ -211,7 +211,7 @@ export function ConfirmacaoContatosPage() {
             </Button>
           </Stack>
           <Alert severity="info">
-            Registre a conferência do número e do destinatário. A elegibilidade é reavaliada pelo sistema; nenhuma mensagem é enviada aqui.
+            Adultos usam o celular cadastrado no Saúde Vianet sem verificação manual. Os registros anteriores e as revogações continuam preservados. Para atualizar a situação, use Reavaliar contato.
           </Alert>
           {revogacaoRegistrada ? (
             <Alert severity="warning">Há revogações de contato no histórico. Elas continuam bloqueando os destinatários correspondentes.</Alert>
@@ -246,7 +246,7 @@ export function ConfirmacaoContatosPage() {
                     <TableCell>{item.role === 'GUARDIAN' ? (item.legalGuardianVerified ? 'Vínculo verificado' : 'Vínculo pendente') : 'Não se aplica'}</TableCell>
                     <TableCell>
                       <Stack direction="row" spacing={1}>
-                        {!item.revokedAt && item.status === 'INFORMED' ? (
+                        {!item.revokedAt && item.status === 'INFORMED' && item.role === 'GUARDIAN' ? (
                           <Button
                             size="small"
                             onClick={() => setContexto({
