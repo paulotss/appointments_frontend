@@ -36,8 +36,8 @@ try {
       dispatchEnabled: false, identityStatus: 'ready', events: [],
       items: [
         { id: 101, appointmentRef: 'appt:fixture-a', patientRef, recipientRef,
-          informedPhoneRef: options.missing ? null : phoneRef, appointmentTime: '09:00', sourceResolution: 'candidate', isMinor: false,
-          recipientState: 'PENDING', reasonCode: 'verification_missing', displayName: 'Fixture Patient', professionalName: 'Fixture Professional',
+          informedPhoneRef: options.missing ? null : phoneRef, appointmentTime: '09:00', sourceResolution: 'guardian_unavailable', isMinor: !options.adult,
+          recipientState: 'PENDING', reasonCode: options.adult ? 'verification_missing' : 'minor_guardian_missing', displayName: 'Fixture Patient', professionalName: 'Fixture Professional',
           maskedPhone: '(00) *****-0000', phoneStatus: 'available', identityStatus: 'ready' },
         { id: 102, appointmentRef: 'appt:fixture-b', patientRef, recipientRef, informedPhoneRef: phoneRef, appointmentTime: '10:00',
           recipientState: 'PENDING', reasonCode: 'authorization_revoked', displayName: 'Fixture Revoked', identityStatus: 'ready' },
@@ -68,7 +68,7 @@ try {
         if (options.delay) await new Promise(resolve => setTimeout(resolve, 250))
         const single = request.postDataJSON().itemId
         campaign = { ...campaign, items: campaign.items.map(item => item.id !== 101 ? item : {
-          ...item, informedPhoneRef: phoneRef, recipientState: single ? 'PENDING' : 'ELIGIBLE', reasonCode: single ? 'verification_missing' : 'contact_ready',
+          ...item, informedPhoneRef: phoneRef, recipientState: single ? 'PENDING' : 'ELIGIBLE', reasonCode: single ? (options.adult ? 'contact_ready' : 'minor_guardian_missing') : 'contact_ready',
         }) }
         return ok({ campaign, summary: { evaluated: single ? 1 : 2, updated: 1, resolved: single ? 0 : 1,
           remaining: 1, referencesRecovered: 1, dispatchEnabled: false } }, 201)
@@ -111,7 +111,22 @@ try {
     await select(page, 'Verificação do número', 'Verificação realizada neste atendimento')
     await select(page, 'Procedimento realizado', 'Confirmação presencial')
   }
-  let f = await scenario()
+  let f = await scenario({ adult: true })
+  assert.equal(await f.page.getByRole('button', { name: 'Resolver pendência', exact: true }).count(), 0)
+  await f.page.getByRole('button', { name: 'Atualizar contato', exact: true }).click()
+  await f.page.getByText('agendamento(s) reavaliado(s)', { exact: false }).waitFor()
+  assert.equal(await f.page.getByRole('dialog').count(), 0)
+  assert.deepEqual(f.writes, [{ path: '/api/confirmation-campaigns/1/resolve-pending', body: { itemId: 101 } }])
+  passed('adult refresh does not open or create a manual phone verification')
+  await close(f)
+  f = await scenario({ adult: true, bulkFailure: true })
+  await f.page.getByRole('button', { name: 'Atualizar contato', exact: true }).click()
+  await f.page.getByText('A agenda está indisponível.', { exact: true }).waitFor()
+  assert.equal(await f.page.getByRole('dialog').count(), 0)
+  assert.equal(f.writes.length, 1)
+  passed('adult refresh failure stays visible without a verification form or an automatic retry')
+  await close(f)
+  f = await scenario()
   await f.page.getByLabel('Novo prazo em São Paulo', { exact: true }).fill('2099-03-05T18:00')
   const refreshedIdentity = f.page.waitForResponse(response => response.request().method() === 'GET' && /confirmation-campaigns\/1$/.test(new URL(response.url()).pathname))
   await f.page.getByRole('button', { name: 'Salvar prazo', exact: true }).click()

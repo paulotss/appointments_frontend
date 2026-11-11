@@ -132,7 +132,7 @@ export function ConfirmacaoCampanhaPage() {
       setInfo(`${summary.evaluated} agendamento(s) reavaliado(s); ${summary.resolved} pendência(s) resolvida(s); ${summary.remaining} agendamento(s) ainda pendente(s) ou bloqueado(s). Nenhuma mensagem foi enviada.`)
       if (itemId !== undefined) {
         const atualizado = result.campaign.items.find(item => item.id === itemId)
-        if (atualizado && atualizado.recipientState !== 'ELIGIBLE') setContexto(contextoDoItem(atualizado))
+        if (atualizado && pendenciaResolvivel(atualizado)) setContexto(contextoDoItem(atualizado))
         else setContexto(null)
       }
     } catch (reason) {
@@ -296,7 +296,7 @@ export function ConfirmacaoCampanhaPage() {
           {resolvendo ? 'Reavaliando pendências...' : 'Resolver pendências automaticamente'}
         </Button>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          Consulta novamente a agenda e usa as conferências já registradas. Identidade, responsável legal, revogações e falhas técnicas continuam sendo verificados. Nenhuma conferência é criada automaticamente.
+          Usa o celular cadastrado no Saúde Vianet para adultos, sem formulário de verificação. Números inválidos, contatos ambíguos, revogações e falhas técnicas continuam bloqueados. Menores precisam de responsável legal verificado.
         </Typography>
         {campanha.status === 'APPROVED' ? <Typography variant="body2">Reabra a revisão para atualizar as pendências desta campanha.</Typography> : null}
       </Paper>
@@ -349,7 +349,13 @@ export function ConfirmacaoCampanhaPage() {
                     : '—'}
                 </TableCell>
                 <TableCell>
-                  {pendenciaResolvivel(item) ? (
+                  {item.recipientState === 'PENDING' && item.reasonCode === 'verification_missing' && item.isMinor === false ? (
+                    <Button size="small" disabled={busy} onClick={() => void resolverAutomaticamente(item.id).catch(reason => {
+                      if (campanhaAtual.current === campaignId) setError(mensagemErroApi(reason, 'Não foi possível atualizar o contato.'))
+                    })}>
+                      Atualizar contato
+                    </Button>
+                  ) : pendenciaResolvivel(item) ? (
                     <Button
                       size="small"
                       disabled={busy}

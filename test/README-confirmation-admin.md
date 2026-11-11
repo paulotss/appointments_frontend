@@ -82,7 +82,7 @@ apontar para uma instalação temporária da versão fixada no lockfile.
 A homologação administrativa completa continua em
 `test/confirmation-admin.homologation.mjs`, com banco descartável e APIs reais
 sobre fixtures. Seus casos refletem a política: ausência/expiração não bloqueiam
-contato verificado, mas revogação, número divergente e responsável não verificado
+adulto com um único celular válido no cadastro, mas revogação, número divergente e responsável não verificado
 continuam bloqueando. Nenhum serviço de envio é iniciado.
 
 
@@ -90,12 +90,15 @@ continuam bloqueando. Nenhum serviço de envio é iniciado.
 
 Na campanha editável, `Resolver pendências automaticamente` consulta novamente a
 origem e reavalia seus agendamentos, sem adicionar novos horários. Somente dados
-conclusivos da origem e conferências já registradas podem resolver pendências.
+conclusivos da origem podem resolver pendências: para adultos, um único celular
+válido no cadastro dispensa verificação manual de titularidade.
 A operação não cria verificações, vínculo de responsável, aprovação ou envio.
-Revogações, ausência de evidência e falhas técnicas continuam bloqueando.
+Revogações, conflitos de número, ausência de responsável legal verificado para
+menores e falhas técnicas continuam bloqueando.
 Campanha aprovada exige reabertura. Mudança concorrente aborta a atualização.
 
-O formulário individual permite clicar em Salvar e mostra a causa específica de
+Adultos com pendência antiga usam `Atualizar contato`, sem abrir formulário.
+O formulário individual de responsável legal permite clicar em Salvar e mostra a causa específica de
 um bloqueio. Telefone visível sem referência não é reconstruído pela máscara:
 `Atualizar dados do agendamento` busca os dados do mesmo item na origem. Uma
 mudança de paciente/destinatário é bloqueada e não faz associação automática.

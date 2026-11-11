@@ -1,8 +1,6 @@
 import type { CampaignItem, ContactAuthorization } from '../types/confirmacao'
 
 const RECEPCAO_PODE_RESOLVER = new Set([
-  'verification_missing',
-  'ownership_revoked',
   'minor_guardian_missing',
 ])
 
@@ -25,7 +23,8 @@ export function acaoDaPendencia(item: CampaignItem): string | null {
   if (falhaDeConsulta(item)) {
     return 'Correção técnica'
   }
-  if (item.reasonCode === 'authorization_revoked') return 'Contato revogado'
+  if (item.reasonCode === 'authorization_revoked' || item.reasonCode === 'ownership_revoked') return 'Contato revogado'
+  if (item.reasonCode === 'verification_missing') return 'Atualize os contatos da agenda'
   if (item.reasonCode === 'authorization_missing') return 'Reavaliar contato em Contatos da confirmação'
   if (item.reasonCode === 'registry_unavailable') {
     return 'Correção técnica'

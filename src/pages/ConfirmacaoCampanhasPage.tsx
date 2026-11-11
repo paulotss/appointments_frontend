@@ -182,7 +182,7 @@ export function ConfirmacaoCampanhasPage() {
             </TextField>
             <Typography variant="body2" color="text.secondary">
               {origem === 'SAUDEVIANET'
-                ? 'A agenda do dia é consultada automaticamente. Um horário marcado não fica apto sem as verificações do contato. Esta abertura não envia mensagem.'
+                ? 'A agenda é consultada automaticamente. Adultos com celular válido no cadastro ficam aptos sem verificação manual. Revogações e demais bloqueios são preservados. Esta abertura não envia mensagem.'
                 : 'A origem Higia ainda não consulta a agenda. Informe a referência opaca do agendamento, se já houver uma pendência.'}
             </Typography>
             {origem === 'HIGIA' ? (
