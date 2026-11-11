@@ -119,3 +119,12 @@ versão do lockfile, com `PLAYWRIGHT_MODULE` opcional para ferramentas em `/tmp`
 A homologação administrativa completa também cobre esses fluxos com Nest,
 PostgreSQL descartável e classificador Python reais sobre fixtures, iniciados
 por `appointments_backend/test/run-confirmation-contact-policy.py`.
+
+## Recuperação da primeira coleta
+
+Uma campanha editável com consulta FAILED e nenhum item pode usar
+`Tentar consultar agenda novamente`. A consulta usa a origem configurada e
+carrega os agendamentos na mesma campanha somente quando agenda e registro
+estão disponíveis, com auditoria e proteção contra mudança concorrente.
+Nova falha ou resultado parcial preserva a campanha anterior. Campanhas
+aprovadas não são alteradas. O fluxo não cria verificações nem envia mensagens.
