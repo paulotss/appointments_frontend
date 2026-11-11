@@ -56,3 +56,32 @@ somente HTTP simulado. O runner remove os serviços e as sessões ao terminar.
 Contratos, resultados e pendências de ativação estão em
 `appointments_backend/docs/confirmacao-legado.md`. A nova coluna também distingue
 confirmação bloqueada, recusada e desconhecida; não habilita escrita ou envio real.
+
+
+## Registro de autorização de contato
+
+`npm run test:confirmation-authorization` inicia Vite somente em
+`127.0.0.1:5186`, sem arquivo `.env` ou configuração local. Renderiza a página
+real de contatos com a API inteiramente simulada no navegador e bloqueia
+requisições externas. Não depende de tokens, banco ou pacientes reais. Requer
+Chromium do Playwright instalado. `PLAYWRIGHT_MODULE` pode apontar para uma
+instalação temporária da versão do lockfile.
+
+Cobre o destinatário vinculado à verificação selecionada, evidência e fundamento
+sem preenchimento automático, validade no fuso do dispositivo, clique repetido,
+evidência já registrada (inclusive revogada), falha de consulta, recusa de
+permissão, atualização da tela após sucesso e resultado de escrita incerto.
+Atualizar a consulta não repete o POST. Resultado incerto bloqueia a repetição
+naquele formulário e exige conferir o histórico. A consulta prévia da evidência
+reduz duplicações, mas não substitui idempotência transacional no backend.
+
+O formulário registra uma autorização já obtida; não solicita uma nova autorização
+ao paciente, não escolhe fundamento jurídico nem define validade automaticamente.
+As referências da evidência e do fundamento devem corresponder a registros reais
+mantidos pela clínica, sem dados pessoais ou texto de conversas. Reutilizar a
+mesma evidência não renova uma autorização revogada. O backend continua responsável
+pela elegibilidade, vínculo do responsável legal e revalidação antes de envio.
+
+Este teste de interface usa mocks; a integração autenticada backend → Python →
+legado fictício → Higia foi executada separadamente com o runner de legado.
+Nenhuma autorização ou verificação clínica real é criada pelos testes.
