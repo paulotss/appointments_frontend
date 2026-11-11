@@ -1,4 +1,3 @@
-import { RegistrarAutorizacaoDialog, type AlvoAutorizacao } from './RegistrarAutorizacaoDialog'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import {
   Accordion,
@@ -17,7 +16,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   associarPaciente,
   listarAssociacoes,
@@ -25,6 +24,7 @@ import {
   listarAutorizacoes,
   listarVerificacoes,
   pesquisarPacientes,
+  reavaliarContato,
   revogarAutorizacao,
   revogarVerificacao,
 } from '../services/confirmacao.service'
@@ -41,7 +41,6 @@ import {
   type PatientCandidate,
 } from '../types/confirmacao'
 import { mensagemErroApi } from '../utils/apiError'
-import { situacaoAutorizacao } from '../utils/contatoConfirmacao'
 import { VerificarContatoDialog, type ContextoContato } from './VerificarContatoDialog'
 
 function quando(valor: string): string {
@@ -51,6 +50,7 @@ function quando(valor: string): string {
 }
 
 export function ConfirmacaoContatosPage() {
+  const ultimaConsulta = useRef(0)
   const [nome, setNome] = useState('')
   const [resultados, setResultados] = useState<PatientCandidate[]>([])
   const [pesquisa, setPesquisa] = useState<'idle' | 'empty' | 'ready' | 'partial' | 'unavailable'>('idle')
@@ -62,9 +62,9 @@ export function ConfirmacaoContatosPage() {
   const [autorizacoes, setAutorizacoes] = useState<ContactAuthorization[]>([])
   const [associacoes, setAssociacoes] = useState<ContactAssociation[]>([])
   const [historico, setHistorico] = useState<ContactAuditEvent[]>([])
+  const [reavaliando, setReavaliando] = useState(false)
   const [consultado, setConsultado] = useState(false)
   const [contexto, setContexto] = useState<ContextoContato | null>(null)
-  const [alvoAutorizacao, setAlvoAutorizacao] = useState<AlvoAutorizacao | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
 
@@ -74,12 +74,14 @@ export function ConfirmacaoContatosPage() {
       setError('A consulta avançada precisa da referência interna do paciente.')
       return
     }
+    const consulta = ++ultimaConsulta.current
     const [nextVerifications, nextAuthorizations, nextAssociations, nextAudit] = await Promise.all([
       listarVerificacoes(alvo),
       listarAutorizacoes(alvo),
       listarAssociacoes(alvo),
       listarAuditoriaContato(alvo),
     ])
+    if (consulta !== ultimaConsulta.current) return
     setPatientRef(alvo)
     setVerificacoes(nextVerifications)
     setAutorizacoes(nextAuthorizations)
@@ -89,6 +91,7 @@ export function ConfirmacaoContatosPage() {
   }
 
   async function pesquisar() {
+    ultimaConsulta.current++
     setError(null)
     setInfo(null)
     setSelecionado(null)
@@ -106,6 +109,7 @@ export function ConfirmacaoContatosPage() {
   }
 
   async function escolher(pessoa: PatientCandidate) {
+    setConsultado(false)
     setSelecionado(pessoa)
     setError(null)
     try {
@@ -127,12 +131,9 @@ export function ConfirmacaoContatosPage() {
     }
   }
 
-  const autorizacao = situacaoAutorizacao(autorizacoes)
-  const textoAutorizacao = {
-    pendente: 'Pendente',
-    vigente: 'Vigente no registro',
-    revogada: 'Revogada',
-  }[autorizacao]
+  const revogacaoRegistrada = autorizacoes.some(
+    item => item.revokedAt && item.purpose === 'appointment_contact' && item.channel === 'whatsapp',
+  )
 
   return (
     <Stack spacing={2}>
@@ -148,10 +149,11 @@ export function ConfirmacaoContatosPage() {
         <TextField
           fullWidth
           label="Nome do paciente"
+          disabled={reavaliando}
           value={nome}
           onChange={(event) => setNome(event.target.value)}
         />
-        <Button variant="contained" onClick={() => void pesquisar()}>Pesquisar</Button>
+        <Button variant="contained" disabled={reavaliando} onClick={() => void pesquisar()}>Pesquisar</Button>
       </Stack>
       {pesquisa === 'unavailable' ? <Alert severity="warning">Identificação indisponível.</Alert> : null}
       {pesquisa === 'empty' ? <Alert severity="info">Nenhum paciente encontrado com esse nome.</Alert> : null}
@@ -179,7 +181,7 @@ export function ConfirmacaoContatosPage() {
                         : 'Telefone não disponível'}
                   </TableCell>
                   <TableCell>
-                    <Button size="small" onClick={() => void escolher(pessoa)}>Selecionar</Button>
+                    <Button size="small" disabled={reavaliando} onClick={() => void escolher(pessoa)}>Selecionar</Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -200,15 +202,20 @@ export function ConfirmacaoContatosPage() {
         <>
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
             <Chip label={`${verificacoes.length} registro(s)`} />
-            <Chip color={autorizacao === 'vigente' ? 'success' : 'warning'} label={`Autorização ${textoAutorizacao.toLowerCase()}`} />
+            <Button disabled={reavaliando} onClick={() => {
+              setReavaliando(true)
+              void executar(() => reavaliarContato(patientRef).then(() => undefined), 'Contato reavaliado. Confira a situação na campanha; nenhum envio foi realizado.')
+                .finally(() => setReavaliando(false))
+            }}>
+              Reavaliar contato
+            </Button>
           </Stack>
-          <Alert severity={autorizacao === 'pendente' ? 'warning' : 'info'}>
-            {autorizacao === 'pendente'
-              ? 'A autorização permanece pendente. Verificar o número não cria uma autorização de contato.'
-              : autorizacao === 'revogada'
-                ? 'A autorização foi revogada e não será recriada automaticamente.'
-                : 'A autorização vigente não envia mensagem e não dispensa a verificação do número.'}
+          <Alert severity="info">
+            Registre a conferência do número e do destinatário. A elegibilidade é reavaliada pelo sistema; nenhuma mensagem é enviada aqui.
           </Alert>
+          {revogacaoRegistrada ? (
+            <Alert severity="warning">Há revogações de contato no histórico. Elas continuam bloqueando os destinatários correspondentes.</Alert>
+          ) : null}
           <Paper>
             <Table size="small">
               <TableHead>
@@ -251,11 +258,6 @@ export function ConfirmacaoContatosPage() {
                             Verificar contato
                           </Button>
                         ) : null}
-                        {!item.revokedAt && item.status === 'VERIFIED' ? (
-                          <Button size="small" onClick={() => setAlvoAutorizacao({ patientRef: item.patientRef, recipientRef: item.recipientRef })}>
-                            Registrar autorização
-                          </Button>
-                        ) : null}
                         {item.revokedAt ? null : (
                           <Button size="small" color="error" onClick={() => void executar(() => revogarVerificacao(item.id).then(() => undefined), 'Verificação revogada. O contato deixa de ser considerado verificado.')}>
                             Revogar
@@ -268,38 +270,27 @@ export function ConfirmacaoContatosPage() {
               </TableBody>
             </Table>
           </Paper>
-          <Paper>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Autorização</TableCell>
-                  <TableCell>Registro</TableCell>
-                  <TableCell />
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {autorizacoes.length === 0 ? (
-                  <TableRow>
-                    <TableCell>Pendente</TableCell>
-                    <TableCell>Nenhuma autorização registrada</TableCell>
-                    <TableCell />
-                  </TableRow>
-                ) : autorizacoes.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{item.revokedAt ? 'Revogada' : 'Registrada'}</TableCell>
-                    <TableCell>{quando(item.recordedAt)} · {item.recordedBy.name}</TableCell>
-                    <TableCell>
-                      {item.revokedAt ? null : (
-                        <Button size="small" color="error" onClick={() => void executar(() => revogarAutorizacao(item.id).then(() => undefined), 'Autorização revogada.')}>
-                          Revogar
+          {autorizacoes.length > 0 ? (
+            <Paper>
+              <Typography sx={{ p: 2 }}>Registros anteriores de contato</Typography>
+              <Table size="small">
+                <TableHead><TableRow><TableCell>Situação</TableCell><TableCell>Registro</TableCell><TableCell /></TableRow></TableHead>
+                <TableBody>
+                  {autorizacoes.map(item => (
+                    <TableRow key={item.id}>
+                      <TableCell>{item.revokedAt ? 'Revogação registrada' : 'Registro anterior preservado'}</TableCell>
+                      <TableCell>{quando(item.recordedAt)} · {item.recordedBy.name}</TableCell>
+                      <TableCell>{!item.revokedAt ? (
+                        <Button size="small" color="error" onClick={() => void executar(() => revogarAutorizacao(item.id).then(() => undefined), 'Revogação de contato registrada.')}>
+                          Revogar contato
                         </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Paper>
+                      ) : null}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Paper>
+          ) : null}
           <Typography variant="h6">Histórico</Typography>
           <Stack spacing={1}>
             {historico.length === 0 ? <Typography color="text.secondary">Nenhuma alteração registrada.</Typography> : null}
@@ -311,18 +302,6 @@ export function ConfirmacaoContatosPage() {
             ))}
           </Stack>
         </>
-      ) : null}
-
-      {alvoAutorizacao ? (
-        <RegistrarAutorizacaoDialog
-          key={`${alvoAutorizacao.patientRef}:${alvoAutorizacao.recipientRef}`}
-          alvo={alvoAutorizacao}
-          onClose={() => setAlvoAutorizacao(null)}
-          onSaved={async () => {
-            await consultar(alvoAutorizacao.patientRef)
-            setInfo('Autorização registrada. A elegibilidade será reavaliada pelo sistema; nenhum envio foi realizado.')
-          }}
-        />
       ) : null}
 
       <Accordion>
@@ -383,7 +362,7 @@ export function ConfirmacaoContatosPage() {
           onSaved={async () => {
             setContexto(null)
             await consultar()
-            setInfo('Contato atualizado. A autorização não foi criada e nenhuma mensagem foi enviada.')
+            setInfo('Contato atualizado. A elegibilidade será reavaliada; nenhuma mensagem foi enviada.')
           }}
         />
       ) : null}

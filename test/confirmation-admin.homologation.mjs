@@ -31,6 +31,8 @@ const professional = (await login('professional')).accessToken
 await call('/confirmation-campaigns', { status: 401 })
 await call('/confirmation-campaigns', { token: professional, status: 403 })
 await call('/contact-registry/authorizations', { token: fixture.registryToken, method: 'POST', data: {}, status: 403 })
+await call('/contact-registry/reclassify', { token: fixture.registryToken, method: 'POST', data: { patientRef: fixture.subjects[0].patientRef }, status: 403 })
+await call('/contact-registry/reclassify', { token: reception, method: 'POST', data: { patientRef: 'fixture-name' }, status: 400 })
 passed('authentication and staff/service boundaries')
 const browser = await chromium.launch({ headless: true, executablePath: chromium.executablePath() })
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
@@ -121,11 +123,12 @@ try {
   await select('Verificação do número', 'Verificação realizada neste atendimento')
   await select('Procedimento realizado', 'Confirmação presencial')
   await saveContact()
-  await assertPersonState('noauth', 'PENDING', 'authorization_missing')
-  await assertPersonState('expired', 'PENDING', 'authorization_missing')
+  await assertPersonState('noauth', 'ELIGIBLE', 'contact_ready')
+  assert.deepEqual(await call(`/contact-registry/authorizations?patientRef=${encodeURIComponent(person('noauth').patientRef)}`, { token: reception }), [])
+  await assertPersonState('expired', 'ELIGIBLE', 'contact_ready')
   await assertPersonState('revoked', 'PENDING', 'authorization_revoked')
   await assertPersonState('wrongphone', 'PENDING', 'verification_missing')
-  passed('missing, expired, revoked authorization and mismatched phone remain blocked')
+  passed('no grant required; expired history is optional, revocation and mismatched phone remain blocked')
 
   await openContact('minor')
   await select('De quem é o número', 'Responsável legal')
@@ -141,22 +144,21 @@ try {
 
   // Force registry failure only in the dedicated Python fixture, then trigger real reclassification.
   await http.post(`${classifier}/fixture/registry-failure`, { headers: { Authorization: 'Bearer fixture-only' }, data: { unavailable: true } })
-  const grants = await call('/contact-registry/authorizations', { token: reception, method: 'POST', status: 201, data: {
-    patientRef: person('adult').patientRef, recipientRef: person('adult').recipientRef,
-    purpose: 'appointment_contact', channel: 'whatsapp', legalBasis: 'fixture-only', evidenceRef: 'fixture-only',
-    validFrom: new Date(Date.now() - 60000).toISOString().replace(/\.\d{3}Z$/, 'Z'),
-    expiresAt: new Date(Date.now() + 3600000).toISOString().replace(/\.\d{3}Z$/, 'Z'),
-  } })
+  await call('/contact-registry/reclassify', { token: reception, method: 'POST', status: 201, data: { patientRef: person('adult').patientRef } })
   await assertPersonState('adult', 'UNAVAILABLE', 'registry_unavailable')
   await reloadCampaign()
   await page.getByText('O registro de contatos está indisponível.', { exact: false }).waitFor()
   assert.equal(await row('adult').first().getByRole('button', { name: 'Resolver pendência' }).count(), 0)
   await http.post(`${classifier}/fixture/registry-failure`, { headers: { Authorization: 'Bearer fixture-only' }, data: { unavailable: false } })
-  await call(`/contact-registry/authorizations/${grants.id}/revoke`, { token: reception, method: 'POST', status: 201 })
-  await assertPersonState('adult', 'ELIGIBLE') // Original fixture grant remains valid.
+  await call('/contact-registry/reclassify', { token: reception, method: 'POST', status: 201, data: { patientRef: person('adult').patientRef } })
+  await assertPersonState('adult', 'ELIGIBLE')
   passed('registry failure removes eligibility and blocks reception action')
 
   await reloadCampaign()
+  await page.getByLabel('Novo prazo em São Paulo', { exact: true }).fill('2099-03-05T18:00')
+  const deadlineSaved = page.waitForResponse(response => response.url().endsWith(`/confirmation-campaigns/${id}/response-deadline`) && response.request().method() === 'PUT')
+  await page.getByRole('button', { name: 'Salvar prazo', exact: true }).click()
+  assert.equal((await deadlineSaved).status(), 200)
   await page.getByRole('button', { name: 'Colocar em revisão', exact: true }).click()
   await page.getByRole('button', { name: 'Aprovar administrativamente', exact: true }).click()
   await page.getByRole('button', { name: 'Reabrir revisão', exact: true }).waitFor()
@@ -174,9 +176,13 @@ try {
   await page.getByLabel('Nome do paciente', { exact: true }).fill('Fixture expired')
   await page.getByRole('button', { name: 'Pesquisar', exact: true }).click()
   await page.getByRole('button', { name: 'Selecionar', exact: true }).click()
-  await page.getByText('Autorização pendente', { exact: true }).waitFor()
-  assert.equal(await page.getByText('A autorização foi revogada', { exact: false }).count(), 0)
-  passed('expired authorization is pending rather than described as revoked')
+  await page.getByText('Registros anteriores de contato', { exact: true }).waitFor()
+  assert.equal(await page.getByText('Autorização pendente', { exact: true }).count(), 0)
+  assert.equal(await page.getByRole('button', { name: 'Registrar autorização', exact: true }).count(), 0)
+  await page.getByRole('button', { name: 'Reavaliar contato', exact: true }).click()
+  await page.getByText('Contato reavaliado.', { exact: false }).waitFor()
+  await assertPersonState('expired', 'ELIGIBLE', 'contact_ready')
+  passed('history preserved without authorization form; explicit reclassification uses authenticated endpoint')
 
   await page.goto(`${origin}/confirmacao/contatos`)
   await page.getByLabel('Nome do paciente', { exact: true }).fill('Fixture adult')

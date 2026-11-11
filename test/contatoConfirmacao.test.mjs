@@ -6,7 +6,7 @@ import ts from 'typescript'
 // Transpile the actual utility without a second test-only implementation.
 const source = await readFile(new URL('../src/utils/contatoConfirmacao.ts', import.meta.url), 'utf8')
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText
-const { situacaoAutorizacao } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`)
+const { situacaoAutorizacao, acaoDaPendencia, pendenciaResolvivel } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`)
 const now = new Date('2026-11-04T12:00:00Z')
 const grant = (overrides = {}) => ({
   revokedAt: null, validFrom: '2026-11-01T00:00:00Z', expiresAt: '2026-11-05T00:00:00Z', ...overrides,
@@ -27,4 +27,12 @@ test('actual revocation is shown; a separate active grant can still be valid', (
   const revoked = grant({ revokedAt: '2026-11-03T00:00:00Z' })
   assert.equal(situacaoAutorizacao([revoked], now), 'revogada')
   assert.equal(situacaoAutorizacao([revoked, grant()], now), 'vigente')
+})
+
+
+test('old authorization gaps request reclassification, without inventing a grant or verifying a contact', () => {
+  const item = { appointmentRef: 'appt:fixture', reasonCode: 'authorization_missing', recipientState: 'PENDING', patientRef: 'patient:fixture', recipientRef: 'recipient:fixture' }
+  assert.equal(pendenciaResolvivel(item), false)
+  assert.equal(acaoDaPendencia(item), 'Reavaliar contato em Contatos da confirmação')
+  assert.equal(acaoDaPendencia({ ...item, reasonCode: 'authorization_revoked' }), 'Contato revogado')
 })

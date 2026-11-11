@@ -130,17 +130,8 @@ export async function listarAutorizacoes(patientRef: string): Promise<ContactAut
   return response.data
 }
 
-export async function registrarAutorizacao(payload: {
-  patientRef: string
-  recipientRef: string
-  purpose: 'appointment_contact'
-  channel: 'whatsapp'
-  legalBasis: string
-  evidenceRef?: string
-  validFrom: string
-  expiresAt: string
-}): Promise<ContactAuthorization> {
-  const response = await apiClient.post<ContactAuthorization>('/contact-registry/authorizations', payload)
+export async function reavaliarContato(patientRef: string): Promise<{ reclassified: true; dispatchEnabled: false }> {
+  const response = await apiClient.post<{ reclassified: true; dispatchEnabled: false }>('/contact-registry/reclassify', { patientRef })
   return response.data
 }
 
