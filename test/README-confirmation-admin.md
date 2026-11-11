@@ -84,3 +84,35 @@ A homologação administrativa completa continua em
 sobre fixtures. Seus casos refletem a política: ausência/expiração não bloqueiam
 contato verificado, mas revogação, número divergente e responsável não verificado
 continuam bloqueando. Nenhum serviço de envio é iniciado.
+
+
+## Resolução em lote e recuperação do formulário
+
+Na campanha editável, `Resolver pendências automaticamente` consulta novamente a
+origem e reavalia seus agendamentos, sem adicionar novos horários. Somente dados
+conclusivos da origem e conferências já registradas podem resolver pendências.
+A operação não cria verificações, vínculo de responsável, aprovação ou envio.
+Revogações, ausência de evidência e falhas técnicas continuam bloqueando.
+Campanha aprovada exige reabertura. Mudança concorrente aborta a atualização.
+
+O formulário individual permite clicar em Salvar e mostra a causa específica de
+um bloqueio. Telefone visível sem referência não é reconstruído pela máscara:
+`Atualizar dados do agendamento` busca os dados do mesmo item na origem. Uma
+mudança de paciente/destinatário é bloqueada e não faz associação automática.
+Após troca de referência, o formulário é reiniciado para nova conferência.
+
+Leituras do formulário têm limite de 20 segundos; escritas, de 30 segundos.
+Resultado incerto exige `Conferir registro` por leitura, sem repetir a gravação.
+Se o registro foi concluído e só a atualização da tela falhou, `Atualizar campanha`
+repete apenas a consulta. Um contato já verificado é reaproveitado, sem outra
+declaração. O andamento de uma campanha não substitui outra após navegação.
+
+`npm run test:confirmation-pending` usa Vite somente em `127.0.0.1:5187`, página
+e formulário reais e API inteiramente fictícia. Bloqueia chamadas externas.
+Cobre lote, referência ausente, recuperação, resultado incerto, clique repetido,
+campanha aprovada e navegação durante a operação. Usa Playwright/Chromium da
+versão do lockfile, com `PLAYWRIGHT_MODULE` opcional para ferramentas em `/tmp`.
+
+A homologação administrativa completa também cobre esses fluxos com Nest,
+PostgreSQL descartável e classificador Python reais sobre fixtures, iniciados
+por `appointments_backend/test/run-confirmation-contact-policy.py`.

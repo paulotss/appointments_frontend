@@ -10,7 +10,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { informarContato, listarVerificacoes, verificarContato } from '../services/confirmacao.service'
 import {
   CONTACT_ORIGIN_LABELS,
@@ -35,6 +35,7 @@ function textoTelefone(
 }
 
 export interface ContextoContato {
+  campaignItemId?: number
   patientRef: string
   recipientRef: string
   informedPhoneRef: string | null
@@ -53,11 +54,17 @@ export function VerificarContatoDialog({
   contexto,
   onClose,
   onSaved,
+  onRefresh,
 }: {
   contexto: ContextoContato
   onClose: () => void
   onSaved: () => Promise<void>
+  onRefresh?: () => Promise<void>
 }) {
+  const emAndamento = useRef(false)
+  const [concluido, setConcluido] = useState(false)
+  const [incerto, setIncerto] = useState(false)
+  const [atualizando, setAtualizando] = useState(false)
   const [papel, setPapel] = useState<ContactSubjectRole>('PATIENT')
   const [origem, setOrigem] = useState<ContactOrigin>('IN_PERSON')
   const [conferencia, setConferencia] = useState<'informada' | 'verificada'>('informada')
@@ -67,12 +74,57 @@ export function VerificarContatoDialog({
   const [salvando, setSalvando] = useState(false)
   const numeroDisponivel = Boolean(contexto.informedPhoneRef)
 
-  async function salvar() {
+  function validarContexto(): string | null {
+    if (!contexto.patientRef || !contexto.recipientRef) return 'Não foi possível identificar o destinatário deste agendamento. Atualize os dados na campanha.'
+    if (contexto.reasonCode === 'appointment_identity_changed' || contexto.reasonCode === 'appointment_not_available')
+      return 'O agendamento mudou na origem. Confira os dados da campanha antes de registrar a verificação.'
+    if (contexto.identityStatus === 'unavailable') return 'A identificação deste agendamento está indisponível. Atualize os dados antes de registrar a verificação.'
+    if (!contexto.informedPhoneRef) return 'Este agendamento não possui uma referência válida de telefone para registrar a verificação. Atualize os dados do agendamento. Se continuar assim, é necessária correção na origem.'
+    return null
+  }
+
+  async function atualizarCampanha() {
+    if (emAndamento.current) return
+    emAndamento.current = true
+    setSalvando(true)
+    try { await onSaved() }
+    catch { setError('O contato foi salvo. Não foi possível atualizar a tela; use Atualizar campanha, sem repetir o registro.') }
+    finally { emAndamento.current = false; setSalvando(false) }
+  }
+
+  async function conferirRegistro() {
+    if (emAndamento.current) return
+    emAndamento.current = true
+    setSalvando(true)
+    try {
+      const atuais = await listarVerificacoes(contexto.patientRef, AbortSignal.timeout(20000))
+      const registro = atuais.find(item => !item.revokedAt && item.recipientRef === contexto.recipientRef &&
+        item.informedPhoneRef === contexto.informedPhoneRef && item.role === papel &&
+        (conferencia === 'informada' || item.status === 'VERIFIED'))
+      if (!registro) { setError('O resultado ainda não foi comprovado. Aguarde e use Conferir registro novamente. Nenhum pedido de gravação será repetido.'); return }
+      setConcluido(true)
+      setIncerto(false)
+      try { await onSaved() }
+      catch { setError('O contato foi salvo. Use Atualizar campanha para atualizar a tela, sem repetir o registro.') }
+    } catch { setError('Não foi possível consultar o resultado. Aguarde e confira novamente; nenhuma gravação foi repetida.') }
+    finally { emAndamento.current = false; setSalvando(false) }
+  }
+
+  async function atualizarOrigem() {
+    if (!onRefresh || emAndamento.current) return
+    emAndamento.current = true
+    setAtualizando(true)
     setError(null)
-    if (!contexto.informedPhoneRef) {
-      setError('Este agendamento não trouxe uma referência de número. O telefone não pode ser digitado nesta tela.')
-      return
-    }
+    try { await onRefresh() }
+    catch (reason) { setError(mensagemErroApi(reason, 'Não foi possível atualizar os dados do agendamento.')) }
+    finally { emAndamento.current = false; setAtualizando(false) }
+  }
+
+  async function salvar() {
+    if (emAndamento.current || concluido || incerto) return
+    setError(null)
+    const contextoInvalido = validarContexto()
+    if (contextoInvalido) { setError(contextoInvalido); return }
     if (conferencia === 'verificada' && procedimento === '') {
       setError('Escolha o procedimento realizado. Marcar uma opção não verifica o número.')
       return
@@ -81,51 +133,52 @@ export function VerificarContatoDialog({
       setError('Responsável legal só fica verificado quando o vínculo é confirmado neste atendimento.')
       return
     }
+    emAndamento.current = true
     setSalvando(true)
+    let gravando = false
     try {
-      const atuais = await listarVerificacoes(contexto.patientRef)
-      const ativo = atuais.find(
-        (item) =>
-          !item.revokedAt &&
-          item.recipientRef === contexto.recipientRef &&
-          item.informedPhoneRef === contexto.informedPhoneRef &&
-          item.role === papel,
-      )
-      if (ativo?.status === 'VERIFIED') {
-        setError('Este contato já teve o procedimento registrado. Uma nova declaração não autoriza o envio.')
-        return
+      const atuais = await listarVerificacoes(contexto.patientRef, AbortSignal.timeout(20000))
+      const ativo = atuais.find(item => !item.revokedAt && item.recipientRef === contexto.recipientRef &&
+        item.informedPhoneRef === contexto.informedPhoneRef && item.role === papel)
+      if (ativo?.status !== 'VERIFIED') {
+        gravando = !ativo
+        const registro = ativo ?? await informarContato({
+          patientRef: contexto.patientRef, recipientRef: contexto.recipientRef,
+          informedPhoneRef: contexto.informedPhoneRef!, role: papel, origin: origem,
+        }, AbortSignal.timeout(30000))
+        gravando = false
+        if (conferencia === 'verificada') {
+          gravando = true
+          await verificarContato(registro.id, { procedure: procedimento as ContactVerificationProcedure,
+            legalGuardianVerified: papel === 'GUARDIAN' && vinculo }, AbortSignal.timeout(30000))
+          gravando = false
+        }
       }
-      const registro = ativo ?? await informarContato({
-        patientRef: contexto.patientRef,
-        recipientRef: contexto.recipientRef,
-        informedPhoneRef: contexto.informedPhoneRef,
-        role: papel,
-        origin: origem,
-      })
-      if (conferencia === 'verificada') {
-        await verificarContato(registro.id, {
-          procedure: procedimento as ContactVerificationProcedure,
-          legalGuardianVerified: papel === 'GUARDIAN' && vinculo,
-        })
-      }
-      await onSaved()
+      setConcluido(true)
+      try { await onSaved() }
+      catch { setError('O contato foi salvo. Não foi possível atualizar a tela; use Atualizar campanha, sem repetir o registro.') }
     } catch (reason) {
-      setError(mensagemErroApi(reason, 'Não foi possível registrar o contato.'))
-    } finally {
-      setSalvando(false)
-    }
+      const status = (reason as { response?: { status?: number } })?.response?.status
+      if (gravando && (!status || status >= 500 || status === 408)) {
+        setIncerto(true)
+        setError('Não foi possível comprovar o resultado da gravação. Use Conferir registro antes de tentar novamente. O pedido não será repetido automaticamente.')
+      } else setError(mensagemErroApi(reason, 'Não foi possível registrar o contato.'))
+    } finally { emAndamento.current = false; setSalvando(false) }
   }
 
   const motivo = contexto.reasonCode
     ? (REASON_LABELS[contexto.reasonCode] ?? contexto.reasonCode)
     : 'Pendência de contato'
 
+  const ocupado = salvando || atualizando
+  const editando = ocupado || concluido || incerto
   return (
-    <Dialog open onClose={salvando ? undefined : onClose} fullWidth maxWidth="sm">
+    <Dialog open onClose={ocupado ? undefined : onClose} fullWidth maxWidth="sm">
       <DialogTitle>Verificar contato</DialogTitle>
       <DialogContent>
         <Stack spacing={1.5} sx={{ mt: 0.5 }}>
           {error ? <Alert severity="error">{error}</Alert> : null}
+          {!numeroDisponivel ? <Alert severity="warning">Falta a referência necessária para salvar a verificação. Atualize os dados do agendamento; a máscara não será usada para reconstruir o número.</Alert> : null}
           <Alert severity="info">
             Salvar registra a conferência da recepção. Não envia mensagem e não libera o contato.
           </Alert>
@@ -148,6 +201,7 @@ export function VerificarContatoDialog({
           ) : null}
           <TextField
             select
+            disabled={editando}
             label="De quem é o número"
             value={papel}
             onChange={(event) => {
@@ -161,6 +215,7 @@ export function VerificarContatoDialog({
           </TextField>
           <TextField
             select
+            disabled={editando}
             label="Como o número foi informado"
             value={origem}
             onChange={(event) => setOrigem(event.target.value as ContactOrigin)}
@@ -171,6 +226,7 @@ export function VerificarContatoDialog({
           </TextField>
           <TextField
             select
+            disabled={editando}
             label="Verificação do número"
             value={conferencia}
             onChange={(event) => setConferencia(event.target.value as 'informada' | 'verificada')}
@@ -182,6 +238,7 @@ export function VerificarContatoDialog({
           {conferencia === 'verificada' ? (
             <TextField
               select
+              disabled={editando}
               label="Procedimento realizado"
               value={procedimento}
               onChange={(event) => setProcedimento(event.target.value as ContactVerificationProcedure)}
@@ -195,6 +252,7 @@ export function VerificarContatoDialog({
           {conferencia === 'verificada' && papel === 'GUARDIAN' ? (
             <TextField
               select
+              disabled={editando}
               label="Vínculo do responsável legal"
               value={vinculo ? 'sim' : 'nao'}
               onChange={(event) => setVinculo(event.target.value === 'sim')}
@@ -208,9 +266,10 @@ export function VerificarContatoDialog({
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={salvando}>Cancelar</Button>
-        <Button variant="contained" onClick={() => void salvar()} disabled={salvando || !numeroDisponivel}>
-          Salvar
+        <Button onClick={onClose} disabled={ocupado}>Fechar</Button>
+        {onRefresh && !concluido && !incerto ? <Button disabled={ocupado} onClick={() => void atualizarOrigem()}>Atualizar dados do agendamento</Button> : null}
+        <Button variant="contained" disabled={ocupado} onClick={() => void (concluido ? atualizarCampanha() : incerto ? conferirRegistro() : salvar())}>
+          {ocupado ? 'Processando...' : concluido ? 'Atualizar campanha' : incerto ? 'Conferir registro' : 'Salvar'}
         </Button>
       </DialogActions>
     </Dialog>
