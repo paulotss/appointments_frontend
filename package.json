@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test:confirmation-admin": "node test/confirmation-admin.homologation.mjs",
-    "test:contact-status": "node test/contatoConfirmacao.test.mjs"
+    "test:contact-status": "node test/contatoConfirmacao.test.mjs",
+    "test:confirmation-authorization": "node test/confirmation-authorization.homologation.mjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

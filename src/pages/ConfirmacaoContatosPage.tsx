@@ -1,3 +1,4 @@
+import { RegistrarAutorizacaoDialog, type AlvoAutorizacao } from './RegistrarAutorizacaoDialog'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import {
   Accordion,
@@ -63,6 +64,7 @@ export function ConfirmacaoContatosPage() {
   const [historico, setHistorico] = useState<ContactAuditEvent[]>([])
   const [consultado, setConsultado] = useState(false)
   const [contexto, setContexto] = useState<ContextoContato | null>(null)
+  const [alvoAutorizacao, setAlvoAutorizacao] = useState<AlvoAutorizacao | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
 
@@ -249,6 +251,11 @@ export function ConfirmacaoContatosPage() {
                             Verificar contato
                           </Button>
                         ) : null}
+                        {!item.revokedAt && item.status === 'VERIFIED' ? (
+                          <Button size="small" onClick={() => setAlvoAutorizacao({ patientRef: item.patientRef, recipientRef: item.recipientRef })}>
+                            Registrar autorização
+                          </Button>
+                        ) : null}
                         {item.revokedAt ? null : (
                           <Button size="small" color="error" onClick={() => void executar(() => revogarVerificacao(item.id).then(() => undefined), 'Verificação revogada. O contato deixa de ser considerado verificado.')}>
                             Revogar
@@ -304,6 +311,18 @@ export function ConfirmacaoContatosPage() {
             ))}
           </Stack>
         </>
+      ) : null}
+
+      {alvoAutorizacao ? (
+        <RegistrarAutorizacaoDialog
+          key={`${alvoAutorizacao.patientRef}:${alvoAutorizacao.recipientRef}`}
+          alvo={alvoAutorizacao}
+          onClose={() => setAlvoAutorizacao(null)}
+          onSaved={async () => {
+            await consultar(alvoAutorizacao.patientRef)
+            setInfo('Autorização registrada. A elegibilidade será reavaliada pelo sistema; nenhum envio foi realizado.')
+          }}
+        />
       ) : null}
 
       <Accordion>
