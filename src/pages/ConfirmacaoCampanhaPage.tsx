@@ -12,7 +12,7 @@ import {
   Typography,
   TextField,
 } from '@mui/material'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link as RouterLink, useParams } from 'react-router-dom'
 import {
   aprovarCampanha,
@@ -20,6 +20,7 @@ import {
   colocarCampanhaEmRevisao,
   obterCampanha,
   reabrirCampanha,
+  resolverPendenciasCampanha,
 } from '../services/confirmacao.service'
 import {
   AUDIT_ACTION_LABELS,
@@ -28,6 +29,7 @@ import {
   REASON_LABELS,
   RECIPIENT_STATE_LABELS,
   type CampaignDetail,
+  type CampaignItem,
   type CampaignRecipientState,
 } from '../types/confirmacao'
 import { mensagemErroApi } from '../utils/apiError'
@@ -56,10 +58,13 @@ const ESTADO_COR: Record<
 export function ConfirmacaoCampanhaPage() {
   const { id } = useParams()
   const campaignId = Number(id)
+  const campanhaAtual = useRef(campaignId)
   const [campanha, setCampanha] = useState<CampaignDetail | null>(null)
+  const [info, setInfo] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [prazo, setPrazo] = useState('')
   const [busy, setBusy] = useState(false)
+  const [resolvendo, setResolvendo] = useState(false)
   const [contexto, setContexto] = useState<ContextoContato | null>(null)
 
   useEffect(() => {
@@ -67,6 +72,12 @@ export function ConfirmacaoCampanhaPage() {
       return
     }
     let ativo = true
+    campanhaAtual.current = campaignId
+    setBusy(false)
+    setResolvendo(false)
+    setCampanha(null)
+    setContexto(null)
+    setInfo(null)
     void obterCampanha(campaignId)
       .then((carregada) => {
         if (ativo) setCampanha(carregada)
@@ -86,14 +97,48 @@ export function ConfirmacaoCampanhaPage() {
     setBusy(true)
     setError(null)
     try {
-      setCampanha(await acao(campaignId))
+      const result = await acao(campaignId)
+      if (campanhaAtual.current === campaignId) setCampanha(result)
     } catch (reason) {
-      setError(
+      if (campanhaAtual.current === campaignId) setError(
         mensagemErroApi(reason, 'Não foi possível atualizar a campanha.'),
       )
     } finally {
-      setBusy(false)
+      if (campanhaAtual.current === campaignId) setBusy(false)
     }
+  }
+
+  function contextoDoItem(item: CampaignItem): ContextoContato {
+    return { campaignItemId: item.id, patientRef: item.patientRef ?? '', recipientRef: item.recipientRef ?? '',
+      informedPhoneRef: item.informedPhoneRef, appointmentTime: item.appointmentTime,
+      professionalName: item.professionalName, displayName: item.displayName,
+      maskedPhone: item.maskedPhone, phoneStatus: item.phoneStatus, identityStatus: item.identityStatus,
+      reasonCode: item.reasonCode, horariosRelacionados: campanha?.items.filter(outro =>
+        outro.recipientRef && outro.recipientRef === item.recipientRef).length }
+  }
+
+  async function resolverAutomaticamente(itemId?: number) {
+    if (busy) return
+    setBusy(true)
+    setResolvendo(true)
+    setError(null)
+    setInfo(null)
+    try {
+      const result = await resolverPendenciasCampanha(campaignId, itemId)
+      if (campanhaAtual.current !== campaignId) return
+      setCampanha(result.campaign)
+      const summary = result.summary
+      setInfo(`${summary.evaluated} agendamento(s) reavaliado(s); ${summary.resolved} pendência(s) resolvida(s); ${summary.remaining} agendamento(s) ainda pendente(s) ou bloqueado(s). Nenhuma mensagem foi enviada.`)
+      if (itemId !== undefined) {
+        const atualizado = result.campaign.items.find(item => item.id === itemId)
+        if (atualizado && atualizado.recipientState !== 'ELIGIBLE') setContexto(contextoDoItem(atualizado))
+        else setContexto(null)
+      }
+    } catch (reason) {
+      if (campanhaAtual.current !== campaignId) return
+      if (itemId !== undefined) throw reason
+      setError(mensagemErroApi(reason, 'Não foi possível concluir a reavaliação. Atualize a campanha antes de tentar novamente.'))
+    } finally { if (campanhaAtual.current === campaignId) { setBusy(false); setResolvendo(false) } }
   }
 
   if (!Number.isInteger(campaignId)) {
@@ -149,6 +194,7 @@ export function ConfirmacaoCampanhaPage() {
         WhatsApp.
       </Alert>
       {error ? <Alert severity="error">{error}</Alert> : null}
+      {info ? <Alert severity="success">{info}</Alert> : null}
       <Alert severity="info">
         A recepção pode resolver verificação ausente, verificação revogada e
         responsável legal não verificado. Contato revogado, registro
@@ -243,6 +289,16 @@ export function ConfirmacaoCampanhaPage() {
           </Button>
         ) : null}
       </Stack>
+      <Paper sx={{ p: 2 }}>
+        <Button variant="outlined" disabled={busy || campanha.status === 'APPROVED' || agendamentos.length === 0}
+          onClick={() => void resolverAutomaticamente()}>
+          {resolvendo ? 'Reavaliando pendências...' : 'Resolver pendências automaticamente'}
+        </Button>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          Consulta novamente a agenda e usa as conferências já registradas. Identidade, responsável legal, revogações e falhas técnicas continuam sendo verificados. Nenhuma conferência é criada automaticamente.
+        </Typography>
+        {campanha.status === 'APPROVED' ? <Typography variant="body2">Reabra a revisão para atualizar as pendências desta campanha.</Typography> : null}
+      </Paper>
       <Typography variant="h6">Agendamentos</Typography>
       <Paper>
         <Table size="small">
@@ -295,25 +351,8 @@ export function ConfirmacaoCampanhaPage() {
                   {pendenciaResolvivel(item) ? (
                     <Button
                       size="small"
-                      onClick={() =>
-                        setContexto({
-                          patientRef: item.patientRef ?? '',
-                          recipientRef: item.recipientRef ?? '',
-                          informedPhoneRef: item.informedPhoneRef,
-                          appointmentTime: item.appointmentTime,
-                          professionalName: item.professionalName,
-                          displayName: item.displayName,
-                          maskedPhone: item.maskedPhone,
-                          phoneStatus: item.phoneStatus,
-                          identityStatus: item.identityStatus,
-                          reasonCode: item.reasonCode,
-                          horariosRelacionados: agendamentos.filter(
-                            (outro) =>
-                              outro.recipientRef &&
-                              outro.recipientRef === item.recipientRef,
-                          ).length,
-                        })
-                      }
+                      disabled={busy}
+                      onClick={() => setContexto(contextoDoItem(item))}
                     >
                       Resolver pendência
                     </Button>
@@ -365,11 +404,15 @@ export function ConfirmacaoCampanhaPage() {
       ) : null}
       {contexto ? (
         <VerificarContatoDialog
+          key={`${contexto.campaignItemId}:${contexto.recipientRef}:${contexto.informedPhoneRef}`}
           contexto={contexto}
           onClose={() => setContexto(null)}
+          onRefresh={contexto.campaignItemId ? () => resolverAutomaticamente(contexto.campaignItemId) : undefined}
           onSaved={async () => {
+            const atualizada = await obterCampanha(campaignId)
+            if (campanhaAtual.current !== campaignId) return
+            setCampanha(atualizada)
             setContexto(null)
-            setCampanha(await obterCampanha(campaignId))
           }}
         />
       ) : null}

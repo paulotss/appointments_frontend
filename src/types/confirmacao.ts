@@ -172,6 +172,8 @@ export const REASON_LABELS: Record<string, string> = {
   authorization_missing: 'Contato precisa ser reavaliado',
   authorization_revoked: 'Contato revogado',
   ownership_revoked: 'Verificação revogada',
+  appointment_not_available: 'Agendamento não localizado na atualização da agenda',
+  appointment_identity_changed: 'Identificação do agendamento mudou; confira na origem',
   contact_ready: 'Verificações exigidas concluídas',
   phone_missing: 'Número utilizável ausente',
   phone_invalid: 'Número informado inválido',

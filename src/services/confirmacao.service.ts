@@ -39,6 +39,16 @@ export async function listarSimulacoes(id: number): Promise<CampaignSimulation[]
   return response.data
 }
 
+export interface PendingResolution {
+  campaign: CampaignDetail
+  summary: { evaluated: number; updated: number; resolved: number; remaining: number; referencesRecovered: number; dispatchEnabled: false }
+}
+
+export async function resolverPendenciasCampanha(id: number, itemId?: number): Promise<PendingResolution> {
+  const response = await apiClient.post<PendingResolution>(`/confirmation-campaigns/${id}/resolve-pending`, itemId === undefined ? {} : { itemId }, { signal: AbortSignal.timeout(120000) })
+  return response.data
+}
+
 export async function obterCampanha(id: number): Promise<CampaignDetail> {
   const response = await apiClient.get<CampaignDetail>(`/confirmation-campaigns/${id}`)
   return response.data
@@ -88,9 +98,9 @@ export async function pesquisarPacientes(name: string): Promise<PatientSearchRes
   return response.data
 }
 
-export async function listarVerificacoes(patientRef: string): Promise<ContactVerification[]> {
+export async function listarVerificacoes(patientRef: string, signal?: AbortSignal): Promise<ContactVerification[]> {
   const response = await apiClient.get<ContactVerification[]>('/contact-registry/verifications', {
-    params: { patientRef },
+    params: { patientRef }, signal,
   })
   return response.data
 }
@@ -102,18 +112,19 @@ export async function informarContato(payload: {
   role: ContactSubjectRole
   origin: ContactOrigin
   evidenceRef?: string
-}): Promise<ContactVerification> {
-  const response = await apiClient.post<ContactVerification>('/contact-registry/verifications', payload)
+}, signal?: AbortSignal): Promise<ContactVerification> {
+  const response = await apiClient.post<ContactVerification>('/contact-registry/verifications', payload, { signal })
   return response.data
 }
 
 export async function verificarContato(
   id: string,
   payload: { procedure: ContactVerificationProcedure; legalGuardianVerified: boolean },
+  signal?: AbortSignal,
 ): Promise<ContactVerification> {
   const response = await apiClient.post<ContactVerification>(
     `/contact-registry/verifications/${id}/verify`,
-    payload,
+    payload, { signal },
   )
   return response.data
 }

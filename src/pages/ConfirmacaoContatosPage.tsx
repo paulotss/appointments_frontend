@@ -360,8 +360,8 @@ export function ConfirmacaoContatosPage() {
           contexto={contexto}
           onClose={() => setContexto(null)}
           onSaved={async () => {
-            setContexto(null)
             await consultar()
+            setContexto(null)
             setInfo('Contato atualizado. A elegibilidade será reavaliada; nenhuma mensagem foi enviada.')
           }}
         />
