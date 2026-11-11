@@ -97,7 +97,8 @@ export function ConfirmacaoCampanhaPage() {
     setBusy(true)
     setError(null)
     try {
-      const result = await acao(campaignId)
+      await acao(campaignId)
+      const result = await obterCampanha(campaignId)
       if (campanhaAtual.current === campaignId) setCampanha(result)
     } catch (reason) {
       if (campanhaAtual.current === campaignId) setError(

@@ -57,6 +57,10 @@ try {
         const id = Number(path.split('/').at(-1))
         return ok(id === 1 ? campaign : { ...campaign, id: 2, campaignDate: '2099-03-07' })
       }
+      if (path.endsWith('/response-deadline')) {
+        const { identityStatus, ...withoutIdentity } = campaign
+        return ok({ ...withoutIdentity, items: campaign.items.map(({ displayName, maskedPhone, professionalName, identityStatus, phoneStatus, ...item }) => item) })
+      }
       if (path.endsWith('/responses')) return ok({ dispatchEnabled: false, responses: [], pending: [], events: [], actions: [], users: [] })
       if (path.endsWith('/simulations')) return ok([])
       if (path.endsWith('/resolve-pending')) {
@@ -108,6 +112,16 @@ try {
     await select(page, 'Procedimento realizado', 'Confirmação presencial')
   }
   let f = await scenario()
+  await f.page.getByLabel('Novo prazo em São Paulo', { exact: true }).fill('2099-03-05T18:00')
+  const refreshedIdentity = f.page.waitForResponse(response => response.request().method() === 'GET' && /confirmation-campaigns\/1$/.test(new URL(response.url()).pathname))
+  await f.page.getByRole('button', { name: 'Salvar prazo', exact: true }).click()
+  await refreshedIdentity
+  await open(f)
+  await f.page.getByRole('dialog').getByText('Fixture Patient', { exact: true }).waitFor()
+  assert.equal(await f.page.getByText('A identificação deste agendamento está indisponível.', { exact: false }).count(), 0)
+  passed('campaign mutation reloads authoritative identity before replacing the page')
+  await close(f)
+  f = await scenario()
   await f.page.getByRole('button', { name: 'Resolver pendências automaticamente', exact: true }).click()
   await f.page.getByText('1 pendência(s) resolvida(s)', { exact: false }).waitFor()
   assert.equal(f.writes.length, 1)
