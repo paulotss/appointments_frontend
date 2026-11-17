@@ -159,3 +159,10 @@ API fictícia e bloqueio de tráfego externo. Cobre aprovação, seleção, pres
 da linha antiga, erro, conflito, resultado incerto, clique repetido e navegação.
 A homologação administrativa completa também inclui o fluxo novo com Nest e
 PostgreSQL descartáveis, preservando IDs, histórico e restrição dos tokens de leitura.
+
+
+## Diagnóstico de revalidação
+
+`npm run test:confirmation-revalidation` usa o componente real de respostas em Vite isolado na porta 5188, sem `.env`, com API fictícia e bloqueio de acesso externo. Confere as descrições distintas de demora na consulta, telefone repetido e paciente divergente, preserva a descrição histórica genérica e não expõe códigos desconhecidos. A navegação não realiza mutações.
+
+As operações que consultam a fonte aguardam até cinco minutos, cobrindo a coleta e a identificação independentes de até dois minutos cada. Recuperação por consulta e prevenção de repetição das ações administrativas continuam cobertas por `npm run test:confirmation-pending`.
