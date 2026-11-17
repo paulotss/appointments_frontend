@@ -45,7 +45,7 @@ export interface PendingResolution {
 }
 
 export async function resolverPendenciasCampanha(id: number, itemId?: number): Promise<PendingResolution> {
-  const response = await apiClient.post<PendingResolution>(`/confirmation-campaigns/${id}/resolve-pending`, itemId === undefined ? {} : { itemId }, { signal: AbortSignal.timeout(120000) })
+  const response = await apiClient.post<PendingResolution>(`/confirmation-campaigns/${id}/resolve-pending`, itemId === undefined ? {} : { itemId }, { signal: AbortSignal.timeout(300000) })
   return response.data
 }
 
@@ -221,8 +221,8 @@ export interface NewCampaignAppointments {
   items: Array<Omit<CampaignItem, 'id'>>
 }
 export async function consultarNovosAgendamentos(id: number): Promise<NewCampaignAppointments> {
-  return (await apiClient.get<NewCampaignAppointments>(`/confirmation-campaigns/${id}/new-appointments`, { signal: AbortSignal.timeout(180000) })).data
+  return (await apiClient.get<NewCampaignAppointments>(`/confirmation-campaigns/${id}/new-appointments`, { signal: AbortSignal.timeout(300000) })).data
 }
 export async function incluirNovosAgendamentos(id: number, revision: string, sourceRevision: string, appointmentRefs: string[]): Promise<CampaignDetail> {
-  return (await apiClient.post<CampaignDetail>(`/confirmation-campaigns/${id}/include-appointments`, { revision, sourceRevision, appointmentRefs }, { signal: AbortSignal.timeout(180000) })).data
+  return (await apiClient.post<CampaignDetail>(`/confirmation-campaigns/${id}/include-appointments`, { revision, sourceRevision, appointmentRefs }, { signal: AbortSignal.timeout(300000) })).data
 }
