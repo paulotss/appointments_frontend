@@ -138,3 +138,24 @@ cancelamento, liberação, pausa e conflito de versão entre operadores.
 A criação da campanha permanece manual. Aprovação e liberação são etapas distintas.
 Pausar novos envios não desfaz chamadas externas em andamento nem interrompe o
 tratamento das respostas já recebidas. A habilitação técnica da rotina é separada.
+
+## Inclusão de agendamentos novos
+
+Na campanha editável, `Consultar novos agendamentos` apresenta somente horários
+que ainda não fazem parte dela. A consulta não grava. Selecione os horários e use
+`Incluir selecionados`; os itens e identificadores existentes não são substituídos.
+A operação exige fonte completa, conferência da versão da campanha e dos dados
+consultados, transação e auditoria. Mudança de identidade, contato ou classificação
+entre conferência e inclusão exige nova consulta. Campanha aprovada exige reabertura.
+
+Não há envio, aprovação nem nova autorização de contato automática. Depois da
+inclusão, confira o prazo e aprove novamente; a nova revisão exige atualizar a
+seleção técnica e liberar explicitamente os envios. Identidade visual indisponível
+não é substituída por dados digitados. Resultado incerto exige `Conferir campanha`
+por leitura, sem repetir automaticamente a gravação.
+
+`npm run test:confirmation-new-appointments` usa a página real em 127.0.0.1:5189,
+API fictícia e bloqueio de tráfego externo. Cobre aprovação, seleção, preservação
+da linha antiga, erro, conflito, resultado incerto, clique repetido e navegação.
+A homologação administrativa completa também inclui o fluxo novo com Nest e
+PostgreSQL descartáveis, preservando IDs, histórico e restrição dos tokens de leitura.

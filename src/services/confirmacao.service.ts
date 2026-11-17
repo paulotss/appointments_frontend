@@ -212,3 +212,17 @@ export async function liberarEnvios(id: number, revision: string, version: numbe
 export async function pausarEnvios(id: number, revision: string, version: number): Promise<SendReleaseState> {
   return (await apiClient.post<SendReleaseState>(`/confirmation-campaigns/${id}/send-release/pause`, { revision, version })).data
 }
+
+export interface NewCampaignAppointments {
+  revision: string
+  sourceRevision: string
+  dispatchEnabled: false
+  identityStatus: 'ready' | 'partial' | 'unavailable'
+  items: Array<Omit<CampaignItem, 'id'>>
+}
+export async function consultarNovosAgendamentos(id: number): Promise<NewCampaignAppointments> {
+  return (await apiClient.get<NewCampaignAppointments>(`/confirmation-campaigns/${id}/new-appointments`, { signal: AbortSignal.timeout(180000) })).data
+}
+export async function incluirNovosAgendamentos(id: number, revision: string, sourceRevision: string, appointmentRefs: string[]): Promise<CampaignDetail> {
+  return (await apiClient.post<CampaignDetail>(`/confirmation-campaigns/${id}/include-appointments`, { revision, sourceRevision, appointmentRefs }, { signal: AbortSignal.timeout(180000) })).data
+}
