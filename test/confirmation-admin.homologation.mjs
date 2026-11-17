@@ -239,6 +239,37 @@ try {
   assert.equal(recovered.dispatchEnabled, false)
   assert.ok(recovered.events.some(event => event.action === 'CAMPAIGN_UPDATED'))
   passed('initial collection failure is recoverable through the UI in the same audited campaign without sending')
+  const beforeInclusion = await call('/confirmation-campaigns', { token: reception, method: 'POST', status: 201,
+    data: { campaignDate: '2099-03-09', source: 'SAUDEVIANET' } })
+  id = beforeInclusion.id
+  await call(`/confirmation-campaigns/${id}/new-appointments`, { token: fixture.registryToken, status: 403 })
+  await call(`/confirmation-campaigns/${id}/include-appointments`, { token: fixture.registryToken, method: 'POST', data: {}, status: 403 })
+  await page.goto(`${origin}/confirmacao/campanhas/${id}`)
+  await page.getByRole('heading', { name: 'Campanha 2099-03-09', exact: true }).waitFor()
+  await page.getByRole('button', { name: 'Consultar novos agendamentos', exact: true }).click()
+  await page.getByRole('dialog').getByRole('checkbox', { name: /18:30/ }).waitFor()
+  assert.equal((await detail()).items.length, beforeInclusion.items.length)
+  await page.getByRole('dialog').getByRole('checkbox', { name: /18:30/ }).check()
+  const includedResponse = page.waitForResponse(response => response.url().endsWith(`/confirmation-campaigns/${id}/include-appointments`) && response.request().method() === 'POST')
+  await page.getByRole('button', { name: 'Incluir selecionados', exact: true }).click()
+  const included = await includedResponse
+  assert.equal(included.status(), 201)
+  await page.getByRole('dialog').waitFor({ state: 'hidden' })
+  const afterInclusion = await detail()
+  assert.equal(afterInclusion.items.length, beforeInclusion.items.length + 1)
+  for (const old of beforeInclusion.items) {
+    const kept = afterInclusion.items.find(item => item.appointmentRef === old.appointmentRef)
+    assert.ok(kept)
+    for (const field of Object.keys(old)) assert.deepEqual(kept[field], old[field])
+  }
+  assert.equal(afterInclusion.status, 'DRAFT')
+  assert.equal(afterInclusion.dispatchEnabled, false)
+  assert.equal(afterInclusion.events.length, beforeInclusion.events.length + 1)
+  assert.deepEqual(afterInclusion.events.slice(0, beforeInclusion.events.length), beforeInclusion.events)
+  await call(`/confirmation-campaigns/${id}/include-appointments`, { token: reception, method: 'POST', status: 409,
+    data: included.request().postDataJSON() })
+  assert.equal((await detail()).items.length, afterInclusion.items.length)
+  passed('new source appointment is explicitly selected and appended with old IDs/history intact; read token and replay cannot add items')
   assert.deepEqual(external, [], 'No external browser requests')
   assert.deepEqual(pageErrors, [], 'No browser runtime errors')
   passed('no external requests or browser runtime errors')

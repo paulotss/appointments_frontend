@@ -1,3 +1,4 @@
+import { ConfirmacaoNovosAgendamentos } from './ConfirmacaoNovosAgendamentos'
 import { ConfirmacaoEnvios } from './ConfirmacaoEnvios'
 import {
   Alert,
@@ -302,6 +303,12 @@ export function ConfirmacaoCampanhaPage() {
           {reconsultaInicial ? 'A primeira consulta falhou e nenhum agendamento foi carregado. Tente novamente nesta mesma campanha; a nova consulta não envia mensagens.' : 'Usa o celular cadastrado no Saúde Vianet para adultos, sem formulário de verificação.'} Números inválidos, contatos ambíguos, revogações e falhas técnicas continuam bloqueados. Menores precisam de responsável legal verificado.
         </Typography>
         {campanha.status === 'APPROVED' ? <Typography variant="body2">Reabra a revisão para atualizar as pendências desta campanha.</Typography> : null}
+      </Paper>
+      <Paper sx={{ p: 2 }}>
+        <ConfirmacaoNovosAgendamentos key={`${campanha.id}:${campanha.status}:${campanha.approvedAt}`} campanha={campanha} busy={busy}
+          onBusy={value => { if (campanhaAtual.current === campanha.id) setBusy(value) }}
+          onUpdated={result => { if (campanhaAtual.current === campanha.id) { setCampanha(result); setInfo('Campanha atualizada. Confira os novos itens e aprove novamente antes de liberar os envios.') } }} />
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>Busca horários que ainda não fazem parte da campanha, sem substituir os anteriores. Reabra a revisão antes de incluir novos agendamentos.</Typography>
       </Paper>
       <Typography variant="h6">Agendamentos</Typography>
       <Paper>
