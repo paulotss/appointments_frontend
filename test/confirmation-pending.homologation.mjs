@@ -64,6 +64,7 @@ try {
         const { identityStatus, ...withoutIdentity } = campaign
         return ok({ ...withoutIdentity, items: campaign.items.map(({ displayName, maskedPhone, professionalName, identityStatus, phoneStatus, ...item }) => item) })
       }
+      if (path.endsWith('/send-release')) return ok({ revision: 'a'.repeat(64), version: 0, active: false, itemIds: [], eligibleItemIds: [], updatedAt: null })
       if (path.endsWith('/responses')) return ok({ dispatchEnabled: false, responses: [], pending: [], events: [], actions: [], users: [] })
       if (path.endsWith('/simulations')) return ok([])
       if (path.endsWith('/resolve-pending')) {

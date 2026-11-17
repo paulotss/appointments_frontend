@@ -128,3 +128,13 @@ carrega os agendamentos na mesma campanha somente quando agenda e registro
 estão disponíveis, com auditoria e proteção contra mudança concorrente.
 Nova falha ou resultado parcial preserva a campanha anterior. Campanhas
 aprovadas não são alteradas. O fluxo não cria verificações nem envia mensagens.
+
+## Liberação explícita dos envios
+
+`npm run test:confirmation-send-release` valida o componente real com API
+inteiramente fictícia em 127.0.0.1:5188 e bloqueia requisições externas. Cobre
+seleção apenas de aptos, ausência de gravação na abertura, diálogo de autorização,
+cancelamento, liberação, pausa e conflito de versão entre operadores.
+A criação da campanha permanece manual. Aprovação e liberação são etapas distintas.
+Pausar novos envios não desfaz chamadas externas em andamento nem interrompe o
+tratamento das respostas já recebidas. A habilitação técnica da rotina é separada.

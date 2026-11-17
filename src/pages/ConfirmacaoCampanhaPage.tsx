@@ -1,3 +1,4 @@
+import { ConfirmacaoEnvios } from './ConfirmacaoEnvios'
 import {
   Alert,
   Button,
@@ -195,6 +196,7 @@ export function ConfirmacaoCampanhaPage() {
         . Aprovar esta campanha não autoriza destinatários inválidos e não envia
         WhatsApp.
       </Alert>
+      <ConfirmacaoEnvios key={`${campanha.id}:${campanha.status}:${campanha.approvedAt}`} campanha={campanha} />
       {error ? <Alert severity="error">{error}</Alert> : null}
       {info ? <Alert severity="success">{info}</Alert> : null}
       <Alert severity="info">
