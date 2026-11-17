@@ -194,3 +194,21 @@ export async function assumirPendencia(campaignId: number, id: string, version: 
 export async function concluirPendencia(campaignId: number, id: string, version: number, resolution: string) {
   await apiClient.post(`/confirmation-campaigns/${campaignId}/responses/pending/${id}/complete`, { version, resolution })
 }
+
+export interface SendReleaseState {
+  revision: string
+  eligibleItemIds: number[]
+  active: boolean
+  version: number
+  itemIds: number[]
+  updatedAt: string | null
+}
+export async function obterLiberacaoEnvios(id: number): Promise<SendReleaseState> {
+  return (await apiClient.get<SendReleaseState>(`/confirmation-campaigns/${id}/send-release`)).data
+}
+export async function liberarEnvios(id: number, revision: string, version: number, itemIds: number[]): Promise<SendReleaseState> {
+  return (await apiClient.post<SendReleaseState>(`/confirmation-campaigns/${id}/send-release`, { revision, version, itemIds })).data
+}
+export async function pausarEnvios(id: number, revision: string, version: number): Promise<SendReleaseState> {
+  return (await apiClient.post<SendReleaseState>(`/confirmation-campaigns/${id}/send-release/pause`, { revision, version })).data
+}
