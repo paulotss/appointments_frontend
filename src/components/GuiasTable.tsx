@@ -10,6 +10,7 @@ import {
   Chip,
   Collapse,
   IconButton,
+  Skeleton,
   Table,
   TableBody,
   TableCell,
@@ -30,6 +31,8 @@ interface GuiasTableProps {
   onEditar: (guia: InsuranceGuide) => void
   onExcluir: (guia: InsuranceGuide) => void
   onFaturar: (guia: InsuranceGuide) => void
+  loading?: boolean
+  skeletonRows?: number
 }
 
 const sxSomenteMd = { display: { xs: 'none', md: 'table-cell' } } as const
@@ -184,7 +187,49 @@ function GuiaRow({
   )
 }
 
-export function GuiasTable({ guias, onAbrir, onEditar, onExcluir, onFaturar }: GuiasTableProps) {
+function GuiaSkeletonRow() {
+  return (
+    <TableRow>
+      <TableCell sx={sxSomenteMd}>
+        <Skeleton variant="circular" width={24} height={24} />
+      </TableCell>
+      <TableCell>
+        <Skeleton width="70%" />
+      </TableCell>
+      <TableCell>
+        <Skeleton width="85%" />
+      </TableCell>
+      <TableCell sx={sxSomenteMd}>
+        <Skeleton width="75%" />
+      </TableCell>
+      <TableCell sx={sxSomenteMd}>
+        <Skeleton width="75%" />
+      </TableCell>
+      <TableCell sx={sxSomenteMd}>
+        <Skeleton width={90} />
+      </TableCell>
+      <TableCell sx={sxSomenteMd}>
+        <Skeleton width={80} />
+      </TableCell>
+      <TableCell sx={sxSomenteMd}>
+        <Skeleton width={56} />
+      </TableCell>
+      <TableCell align="right">
+        <Skeleton width={140} sx={{ ml: 'auto' }} />
+      </TableCell>
+    </TableRow>
+  )
+}
+
+export function GuiasTable({
+  guias,
+  onAbrir,
+  onEditar,
+  onExcluir,
+  onFaturar,
+  loading = false,
+  skeletonRows = 8,
+}: GuiasTableProps) {
   return (
     <TableContainer>
       <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
@@ -204,16 +249,20 @@ export function GuiasTable({ guias, onAbrir, onEditar, onExcluir, onFaturar }: G
           </TableRow>
         </TableHead>
         <TableBody>
-          {guias.map((guia) => (
-            <GuiaRow
-              key={guia.id}
-              guia={guia}
-              onAbrir={onAbrir}
-              onEditar={onEditar}
-              onExcluir={onExcluir}
-              onFaturar={onFaturar}
-            />
-          ))}
+          {loading
+            ? Array.from({ length: skeletonRows }).map((_, index) => (
+                <GuiaSkeletonRow key={index} />
+              ))
+            : guias.map((guia) => (
+                <GuiaRow
+                  key={guia.id}
+                  guia={guia}
+                  onAbrir={onAbrir}
+                  onEditar={onEditar}
+                  onExcluir={onExcluir}
+                  onFaturar={onFaturar}
+                />
+              ))}
         </TableBody>
       </Table>
     </TableContainer>

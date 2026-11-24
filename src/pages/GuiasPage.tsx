@@ -605,12 +605,6 @@ export function GuiasPage() {
         </Stack>
       </Box>
 
-      {loading ? (
-        <Paper sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <CircularProgress size={20} />
-          <Typography>Carregando guias...</Typography>
-        </Paper>
-      ) : null}
       {error ? <Alert severity="error">{error}</Alert> : null}
       {success ? (
         <Alert severity="success">
@@ -626,141 +620,140 @@ export function GuiasPage() {
         </Alert>
       ) : null}
 
-      {!loading && !error ? (
-        <Stack spacing={1.5}>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
-            <PacienteBuscaAutocomplete
-              value={filtroPaciente}
-              onChange={(paciente) => atualizarFiltros({ filtroPaciente: paciente })}
-              size="small"
-              fullWidth
-              sx={{ flex: 1, minWidth: { xs: '100%', md: 280 } }}
-            />
-            <Autocomplete
-              options={planos}
-              getOptionLabel={(plano) => plano.name}
-              isOptionEqualToValue={(option, selected) => option.id === selected.id}
-              value={planos.find((plano) => plano.id === filtroPlanoId) ?? null}
-              onChange={(_, plano) => atualizarFiltros({ filtroPlanoId: plano?.id ?? '' })}
-              sx={{ minWidth: { xs: '100%', md: 240 }, flex: { md: 1 } }}
-              renderInput={(params) => (
-                <TextField {...params} label="Plano de saúde" size="small" placeholder="Todos" />
-              )}
-            />
-            <TextField
-              select
-              size="small"
-              label="Status"
-              value={filtroStatus}
-              onChange={(event) =>
-                atualizarFiltros({ filtroStatus: event.target.value as InsuranceGuideStatus | '' })
-              }
-              sx={{ minWidth: 180 }}
-            >
-              <MenuItem value="">Todos</MenuItem>
-              {INSURANCE_GUIDE_STATUSES.map((status) => (
-                <MenuItem key={status} value={status}>
-                  {INSURANCE_GUIDE_STATUS_LABELS[status]}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Stack>
-          <Stack direction="row" spacing={2} flexWrap="wrap" alignItems="center">
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={filtroPertoVencer}
-                  onChange={(_, checked) => {
-                    atualizarFiltros({
-                      filtroPertoVencer: checked,
-                      ...(checked ? { filtroVencidas: false } : {}),
-                    })
-                  }}
-                />
-              }
-              label="Perto de vencer (7 dias)"
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={filtroVencidas}
-                  onChange={(_, checked) => {
-                    atualizarFiltros({
-                      filtroVencidas: checked,
-                      ...(checked ? { filtroPertoVencer: false } : {}),
-                    })
-                  }}
-                />
-              }
-              label="Somente vencidas"
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={filtroMostrarFaturadas}
-                  onChange={(_, checked) => {
-                    atualizarFiltros({ filtroMostrarFaturadas: checked })
-                  }}
-                />
-              }
-              label="Mostrar faturadas"
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={filtroSemSaldo}
-                  onChange={(_, checked) => {
-                    atualizarFiltros({ filtroSemSaldo: checked })
-                  }}
-                />
-              }
-              label="Sem saldo"
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={filtroSemAgendamento}
-                  onChange={(_, checked) => {
-                    atualizarFiltros({ filtroSemAgendamento: checked })
-                  }}
-                />
-              }
-              label="Sem agendamento"
-            />
-          </Stack>
-          <Stack direction="row" spacing={1.5} flexWrap="wrap" alignItems="center">
-            <Typography variant="caption" color="text.secondary">
-              Validade:
-            </Typography>
-            <Chip size="small" label="Dentro do prazo" color="default" />
-            <Chip size="small" label="Faltam até 7 dias" color="warning" />
-            <Chip size="small" label="Último dia / vencida" color="error" />
-          </Stack>
+      <Stack spacing={1.5}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
+          <PacienteBuscaAutocomplete
+            value={filtroPaciente}
+            onChange={(paciente) => atualizarFiltros({ filtroPaciente: paciente })}
+            size="small"
+            fullWidth
+            sx={{ flex: 1, minWidth: { xs: '100%', md: 280 } }}
+          />
+          <Autocomplete
+            options={planos}
+            getOptionLabel={(plano) => plano.name}
+            isOptionEqualToValue={(option, selected) => option.id === selected.id}
+            value={planos.find((plano) => plano.id === filtroPlanoId) ?? null}
+            onChange={(_, plano) => atualizarFiltros({ filtroPlanoId: plano?.id ?? '' })}
+            sx={{ minWidth: { xs: '100%', md: 240 }, flex: { md: 1 } }}
+            renderInput={(params) => (
+              <TextField {...params} label="Plano de saúde" size="small" placeholder="Todos" />
+            )}
+          />
+          <TextField
+            select
+            size="small"
+            label="Status"
+            value={filtroStatus}
+            onChange={(event) =>
+              atualizarFiltros({ filtroStatus: event.target.value as InsuranceGuideStatus | '' })
+            }
+            sx={{ minWidth: 180 }}
+          >
+            <MenuItem value="">Todos</MenuItem>
+            {INSURANCE_GUIDE_STATUSES.map((status) => (
+              <MenuItem key={status} value={status}>
+                {INSURANCE_GUIDE_STATUS_LABELS[status]}
+              </MenuItem>
+            ))}
+          </TextField>
         </Stack>
-      ) : null}
+        <Stack direction="row" spacing={2} flexWrap="wrap" alignItems="center">
+          <FormControlLabel
+            control={
+              <Switch
+                checked={filtroPertoVencer}
+                onChange={(_, checked) => {
+                  atualizarFiltros({
+                    filtroPertoVencer: checked,
+                    ...(checked ? { filtroVencidas: false } : {}),
+                  })
+                }}
+              />
+            }
+            label="Perto de vencer (7 dias)"
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={filtroVencidas}
+                onChange={(_, checked) => {
+                  atualizarFiltros({
+                    filtroVencidas: checked,
+                    ...(checked ? { filtroPertoVencer: false } : {}),
+                  })
+                }}
+              />
+            }
+            label="Somente vencidas"
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={filtroMostrarFaturadas}
+                onChange={(_, checked) => {
+                  atualizarFiltros({ filtroMostrarFaturadas: checked })
+                }}
+              />
+            }
+            label="Mostrar faturadas"
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={filtroSemSaldo}
+                onChange={(_, checked) => {
+                  atualizarFiltros({ filtroSemSaldo: checked })
+                }}
+              />
+            }
+            label="Sem saldo"
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={filtroSemAgendamento}
+                onChange={(_, checked) => {
+                  atualizarFiltros({ filtroSemAgendamento: checked })
+                }}
+              />
+            }
+            label="Sem agendamento"
+          />
+        </Stack>
+        <Stack direction="row" spacing={1.5} flexWrap="wrap" alignItems="center">
+          <Typography variant="caption" color="text.secondary">
+            Validade:
+          </Typography>
+          <Chip size="small" label="Dentro do prazo" color="default" />
+          <Chip size="small" label="Faltam até 7 dias" color="warning" />
+          <Chip size="small" label="Último dia / vencida" color="error" />
+        </Stack>
+      </Stack>
 
-      {!loading && !error ? (
-        <Paper sx={{ p: 0 }}>
-          {guiasExibidas.length === 0 ? (
-            <Box sx={{ p: 3 }}>
-              <Typography>
-                {guias.length === 0
-                  ? 'Nenhuma guia encontrada.'
-                  : 'Nenhuma guia encontrada para os filtros selecionados.'}
-              </Typography>
-            </Box>
-          ) : (
-            <GuiasTable
-              guias={guiasExibidas}
-              onAbrir={(guia) => navigate(`/guias/${guia.id}`)}
-              onEditar={abrirEdicao}
-              onExcluir={(guia) => void excluir(guia)}
-              onFaturar={(guia) => {
-                setFaturarError(null)
-                setFaturando(guia)
-              }}
-            />
-          )}
+      <Paper sx={{ p: 0 }}>
+        {loading || guiasExibidas.length > 0 ? (
+          <GuiasTable
+            loading={loading}
+            guias={guiasExibidas}
+            onAbrir={(guia) => navigate(`/guias/${guia.id}`)}
+            onEditar={abrirEdicao}
+            onExcluir={(guia) => void excluir(guia)}
+            onFaturar={(guia) => {
+              setFaturarError(null)
+              setFaturando(guia)
+            }}
+          />
+        ) : (
+          <Box sx={{ p: 3 }}>
+            <Typography>
+              {guias.length === 0
+                ? 'Nenhuma guia encontrada.'
+                : 'Nenhuma guia encontrada para os filtros selecionados.'}
+            </Typography>
+          </Box>
+        )}
+        {!loading ? (
           <TablePagination
             component="div"
             count={totalExibido}
@@ -777,8 +770,8 @@ export function GuiasPage() {
               count === 0 ? '0–0 de 0' : `${from}–${to} de ${count !== -1 ? count : `mais de ${to}`}`
             }
           />
-        </Paper>
-      ) : null}
+        ) : null}
+      </Paper>
 
       <Dialog open={Boolean(editando)} onClose={fecharEdicao} fullWidth maxWidth="md">
         <DialogTitle>Editar guia</DialogTitle>
