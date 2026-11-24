@@ -156,6 +156,16 @@ function mapProcedure(item: BackendProcedure): Procedure {
   }
 }
 
+const SENHA_PLACEHOLDER_RE = /^(null|undefined|n\/?a|none|-+)$/i
+
+/** Descarta vazios e placeholders literais ("null", "n/a", ...) que o modelo pode devolver. */
+export function normalizarSenhaExtraida(value: string | null | undefined): string | null {
+  const trimmed = value?.trim()
+  if (!trimmed) return null
+  if (SENHA_PLACEHOLDER_RE.test(trimmed)) return null
+  return trimmed
+}
+
 function mapExtracted(item: ExtractedGuide): ExtractedGuide {
   const type = TISS_GUIDE_TYPES.find((value) => value === item.tissGuideType) ?? null
   const source = item.professional?.source
@@ -197,7 +207,7 @@ function mapExtracted(item: ExtractedGuide): ExtractedGuide {
       operatorGuideNumber: item.guide?.operatorGuideNumber ?? null,
       providerGuideNumber: item.guide?.providerGuideNumber ?? null,
       authorizationDate: isoDatePrefix(item.guide?.authorizationDate) || null,
-      authorizationPassword: item.guide?.authorizationPassword?.trim() || null,
+      authorizationPassword: normalizarSenhaExtraida(item.guide?.authorizationPassword),
       passwordExpirationDate: isoDatePrefix(item.guide?.passwordExpirationDate) || null,
       attendanceDate: isoDatePrefix(item.guide?.attendanceDate) || null,
     },

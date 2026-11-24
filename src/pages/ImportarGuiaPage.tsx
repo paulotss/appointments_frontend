@@ -10,7 +10,7 @@ import {
   type ImportarGuiaFormInput,
   type ImportarGuiaFormValues,
 } from '../schemas/importarGuia.schema'
-import { analisarGuia, confirmarImportacaoGuia, recruzarGuia } from '../services/guide-imports.service'
+import { analisarGuia, confirmarImportacaoGuia, normalizarSenhaExtraida, recruzarGuia } from '../services/guide-imports.service'
 import { listarPlanosSaude } from '../services/health-plans.service'
 import { enviarDocumentoGuia } from '../services/insurance-guides.service'
 import type { GuideImportAnalysis } from '../types/guideImport'
@@ -63,7 +63,7 @@ function aplicarAnalise(analise: GuideImportAnalysis): DefaultValues<ImportarGui
     cardExpirationDate: existingCard?.expirationDate ?? cardExpiration,
     guideNumber:
       analise.extracted.guide.providerGuideNumber ?? analise.extracted.guide.operatorGuideNumber ?? '',
-    authorizationPassword: analise.extracted.guide.authorizationPassword ?? '',
+    authorizationPassword: normalizarSenhaExtraida(analise.extracted.guide.authorizationPassword) ?? '',
     participationDegree: '12',
     authorizationDate: autorizacao,
     expirationDate: validade,
@@ -223,6 +223,8 @@ export function ImportarGuiaPage() {
               ...(values.cardExpirationDate ? { cardExpirationDate: values.cardExpirationDate } : {}),
             }
 
+      const authorizationPassword = normalizarSenhaExtraida(values.authorizationPassword)
+
       const criada = await confirmarImportacaoGuia({
         healthPlanId: values.healthPlanId,
         healthProfessionalId: values.healthProfessionalId,
@@ -235,9 +237,7 @@ export function ImportarGuiaPage() {
         })),
         patient: paciente,
         guideNumber: values.guideNumber,
-        ...(values.authorizationPassword?.trim()
-          ? { authorizationPassword: values.authorizationPassword.trim() }
-          : {}),
+        ...(authorizationPassword ? { authorizationPassword } : {}),
         participationDegree: values.participationDegree,
         authorizationDate: values.authorizationDate,
         expirationDate: values.expirationDate,

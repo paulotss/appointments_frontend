@@ -10,6 +10,7 @@ import {
   Chip,
   Collapse,
   IconButton,
+  Skeleton,
   Table,
   TableBody,
   TableCell,
@@ -30,6 +31,8 @@ interface GuiasTableProps {
   onEditar: (guia: InsuranceGuide) => void
   onExcluir: (guia: InsuranceGuide) => void
   onFaturar: (guia: InsuranceGuide) => void
+  loading?: boolean
+  skeletonRows?: number
 }
 
 const sxSomenteMd = { display: { xs: 'none', md: 'table-cell' } } as const
@@ -55,27 +58,11 @@ function corChipStatusGuia(status: InsuranceGuideStatus) {
   return undefined
 }
 
-function corLinhaGuia(guia: InsuranceGuide) {
-  if (guia.isBilled) {
-    return {
-      bgcolor: 'success.light',
-      '&:hover': { bgcolor: 'success.light' },
-    }
-  }
-  const status = statusPrazoGuia(guia.expirationDate)
-  if (status === 'vencida' || status === 'ultimoDia') {
-    return {
-      bgcolor: 'error.light',
-      '&:hover': { bgcolor: 'error.light' },
-    }
-  }
-  if (status === 'proxima') {
-    return {
-      bgcolor: 'warning.light',
-      '&:hover': { bgcolor: 'warning.light' },
-    }
-  }
-  return undefined
+function corChipValidadeGuia(expirationDate: string): 'default' | 'warning' | 'error' {
+  const status = statusPrazoGuia(expirationDate)
+  if (status === 'ultimoDia' || status === 'vencida') return 'error'
+  if (status === 'proxima') return 'warning'
+  return 'default'
 }
 
 function pararClique(event: MouseEvent) {
@@ -96,7 +83,6 @@ function GuiaRow({
   onFaturar: (guia: InsuranceGuide) => void
 }) {
   const [open, setOpen] = useState(false)
-  const corLinha = corLinhaGuia(guia)
   const podeFaturar = guiaElegivelParaFaturar(guia)
   const saldo = saldoDisponivelGuia(guia)
 
@@ -105,7 +91,7 @@ function GuiaRow({
       <TableRow
         hover
         onClick={() => onAbrir(guia)}
-        sx={{ ...corLinha, cursor: 'pointer', '& > *': { borderBottom: 'unset' } }}
+        sx={{ cursor: 'pointer', '& > *': { borderBottom: 'unset' } }}
       >
         <TableCell sx={sxSomenteMd}>
           <IconButton
@@ -145,9 +131,16 @@ function GuiaRow({
                 aria-label="Quantidade utilizada igual à autorizada em todos os procedimentos"
               />
             ) : null}
+            {guia.isBilled ? <Chip size="small" label="Faturada" color="success" /> : null}
           </Box>
         </TableCell>
-        <TableCell sx={{ whiteSpace: 'nowrap', ...sxSomenteMd }}>{formatarDataISO(guia.expirationDate)}</TableCell>
+        <TableCell sx={{ whiteSpace: 'nowrap', ...sxSomenteMd }}>
+          <Chip
+            size="small"
+            label={formatarDataISO(guia.expirationDate)}
+            color={corChipValidadeGuia(guia.expirationDate)}
+          />
+        </TableCell>
         <TableCell sx={{ whiteSpace: 'nowrap', ...sxSomenteMd }}>
           <Chip size="small" label={saldo} color={saldo > 0 ? 'primary' : 'default'} />
         </TableCell>
@@ -194,7 +187,49 @@ function GuiaRow({
   )
 }
 
-export function GuiasTable({ guias, onAbrir, onEditar, onExcluir, onFaturar }: GuiasTableProps) {
+function GuiaSkeletonRow() {
+  return (
+    <TableRow>
+      <TableCell sx={sxSomenteMd}>
+        <Skeleton variant="circular" width={24} height={24} />
+      </TableCell>
+      <TableCell>
+        <Skeleton width="70%" />
+      </TableCell>
+      <TableCell>
+        <Skeleton width="85%" />
+      </TableCell>
+      <TableCell sx={sxSomenteMd}>
+        <Skeleton width="75%" />
+      </TableCell>
+      <TableCell sx={sxSomenteMd}>
+        <Skeleton width="75%" />
+      </TableCell>
+      <TableCell sx={sxSomenteMd}>
+        <Skeleton width={90} />
+      </TableCell>
+      <TableCell sx={sxSomenteMd}>
+        <Skeleton width={80} />
+      </TableCell>
+      <TableCell sx={sxSomenteMd}>
+        <Skeleton width={56} />
+      </TableCell>
+      <TableCell align="right">
+        <Skeleton width={140} sx={{ ml: 'auto' }} />
+      </TableCell>
+    </TableRow>
+  )
+}
+
+export function GuiasTable({
+  guias,
+  onAbrir,
+  onEditar,
+  onExcluir,
+  onFaturar,
+  loading = false,
+  skeletonRows = 8,
+}: GuiasTableProps) {
   return (
     <TableContainer>
       <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
@@ -214,16 +249,20 @@ export function GuiasTable({ guias, onAbrir, onEditar, onExcluir, onFaturar }: G
           </TableRow>
         </TableHead>
         <TableBody>
-          {guias.map((guia) => (
-            <GuiaRow
-              key={guia.id}
-              guia={guia}
-              onAbrir={onAbrir}
-              onEditar={onEditar}
-              onExcluir={onExcluir}
-              onFaturar={onFaturar}
-            />
-          ))}
+          {loading
+            ? Array.from({ length: skeletonRows }).map((_, index) => (
+                <GuiaSkeletonRow key={index} />
+              ))
+            : guias.map((guia) => (
+                <GuiaRow
+                  key={guia.id}
+                  guia={guia}
+                  onAbrir={onAbrir}
+                  onEditar={onEditar}
+                  onExcluir={onExcluir}
+                  onFaturar={onFaturar}
+                />
+              ))}
         </TableBody>
       </Table>
     </TableContainer>

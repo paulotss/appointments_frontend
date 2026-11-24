@@ -247,10 +247,10 @@ export function NovoLoteTissPage() {
                         <Checkbox
                           checked={selecionadas.includes(guia.id)}
                           onChange={() => alternarGuia(guia.id)}
-                          inputProps={{ 'aria-label': `Selecionar guia ${guia.id}` }}
+                          inputProps={{ 'aria-label': `Selecionar guia ${guia.guideNumber?.trim() || guia.id}` }}
                         />
                       </TableCell>
-                      <TableCell>#{guia.id}</TableCell>
+                      <TableCell>{guia.guideNumber?.trim() || '—'}</TableCell>
                       <TableCell>{guia.patient?.name ?? '—'}</TableCell>
                       <TableCell>{guia.healthProfessional?.name ?? '—'}</TableCell>
                       <TableCell>{formatarDataISO(guia.authorizationDate)}</TableCell>
