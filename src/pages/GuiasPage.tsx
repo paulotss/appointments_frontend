@@ -83,12 +83,10 @@ function prazoDoPlano(guia: InsuranceGuide, planos: HealthPlan[]): number | unde
 
 function guiaAtendeFiltrosLocais(
   guia: InsuranceGuide,
-  filtroMostrarFaturadas: boolean,
   filtroPertoVencer: boolean,
   filtroVencidas: boolean,
   filtroSemSaldo: boolean,
 ): boolean {
-  if (guia.isBilled !== filtroMostrarFaturadas) return false
   if (filtroPertoVencer || filtroVencidas) {
     const prazo = statusPrazoGuia(guia.expirationDate)
     if (filtroPertoVencer && prazo !== 'proxima') return false
@@ -445,29 +443,24 @@ export function GuiasPage() {
     !/^\d{6}$/.test(executorCbosEdicao) ||
     (tipoGuiaEdicao === 'sp_sadt' && solicitanteIncompleto(solicitanteEdicao))
 
-  const filtrosLocaisAtivos = filtroPertoVencer || filtroVencidas || filtroSemSaldo || filtroMostrarFaturadas
+  const filtrosLocaisAtivos = filtroPertoVencer || filtroVencidas || filtroSemSaldo
 
   const paramsApi = useMemo(
     () => ({
+      isBilled: filtroMostrarFaturadas,
       ...(filtroPaciente ? { patientId: filtroPaciente.id } : {}),
       ...(filtroPlanoId === '' ? {} : { healthPlanId: filtroPlanoId }),
       ...(filtroStatus === '' ? {} : { status: filtroStatus }),
       ...(filtroSemAgendamento ? { withoutAppointment: true } : {}),
     }),
-    [filtroPaciente, filtroPlanoId, filtroStatus, filtroSemAgendamento],
+    [filtroMostrarFaturadas, filtroPaciente, filtroPlanoId, filtroStatus, filtroSemAgendamento],
   )
 
   const guiasFiltradas = useMemo(() => {
     return guias.filter((guia) =>
-      guiaAtendeFiltrosLocais(
-        guia,
-        filtroMostrarFaturadas,
-        filtroPertoVencer,
-        filtroVencidas,
-        filtroSemSaldo,
-      ),
+      guiaAtendeFiltrosLocais(guia, filtroPertoVencer, filtroVencidas, filtroSemSaldo),
     )
-  }, [guias, filtroMostrarFaturadas, filtroPertoVencer, filtroVencidas, filtroSemSaldo])
+  }, [guias, filtroPertoVencer, filtroVencidas, filtroSemSaldo])
 
   const totalExibido = filtrosLocaisAtivos ? guiasFiltradas.length : meta.total
   const ultimaPagina = Math.max(0, Math.ceil(totalExibido / rowsPerPage) - 1)
