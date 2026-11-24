@@ -6,6 +6,7 @@ import {
   Autocomplete,
   Box,
   Button,
+  Chip,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -727,19 +728,13 @@ export function GuiasPage() {
               label="Sem agendamento"
             />
           </Stack>
-          <Stack direction="row" spacing={2} flexWrap="wrap">
-            <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-              <Box sx={{ width: 12, height: 12, bgcolor: 'success.light', borderRadius: 0.5 }} />
-              Faturada
+          <Stack direction="row" spacing={1.5} flexWrap="wrap" alignItems="center">
+            <Typography variant="caption" color="text.secondary">
+              Validade:
             </Typography>
-            <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-              <Box sx={{ width: 12, height: 12, bgcolor: 'warning.light', borderRadius: 0.5 }} />
-              Faltam até 7 dias
-            </Typography>
-            <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-              <Box sx={{ width: 12, height: 12, bgcolor: 'error.light', borderRadius: 0.5 }} />
-              Último dia de validade / Vencida
-            </Typography>
+            <Chip size="small" label="Dentro do prazo" color="default" />
+            <Chip size="small" label="Faltam até 7 dias" color="warning" />
+            <Chip size="small" label="Último dia / vencida" color="error" />
           </Stack>
         </Stack>
       ) : null}

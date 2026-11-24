@@ -55,27 +55,11 @@ function corChipStatusGuia(status: InsuranceGuideStatus) {
   return undefined
 }
 
-function corLinhaGuia(guia: InsuranceGuide) {
-  if (guia.isBilled) {
-    return {
-      bgcolor: 'success.light',
-      '&:hover': { bgcolor: 'success.light' },
-    }
-  }
-  const status = statusPrazoGuia(guia.expirationDate)
-  if (status === 'vencida' || status === 'ultimoDia') {
-    return {
-      bgcolor: 'error.light',
-      '&:hover': { bgcolor: 'error.light' },
-    }
-  }
-  if (status === 'proxima') {
-    return {
-      bgcolor: 'warning.light',
-      '&:hover': { bgcolor: 'warning.light' },
-    }
-  }
-  return undefined
+function corChipValidadeGuia(expirationDate: string): 'default' | 'warning' | 'error' {
+  const status = statusPrazoGuia(expirationDate)
+  if (status === 'ultimoDia' || status === 'vencida') return 'error'
+  if (status === 'proxima') return 'warning'
+  return 'default'
 }
 
 function pararClique(event: MouseEvent) {
@@ -96,7 +80,6 @@ function GuiaRow({
   onFaturar: (guia: InsuranceGuide) => void
 }) {
   const [open, setOpen] = useState(false)
-  const corLinha = corLinhaGuia(guia)
   const podeFaturar = guiaElegivelParaFaturar(guia)
   const saldo = saldoDisponivelGuia(guia)
 
@@ -105,7 +88,7 @@ function GuiaRow({
       <TableRow
         hover
         onClick={() => onAbrir(guia)}
-        sx={{ ...corLinha, cursor: 'pointer', '& > *': { borderBottom: 'unset' } }}
+        sx={{ cursor: 'pointer', '& > *': { borderBottom: 'unset' } }}
       >
         <TableCell sx={sxSomenteMd}>
           <IconButton
@@ -145,9 +128,16 @@ function GuiaRow({
                 aria-label="Quantidade utilizada igual à autorizada em todos os procedimentos"
               />
             ) : null}
+            {guia.isBilled ? <Chip size="small" label="Faturada" color="success" /> : null}
           </Box>
         </TableCell>
-        <TableCell sx={{ whiteSpace: 'nowrap', ...sxSomenteMd }}>{formatarDataISO(guia.expirationDate)}</TableCell>
+        <TableCell sx={{ whiteSpace: 'nowrap', ...sxSomenteMd }}>
+          <Chip
+            size="small"
+            label={formatarDataISO(guia.expirationDate)}
+            color={corChipValidadeGuia(guia.expirationDate)}
+          />
+        </TableCell>
         <TableCell sx={{ whiteSpace: 'nowrap', ...sxSomenteMd }}>
           <Chip size="small" label={saldo} color={saldo > 0 ? 'primary' : 'default'} />
         </TableCell>
